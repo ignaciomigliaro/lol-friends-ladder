@@ -167,14 +167,28 @@ export async function writeJson(file, data) {
 
 export const readLeaderboard = () => readJson(LEADERBOARD_FILE, null);
 
-export async function saveLeaderboard(config, players, errors, ddragonVersion, freshGroupGames = []) {
+// After an API key switch, every PUUID changes: move saved history and games to the new ones.
+function remapPuuids(history, groupGames, remap) {
+  if (!remap?.size) return;
+  for (const [oldId, newId] of remap) {
+    if (history[oldId]) {
+      history[newId] = [...(history[oldId] ?? []), ...(history[newId] ?? [])].sort((a, b) => a.t - b.t);
+      delete history[oldId];
+    }
+  }
+  for (const g of groupGames) for (const p of g.players) p.puuid = remap.get(p.puuid) ?? p.puuid;
+}
+
+export async function saveLeaderboard(config, players, errors, ddragonVersion, freshGroupGames = [], puuidRemap) {
   const now = Date.now();
   const names = new Map(players.map((p) => [p.puuid, p.name]));
-  const groupGames = mergeGroupGames(await readJson(GROUP_FILE, []), freshGroupGames);
+  const stored = await readJson(GROUP_FILE, []);
+  const history = await readJson(HISTORY_FILE, {});
+  remapPuuids(history, stored, puuidRemap);
+  const groupGames = mergeGroupGames(stored, freshGroupGames);
   for (const g of groupGames) for (const p of g.players) p.name = names.get(p.puuid) ?? p.name;
   await writeJson(GROUP_FILE, groupGames);
 
-  const history = await readJson(HISTORY_FILE, {});
   recordHistory(history, players, now);
   attachDeltas(players, history, now);
   await writeJson(HISTORY_FILE, history);
@@ -235,5 +249,5 @@ export async function refreshAll(config, onProgress = () => {}) {
     .filter(Boolean);
 
   onProgress({ done: total, total, current: null });
-  return saveLeaderboard(config, players, errors, ddragonVersion, groupGames);
+  return saveLeaderboard(config, players, errors, ddragonVersion, groupGames, client.puuidRemap);
 }

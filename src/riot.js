@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import crypto from 'node:crypto';
 
 const PLATFORM_TO_REGION = {
   na1: 'americas', br1: 'americas', la1: 'americas', la2: 'americas',
@@ -18,6 +19,8 @@ const DEV_LIMITS = [
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 export class AuthError extends Error {}
+
+const scopeOf = (puuid) => crypto.createHash('sha256').update(puuid).digest('hex').slice(0, 12);
 
 class RateLimiter {
   constructor(limits) {
@@ -64,9 +67,55 @@ export class RiotClient {
     this.region = PLATFORM_TO_REGION[this.platform];
     if (!this.region) throw new Error(`Unknown platform "${platform}". Use one of: ${Object.keys(PLATFORM_TO_REGION).join(', ')}`);
     this.limiter = new RateLimiter(rateLimits ?? DEV_LIMITS);
-    this.matchDir = path.join(dataDir, 'matches');
+    this.matchRoot = path.join(dataDir, 'matches');
     this.accountsFile = path.join(dataDir, 'accounts.json');
     this.accounts = null;
+    this.loading = null;
+    // Riot encrypts PUUIDs per app, so switching API key app (dev -> personal) changes every
+    // player's PUUID. `scope` identifies the app the cached data belongs to, and `puuidRemap`
+    // maps old PUUIDs to new ones so saved history can be carried over.
+    this.scope = null;
+    this.previous = {};
+    this.puuidRemap = new Map();
+  }
+
+  get matchDir() {
+    return path.join(this.matchRoot, this.scope ?? 'unscoped');
+  }
+
+  #loadAccounts() {
+    this.loading ??= (async () => {
+      const raw = JSON.parse(await fs.readFile(this.accountsFile, 'utf8').catch(() => '{}'));
+      const legacy = !raw.accounts; // older files were a plain { riotId: account } map
+      const entries = legacy ? raw : raw.accounts;
+      const first = Object.values(entries)[0];
+      let valid = false;
+      if (first) {
+        try {
+          valid = Boolean(await this.#get(this.region, `/riot/account/v1/accounts/by-puuid/${first.puuid}`));
+        } catch (err) {
+          if (err instanceof AuthError) throw err;
+        }
+      }
+      if (valid) {
+        this.accounts = entries;
+        this.scope = raw.scope ?? scopeOf(first.puuid);
+      } else {
+        this.previous = entries;
+        this.accounts = {};
+        if (raw.scope) await fs.rm(path.join(this.matchRoot, raw.scope), { recursive: true, force: true });
+      }
+      // Matches cached before scopes existed sit directly in data/matches/. Their app is unknown,
+      // so drop them; they're re-downloaded once.
+      const loose = (await fs.readdir(this.matchRoot).catch(() => [])).filter((f) => f.endsWith('.json'));
+      for (const f of loose) await fs.rm(path.join(this.matchRoot, f), { force: true });
+    })();
+    return this.loading;
+  }
+
+  async #saveAccounts() {
+    await fs.mkdir(path.dirname(this.accountsFile), { recursive: true });
+    await fs.writeFile(this.accountsFile, JSON.stringify({ scope: this.scope, accounts: this.accounts }, null, 2));
   }
 
   async #get(host, pathname, query = {}) {
@@ -94,16 +143,16 @@ export class RiotClient {
 
   async account(gameName, tagLine) {
     const key = `${gameName}#${tagLine}`.toLowerCase();
-    if (!this.accounts) {
-      this.accounts = JSON.parse(await fs.readFile(this.accountsFile, 'utf8').catch(() => '{}'));
-    }
+    await this.#loadAccounts();
     if (this.accounts[key]) return this.accounts[key];
 
     const acc = await this.#get(this.region, `/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`);
     if (acc) {
+      this.scope ??= scopeOf(acc.puuid);
+      const old = this.previous[key]?.puuid;
+      if (old && old !== acc.puuid) this.puuidRemap.set(old, acc.puuid);
       this.accounts[key] = acc;
-      await fs.mkdir(path.dirname(this.accountsFile), { recursive: true });
-      await fs.writeFile(this.accountsFile, JSON.stringify(this.accounts, null, 2));
+      await this.#saveAccounts();
     }
     return acc;
   }
