@@ -15,7 +15,14 @@ the Riot API, saves LP history and games together back to the repo, and publishe
 - **API key:** stored as the repository secret `RIOT_API_KEY` (Settings → Secrets and variables →
   Actions). When it expires, update it there or run
   `gh secret set RIOT_API_KEY` and paste the new key.
-- **Update now:** Actions tab → *Update leaderboard* → *Run workflow*.
+- **Update now:** anyone can press **⟳ Update now** on the site. It goes through a small Cloudflare
+  Worker (`worker/`) that holds a GitHub token allowed only to run this repo's Actions. It starts the
+  update unless one ran in the last 5 minutes, and the page reloads by itself when the new data is live
+  (about 1–2 minutes). You can also use Actions tab → *Update leaderboard* → *Run workflow*.
+  - Worker URL: set as `updateUrl` in `config.json`. Redeploy after editing `worker/`:
+    `cd worker && npx wrangler deploy`.
+  - If the GitHub token expires, create a new fine-grained token (this repo only, *Actions: Read and
+    write*) and run `npx wrangler secret put GITHUB_TOKEN` in `worker/`.
 - **Add or remove friends:** edit `config.json` and push. Pushing also triggers an update.
 - If the key expires, the site keeps showing the last data, and GitHub emails you that the run failed.
 

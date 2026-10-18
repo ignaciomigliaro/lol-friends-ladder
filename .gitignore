@@ -7,3 +7,6 @@ data/*
 !data/history.json
 !data/group-games.json
 !data/accounts.json
+
+worker/.github-token
+.wrangler/

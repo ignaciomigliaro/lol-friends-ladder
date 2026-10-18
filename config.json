@@ -23,5 +23,6 @@
       "hour": 12
     },
     "announceRankChanges": true
-  }
+  },
+  "updateUrl": "https://lol-ladder-update.ignaciomigliaro.workers.dev"
 }

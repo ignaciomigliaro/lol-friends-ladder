@@ -1,0 +1,9 @@
+name = "lol-ladder-update"
+main = "index.js"
+compatibility_date = "2026-09-01"
+
+[vars]
+REPO = "ignaciomigliaro/lol-friends-ladder"
+ALLOWED_ORIGIN = "https://ignaciomigliaro.github.io"
+
+# The GitHub token is a secret, set with:  npx wrangler secret put GITHUB_TOKEN

@@ -229,6 +229,7 @@ export async function saveLeaderboard(config, players, errors, ddragonVersion, f
     errors,
     groupGames,
     groupSummary: groupSummary(groupGames),
+    updateUrl: config.updateUrl ?? null,
   };
   assignNicknames(board.players, now);
   await writeJson(LEADERBOARD_FILE, board);

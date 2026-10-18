@@ -251,3 +251,6 @@ footer { margin-top: 28px; font-size: 12px; max-width: 70ch; }
   .game { grid-template-columns: 6px 36px 1fr auto; }
   .game .hide-sm { display: none; }
 }
+
+.bar.indeterminate i { width: 30%; animation: slide 1.4s ease-in-out infinite; }
+@keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(340%); } }

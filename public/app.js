@@ -7,6 +7,7 @@ const TIER_COLORS = {
 const ROLE = { TOP: 'Top', JUNGLE: 'Jungle', MIDDLE: 'Mid', BOTTOM: 'ADC', UTILITY: 'Support' };
 
 let board = null;
+let staticMode = false;
 const SORTS = ['rank', 'score', 'winrate', 'week'];
 let sortBy = SORTS.includes(new URLSearchParams(location.search).get('sort')) ? new URLSearchParams(location.search).get('sort') : 'rank';
 const open = new Set();
@@ -515,7 +516,7 @@ function renderTogether() {
 }
 
 async function load() {
-  board = await (await fetch('leaderboard.json', { cache: 'no-store' })).json();
+  board = await (await fetch(`leaderboard.json?t=${Date.now()}`, { cache: 'no-store' })).json();
   render();
   // Open /#card to preview the share image full size (/?sort=score#card for another order).
   // The WhatsApp bot renders its images through this too.
@@ -530,8 +531,12 @@ async function load() {
 async function pollStatus() {
   const res = await fetch('api/status').catch(() => null);
   if (!res?.ok) {
-    // Static site (GitHub Pages): data is refreshed on a schedule, there's no server to ask.
-    $('#refresh').hidden = true;
+    // Static site (GitHub Pages): no server here. Updates run on GitHub, started on a schedule
+    // or through the update Worker if one is configured.
+    staticMode = true;
+    $('#refresh').hidden = !board?.updateUrl;
+    $('#refresh').textContent = '⟳ Update now';
+    $('#refresh').title = 'Fetch new games from Riot (takes about 1–2 minutes)';
     return;
   }
   const st = await res.json();
@@ -745,9 +750,64 @@ document.querySelectorAll('#sort-nav button').forEach((b) =>
 );
 
 $('#refresh').addEventListener('click', async () => {
+  if (staticMode) return remoteUpdate();
   await fetch('api/refresh', { method: 'POST' });
   pollStatus();
 });
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+function showStatus(html, kind = '') {
+  const box = $('#status');
+  box.className = `status ${kind}`;
+  box.hidden = false;
+  box.innerHTML = html;
+}
+
+// Static site: ask the Worker to start the GitHub update, then wait for the new data to land.
+async function remoteUpdate() {
+  const btn = $('#refresh');
+  btn.disabled = true;
+  try {
+    showStatus('Starting update…');
+    let r;
+    try {
+      r = await (await fetch(board.updateUrl, { method: 'POST' })).json();
+    } catch {
+      return showStatus('Could not reach the update service. Try again in a bit.', 'error');
+    }
+    if (r.error) return showStatus(`Update failed to start: ${esc(r.error)}`, 'error');
+    if (r.result === 'cooldown') {
+      const min = Math.ceil(r.retryInSec / 60);
+      return showStatus(`It was updated less than 5 minutes ago. You can update again in ${min} minute${min === 1 ? '' : 's'}.`);
+    }
+
+    const before = board.updatedAt;
+    const started = Date.now();
+    for (let i = 0; Date.now() - started < 6 * 60_000; i++) {
+      const secs = Math.round((Date.now() - started) / 1000);
+      showStatus(`${r.result === 'running' ? 'An update is already running' : 'Update started'}. Looking for new games… (${secs}s, usually 1–2 minutes)
+        <div class="bar indeterminate"><i></i></div>`);
+      await sleep(8000);
+      const fresh = await fetch(`leaderboard.json?t=${Date.now()}`, { cache: 'no-store' }).then((x) => x.json()).catch(() => null);
+      if (fresh?.updatedAt > before) {
+        board = fresh;
+        render();
+        $('#status').hidden = true;
+        return toast('Updated with the latest games!');
+      }
+      if (i % 3 === 2) {
+        const st = await fetch(board.updateUrl).then((x) => x.json()).catch(() => null);
+        if (st?.last?.status === 'completed' && st.last.conclusion !== 'success' && Date.parse(st.last.createdAt) >= started - 60_000) {
+          return showStatus('The update ran but failed (maybe the Riot API key expired). The data shown is from the last good update.', 'error');
+        }
+      }
+    }
+    showStatus('The update is taking longer than usual. Reload the page in a few minutes.');
+  } finally {
+    btn.disabled = false;
+  }
+}
 
 // Main action: copy the leaderboard image and jump to WhatsApp so it can be pasted into the group.
 $('#send').addEventListener('click', async () => {
@@ -795,5 +855,5 @@ $('#copy').addEventListener('click', async () => {
 });
 
 document.querySelectorAll('#sort-nav button').forEach((x) => x.classList.toggle('active', x.dataset.sort === sortBy));
-load();
-pollStatus();
+// pollStatus needs the board to know whether an update button is available.
+load().then(pollStatus);
