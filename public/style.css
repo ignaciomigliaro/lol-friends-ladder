@@ -124,6 +124,34 @@ kbd { background: var(--panel-2); border: 1px solid var(--line); border-radius: 
 }
 .tabs a:hover { color: var(--text); }
 .tabs a.active { color: var(--gold); border-bottom-color: var(--gold); }
+.tabs .count { font-size: 11px; background: var(--panel-2); border-radius: 999px; padding: 1px 7px; margin-left: 4px; color: var(--muted); }
+
+/* ---- Players grid + switcher ---- */
+.pgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; margin-top: 12px; }
+.pcard {
+  display: grid; grid-template-columns: 52px 1fr auto; gap: 12px; align-items: center;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px;
+  color: var(--text); text-decoration: none;
+}
+.pcard:hover { border-color: var(--gold); background: var(--panel-2); }
+.pcard-main { min-width: 0; }
+.switcher { display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.switcher a { color: var(--gold); text-decoration: none; font-weight: 600; }
+.switcher select {
+  font: inherit; color: var(--text); background: var(--panel-2); border: 1px solid var(--line);
+  border-radius: 8px; padding: 6px 10px; margin-left: 6px; max-width: 60vw;
+}
+
+/* ---- Vs players at your elo ---- */
+h4 { margin: 18px 0 8px; font-size: 15px; }
+.headline.compact { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.advice { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid #f87171; border-radius: 10px; padding: 10px 14px; margin-bottom: 8px; }
+.advice.good { border-left-color: #4ade80; }
+.advice p { margin: 2px 0 0; color: var(--muted); }
+.advice-title { font-weight: 700; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-weight: 600; font-size: 13px; }
+
 .profile-link { display: inline-block; margin-top: 10px; color: var(--gold); font-weight: 600; text-decoration: none; }
 
 /* ---- Personal tab ---- */
@@ -144,7 +172,7 @@ h3 { font-size: 15px; color: var(--muted); text-transform: uppercase; letter-spa
 .hl-num small { font-size: 15px; color: var(--muted); font-weight: 500; }
 .score.big { font-size: 26px; padding: 6px 18px; }
 
-.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
 .tile { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
 .tile-num { font-size: 26px; font-weight: 700; margin: 2px 0; font-variant-numeric: tabular-nums; }
 .tile-cmp { font-size: 12px; font-weight: 600; margin-top: 6px; }

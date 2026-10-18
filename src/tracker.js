@@ -30,6 +30,21 @@ function queueEntry(entries, queueType) {
   };
 }
 
+// Per-game numbers for comparing a player with their lane opponent.
+function laneStats(p, m) {
+  const team = m.info.participants.filter((x) => x.teamId === p.teamId);
+  const teamKills = Math.max(1, team.reduce((acc, x) => acc + x.kills, 0));
+  return {
+    kills: p.kills, deaths: p.deaths, assists: p.assists,
+    cs: p.totalMinionsKilled + p.neutralMinionsKilled,
+    damage: p.totalDamageDealtToChampions,
+    objectives: p.damageDealtToObjectives,
+    vision: p.visionScore,
+    gold: p.goldEarned,
+    kp: round((p.kills + p.assists) / teamKills, 2),
+  };
+}
+
 // games keeps up to profileMatches games for the personal tab; stats/topChampions use the most
 // recent statsGames of them so the leaderboard reflects current form.
 export function summarizePlayer({ friend, account, summoner, entries, matches, statsGames = Infinity }) {
@@ -39,8 +54,11 @@ export function summarizePlayer({ friend, account, summoner, entries, matches, s
     if (!m || isRemake(m) || !RANKED_QUEUES.has(m.info.queueId)) continue;
     const p = m.info.participants.find((x) => x.puuid === puuid);
     if (!p) continue;
-    const s = scoreMatch(m).get(puuid);
+    const scores = scoreMatch(m);
+    const s = scores.get(puuid);
     const team = m.info.participants.filter((x) => x.teamId === p.teamId);
+    // The enemy in the same role: same game, same rank. Used as the "players at your elo" benchmark.
+    const opp = p.teamPosition && m.info.participants.find((x) => x.teamId !== p.teamId && x.teamPosition === p.teamPosition);
     const teamKills = Math.max(1, team.reduce((acc, x) => acc + x.kills, 0));
     const teamDmg = Math.max(1, team.reduce((acc, x) => acc + x.totalDamageDealtToChampions, 0));
     games.push({
@@ -61,6 +79,7 @@ export function summarizePlayer({ friend, account, summoner, entries, matches, s
       objectives: p.damageDealtToObjectives,
       gold: p.goldEarned,
       soloKills: p.challenges?.soloKills ?? 0,
+      opp: opp ? { champion: opp.championName, score: scores.get(opp.puuid)?.score ?? null, ...laneStats(opp, m) } : null,
       ...s,
     });
   }

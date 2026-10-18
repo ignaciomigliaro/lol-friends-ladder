@@ -121,14 +121,126 @@ function playerHtml(p, i) {
 const slug = (p) => encodeURIComponent(p.name.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-'));
 let profileQueue = 'all';
 
+// #            -> leaderboard
+// #players     -> grid of all players
+// #p/<slug>    -> one player's page
 function route() {
   const m = location.hash.match(/^#p\/(.+)$/);
-  return m ? board?.players.find((p) => slug(p) === m[1]) ?? null : null;
+  const player = m ? board?.players.find((p) => slug(p) === m[1]) ?? null : null;
+  if (player) return { view: 'player', player };
+  if (location.hash === '#players' || m) return { view: 'players' };
+  return { view: 'board' };
 }
 
-function renderTabs(current) {
-  $('#tabs').innerHTML = `<a href="#" class="${current ? '' : 'active'}">🏆 Leaderboard</a>` +
-    (board.players ?? []).map((p) => `<a href="#p/${slug(p)}" class="${current === p ? 'active' : ''}">${esc(p.name)}</a>`).join('');
+function renderTabs(view) {
+  const onPlayers = view !== 'board';
+  $('#tabs').innerHTML = `<a href="#" class="${onPlayers ? '' : 'active'}">🏆 Leaderboard</a>
+    <a href="#players" class="${onPlayers ? 'active' : ''}">👤 Players <span class="count">${board.players?.length ?? 0}</span></a>`;
+}
+
+function playersGridHtml() {
+  const cards = sortedPlayers().map((p) => {
+    const elo = eloAnalysis(p.games ?? []);
+    const focus = elo?.workOn[0];
+    return `<a class="pcard" href="#p/${slug(p)}">
+      <img class="avatar" style="border-color:${tierColor(p)}" src="${ddragon('profileicon', p.profileIconId)}" alt="" onerror="this.style.visibility='hidden'">
+      <div class="pcard-main">
+        <div class="name">${esc(p.name)}</div>
+        ${p.nickname ? `<div class="nick">“${esc(p.nickname.title)}” ${p.nickname.emoji}</div>` : ''}
+        <div class="tier" style="color:${tierColor(p)}">${esc(p.solo?.label ?? 'Unranked')}</div>
+        ${focus ? `<div class="sub">🎯 Work on: ${focus.metric.short}</div>` : ''}
+      </div>
+      <span class="score ${p.stats ? scoreClass(p.stats.avgScore) : ''}">${p.stats ? p.stats.avgScore.toFixed(1) : '–'}</span>
+    </a>`;
+  }).join('');
+  return `<p class="muted">Pick a friend to see their stats, lanes, champions and what to work on.</p><div class="pgrid">${cards}</div>`;
+}
+
+function playerSwitcherHtml(current) {
+  const options = [...board.players].sort((a, b) => a.name.localeCompare(b.name))
+    .map((p) => `<option value="${slug(p)}" ${p === current ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
+  return `<div class="switcher"><a href="#players">← All players</a>
+    <label class="sub">Player <select id="player-select">${options}</select></label></div>`;
+}
+
+// ---------- compared with players at the same elo ----------
+// Benchmark = each game's lane opponent: same role, same game, so matched to the same rank/MMR.
+
+const ELO_METRICS = [
+  { key: 'damage', short: 'Damage', label: 'Damage to champions', fmt: (v) => kNum(v),
+    tip: (d) => `You deal ${d.relPct}% less damage to champions than your lane opponents. Look for more trades in lane, and stay in range during fights instead of waiting for the perfect moment.` },
+  { key: 'deaths', short: 'Deaths', label: 'Deaths', lowerIsBetter: true, fmt: (v) => v.toFixed(1),
+    tip: (d) => `You die ${d.absDiff.toFixed(1)} more times per game than your lane opponents. Ward before walking past the river, and back off when the enemy jungler isn't on the map.` },
+  { key: 'cs', short: 'CS', label: 'Minions (CS)', skipRole: 'UTILITY', fmt: (v) => Math.round(v),
+    tip: (d) => `You farm ${Math.round(d.absDiff)} fewer minions per game (about ${Math.max(1, Math.round(d.absDiff / 20))} wave${Math.round(d.absDiff / 20) === 1 ? '' : 's'}). Catch side waves between fights and practice last-hitting under tower.` },
+  { key: 'kp', short: 'Kill participation', label: 'Kill participation', fmt: (v) => pct(v), points: true,
+    tip: (d) => `You're in ${Math.round(100 * d.absDiff)} percentage points fewer of your team's kills. Group for dragons, heralds and barons, and follow up on your jungler's ganks.` },
+  { key: 'vision', short: 'Vision', label: 'Vision score', fmt: (v) => v.toFixed(1),
+    tip: (d) => `Your vision score is ${d.absDiff.toFixed(1)} lower per game. Buy a control ward every time you back and use your trinket on cooldown.` },
+  { key: 'objectives', short: 'Objectives', label: 'Objective damage', fmt: (v) => kNum(v),
+    tip: (d) => `You do ${d.relPct}% less objective damage. After winning a fight or a trade, hit towers, dragons and grubs instead of going back to farm.` },
+  { key: 'gold', short: 'Gold', label: 'Gold earned', fmt: (v) => kNum(v),
+    tip: (d) => `You earn ${kNum(d.absDiff)} less gold per game. Most of it comes from CS and kills, so keep farming between fights.` },
+];
+const GAP = 0.08; // ignore differences under 8%
+
+function eloAnalysis(games) {
+  const withOpp = games.filter((g) => g.opp);
+  if (withOpp.length < 3) return null;
+  const rows = ELO_METRICS.map((metric) => {
+    const list = withOpp.filter((g) => g.position !== metric.skipRole && g[metric.key] != null);
+    if (list.length < 3) return null;
+    const you = list.reduce((acc, g) => acc + g[metric.key], 0) / list.length;
+    const them = list.reduce((acc, g) => acc + g.opp[metric.key], 0) / list.length;
+    const rel = metric.points ? (you - them) / 0.5 : (you - them) / Math.max(1e-9, Math.abs(them));
+    const goodness = metric.lowerIsBetter ? -rel : rel;
+    return {
+      metric, you, them, n: list.length, goodness,
+      absDiff: Math.abs(you - them),
+      relPct: Math.round(Math.abs(100 * (you - them)) / Math.max(1e-9, Math.abs(them))),
+    };
+  }).filter(Boolean);
+
+  const outscored = withOpp.filter((g) => g.opp.score != null && g.score > g.opp.score).length;
+  return {
+    n: withOpp.length,
+    rows,
+    outscored,
+    workOn: rows.filter((r) => r.goodness < -GAP).sort((a, b) => a.goodness - b.goodness).slice(0, 3),
+    strengths: rows.filter((r) => r.goodness > GAP).sort((a, b) => b.goodness - a.goodness).slice(0, 3),
+  };
+}
+
+function eloHtml(p, games) {
+  const e = eloAnalysis(games);
+  if (!e) return '<p class="muted">Not enough games with a lane opponent to compare.</p>';
+  const tier = p.solo?.label?.replace(/ \d+ LP$/, '') ?? 'their rank';
+  const diffText = (r) => {
+    if (r.metric.points ? Math.round(100 * r.absDiff) === 0 : r.relPct === 0) return '±0';
+    if (r.metric.points) return `${r.you >= r.them ? '+' : '−'}${Math.round(100 * r.absDiff)} pts`;
+    return `${r.you >= r.them ? '+' : '−'}${r.relPct}%`;
+  };
+  const table = `<div class="table-wrap"><table class="stats">
+    <thead><tr><th>Per game</th><th>${esc(p.name)}</th><th>Lane opponents</th><th>Difference</th></tr></thead>
+    <tbody>${e.rows.map((r) => `<tr>
+      <td>${r.metric.label}</td>
+      <td><strong>${r.metric.fmt(r.you)}</strong></td>
+      <td>${r.metric.fmt(r.them)}</td>
+      <td class="${Math.abs(r.goodness) < GAP ? 'muted' : r.goodness > 0 ? 'up' : 'down'}"><strong>${diffText(r)}</strong>${Math.abs(r.goodness) < GAP ? ' · even' : r.goodness > 0 ? ' · better' : ' · worse'}</td>
+    </tr>`).join('')}</tbody></table></div>`;
+
+  const workOn = e.workOn.length
+    ? e.workOn.map((r, i) => `<div class="advice work"><div class="advice-title">${i + 1}. ${r.metric.short}</div><p>${r.metric.tip(r)}</p></div>`).join('')
+    : '<div class="advice good"><p>No clear weak spots: you match or beat your lane opponents in every stat. 👏</p></div>';
+  const strengths = e.strengths.map((r) => `<span class="chip up">✅ ${r.metric.short} ${diffText(r)}</span>`).join('');
+
+  return `<p class="muted">Compared with the enemy player in the same lane in each of these ${e.n} games. Ranked matchmaking pairs players of the same rank and MMR, so they're ${esc(p.name)}'s real peers (${esc(tier)}). Riot's API doesn't publish rank-wide averages.</p>
+    <div class="headline compact">
+      <div class="hl"><span class="sub">Outscored lane opponent</span><strong class="hl-num ${e.outscored * 2 >= e.n ? 'up' : 'down'}">${Math.round((100 * e.outscored) / e.n)}%</strong><span class="sub">${e.outscored} of ${e.n} games, by 0–10 score</span></div>
+    </div>
+    <h4>🎯 What to work on</h4>${workOn}
+    ${strengths ? `<h4>💪 Strengths</h4><div class="chips">${strengths}</div>` : ''}
+    <h4>Head to head</h4>${table}`;
 }
 
 const queueGames = (p) => (p.games ?? []).filter((g) => profileQueue === 'all' || String(g.queueId) === profileQueue);
@@ -270,7 +382,8 @@ function playerProfileHtml(p) {
   return `${header}
     <nav class="sort">${queueChips}<span class="sub">Last ${a.n} ranked games</span></nav>
     ${headline}
-    <h3>Per game</h3><div class="tiles">${tiles}</div>
+    <h3>Vs players at your elo</h3>${eloHtml(p, games)}
+    <h3>Per game vs the group</h3><div class="tiles">${tiles}</div>
     <h3>Lanes</h3>${roleSummary}${roleTable}
     <h3>Champions</h3>${champTable}
     <h3>Games</h3><div class="games profile-games">${games.map(gameHtml).join('')}</div>`;
@@ -282,12 +395,16 @@ function render() {
   document.title = board.groupName ?? 'Friends Ladder';
   $('#updated').textContent = board.updatedAt ? `Updated ${new Date(board.updatedAt).toLocaleString()} · ${board.platform?.toUpperCase() ?? ''}` : 'No data yet — add your API key and hit Refresh';
 
-  const profile = route();
-  renderTabs(profile);
-  $('#view-board').hidden = Boolean(profile);
-  $('#view-player').hidden = !profile;
-  if (profile) {
-    $('#view-player').innerHTML = playerProfileHtml(profile);
+  const { view, player } = route();
+  renderTabs(view);
+  $('#view-board').hidden = view !== 'board';
+  $('#view-player').hidden = view === 'board';
+  if (view === 'players') {
+    $('#view-player').innerHTML = playersGridHtml();
+    return;
+  }
+  if (view === 'player') {
+    $('#view-player').innerHTML = playerSwitcherHtml(player) + playerProfileHtml(player);
     return;
   }
   $('#board').innerHTML = sortedPlayers().map(playerHtml).join('') || '<p class="muted">No players yet.</p>';
@@ -594,6 +711,10 @@ window.addEventListener('hashchange', () => {
   if (location.hash === '#card') return;
   render();
   window.scrollTo(0, 0);
+});
+
+$('#view-player').addEventListener('change', (e) => {
+  if (e.target.id === 'player-select') location.hash = `#p/${e.target.value}`;
 });
 
 $('#view-player').addEventListener('click', (e) => {
