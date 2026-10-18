@@ -22,6 +22,11 @@ if (!board?.players?.length) throw new Error('No leaderboard data to publish.');
 
 await fs.rm(SITE, { recursive: true, force: true });
 await fs.cp(path.join(ROOT, 'public'), SITE, { recursive: true });
+// Version the asset URLs so browsers pick up a new deploy right away instead of a cached copy.
+const indexFile = path.join(SITE, 'index.html');
+const v = Date.now().toString(36);
+const html = await fs.readFile(indexFile, 'utf8');
+await fs.writeFile(indexFile, html.replace('href="style.css"', `href="style.css?v=${v}"`).replace('src="app.js"', `src="app.js?v=${v}"`));
 await fs.writeFile(path.join(SITE, 'leaderboard.json'), JSON.stringify(board));
 await fs.writeFile(path.join(SITE, 'whatsapp.txt'), whatsappMessage(board));
 await fs.writeFile(path.join(SITE, '.nojekyll'), '');
