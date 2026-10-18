@@ -165,9 +165,9 @@ export class RiotClient {
     return (await this.#get(this.platform, `/lol/league/v4/entries/by-puuid/${puuid}`)) ?? [];
   }
 
-  // type: 'ranked', 'normal', etc.; omit for every queue.
-  async matchIds(puuid, count, type) {
-    const query = { start: 0, count, ...(type && { type }) };
+  // filter: { type: 'ranked' | 'normal' | ... } or { queue: 420 }; omit for every queue.
+  async matchIds(puuid, count, filter = {}) {
+    const query = { start: 0, count, ...filter };
     return (await this.#get(this.region, `/lol/match/v5/matches/by-puuid/${puuid}/ids`, query)) ?? [];
   }
 

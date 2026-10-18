@@ -250,12 +250,17 @@ export async function refreshAll(config, onProgress = () => {}) {
       const [gameName, tagLine] = splitRiotId(friend.riotId);
       const account = await client.account(gameName, tagLine);
       if (!account) throw new Error('Riot ID not found (check spelling and tag)');
-      const [summoner, entries, ids, recentIds] = await Promise.all([
+      // Solo/Duo and Flex are fetched separately so a player who grinds one queue still
+      // has their other queue's history on the profile.
+      const perQueue = Math.max(config.matchesPerPlayer, config.profileMatches ?? 40);
+      const [summoner, entries, soloIds, flexIds, recentIds] = await Promise.all([
         client.summoner(account.puuid),
         client.leagueEntries(account.puuid),
-        client.matchIds(account.puuid, Math.max(config.matchesPerPlayer, config.profileMatches ?? 40), 'ranked'),
+        client.matchIds(account.puuid, perQueue, { queue: 420 }),
+        client.matchIds(account.puuid, perQueue, { queue: 440 }),
         client.matchIds(account.puuid, config.groupLookback ?? 20),
       ]);
+      const ids = [...soloIds, ...flexIds];
       const matches = await Promise.all(ids.map((id) => client.match(id)));
       const player = summarizePlayer({ friend, account, summoner, entries, matches, statsGames: config.matchesPerPlayer });
       players.push(player);
