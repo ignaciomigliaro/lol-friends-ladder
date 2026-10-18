@@ -23,23 +23,29 @@
 
   <div id="status" class="status" hidden></div>
 
-  <nav class="sort" aria-label="Sort by">
-    <span class="muted">Sort:</span>
-    <button data-sort="rank" class="active">Rank</button>
-    <button data-sort="score">Avg score</button>
-    <button data-sort="winrate">Win rate</button>
-    <button data-sort="week">LP this week</button>
-  </nav>
+  <nav id="tabs" class="tabs" aria-label="Views"></nav>
 
-  <main id="board"></main>
+  <div id="view-board">
+    <nav id="sort-nav" class="sort" aria-label="Sort by">
+      <span class="muted">Sort:</span>
+      <button data-sort="rank" class="active">Rank</button>
+      <button data-sort="score">Avg score</button>
+      <button data-sort="winrate">Win rate</button>
+      <button data-sort="week">LP this week</button>
+    </nav>
 
-  <section id="errors" hidden></section>
+    <main id="board"></main>
 
-  <section id="together" hidden>
-    <h2>Playing together</h2>
-    <div id="together-summary"></div>
-    <div id="together-games"></div>
-  </section>
+    <section id="errors" hidden></section>
+
+    <section id="together" hidden>
+      <h2>Playing together</h2>
+      <div id="together-summary"></div>
+      <div id="together-games"></div>
+    </section>
+  </div>
+
+  <main id="view-player" hidden></main>
 
   <footer class="muted">
     <p>Score is an OP.GG-style 0–10 rating computed per game relative to the other 9 players

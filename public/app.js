@@ -65,15 +65,18 @@ function rankHtml(p) {
     <div class="sub">${wl}</div>${deltaHtml(p)}`;
 }
 
+const QUEUE = { 420: 'Solo/Duo', 440: 'Flex' };
+const ordinal = (n) => `${n}${n === 1 ? 'st' : n === 2 ? 'nd' : n === 3 ? 'rd' : 'th'}`;
+
 function gameHtml(g) {
   const kda = ((g.kills + g.assists) / Math.max(1, g.deaths)).toFixed(2);
-  const badge = g.mvp ? '<span class="badge mvp">MVP</span>' : g.ace ? '<span class="badge ace">ACE</span>' : `<span class="badge place">#${g.place}</span>`;
+  const badge = g.mvp ? '<span class="badge mvp">MVP</span>' : g.ace ? '<span class="badge ace">ACE</span>' : '';
   return `<div class="game ${g.win ? 'w' : ''}">
     <b></b>
     <img src="${champImg(g.champion)}" alt="${esc(g.champion)}" onerror="this.style.visibility='hidden'">
     <div><strong>${g.kills} / ${g.deaths} / ${g.assists}</strong><div class="sub">${kda} KDA · ${g.cs} CS</div></div>
-    <div class="hide-sm sub">${esc(g.champion)} · ${ROLE[g.position] ?? '—'}<br>${g.win ? 'Victory' : 'Defeat'} · ${g.minutes}m · ${timeAgo(g.endTs)}</div>
-    ${badge}
+    <div class="hide-sm sub">${esc(g.champion)} · ${ROLE[g.position] ?? '—'} · ${QUEUE[g.queueId] ?? 'Ranked'}<br>${g.win ? 'Victory' : 'Defeat'} · ${g.minutes}m · ${timeAgo(g.endTs)}</div>
+    <div class="game-place" title="Finished ${ordinal(g.place)} of the 10 players by score">${badge}<span class="badge place">${ordinal(g.place)} / 10</span></div>
     <span class="score ${scoreClass(g.score)}">${g.score.toFixed(1)}</span>
   </div>`;
 }
@@ -108,8 +111,169 @@ function playerHtml(p, i) {
         <div class="sub">${s?.streak >= 3 ? `🔥 ${s.streak} win streak` : s?.streak <= -3 ? `🧊 ${-s.streak} loss streak` : ''}</div></div>
     </div>
     ${isOpen && p.nickname ? `<div class="games nick-reason">${p.nickname.emoji} <strong>“${esc(p.nickname.title)}”</strong>: ${esc(p.nickname.reason)}</div>` : ''}
-    ${isOpen ? `<div class="games">${(p.games ?? []).map(gameHtml).join('') || '<p class="muted">No recent ranked games.</p>'}</div>` : ''}
+    ${isOpen ? `<div class="games">${(p.games ?? []).slice(0, s?.games ?? 0).map(gameHtml).join('') || '<p class="muted">No recent ranked games.</p>'}
+      <a class="profile-link" href="#p/${slug(p)}">Open ${esc(p.name)}'s profile →</a></div>` : ''}
   </article>`;
+}
+
+// ---------- personal tabs ----------
+
+const slug = (p) => encodeURIComponent(p.name.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-'));
+let profileQueue = 'all';
+
+function route() {
+  const m = location.hash.match(/^#p\/(.+)$/);
+  return m ? board?.players.find((p) => slug(p) === m[1]) ?? null : null;
+}
+
+function renderTabs(current) {
+  $('#tabs').innerHTML = `<a href="#" class="${current ? '' : 'active'}">🏆 Leaderboard</a>` +
+    (board.players ?? []).map((p) => `<a href="#p/${slug(p)}" class="${current === p ? 'active' : ''}">${esc(p.name)}</a>`).join('');
+}
+
+const queueGames = (p) => (p.games ?? []).filter((g) => profileQueue === 'all' || String(g.queueId) === profileQueue);
+
+function aggregate(games) {
+  const n = games.length;
+  if (!n) return null;
+  const avg = (fn) => games.reduce((acc, g) => acc + fn(g), 0) / n;
+  const total = (fn) => games.reduce((acc, g) => acc + fn(g), 0);
+  const wins = total((g) => g.win);
+  return {
+    n, wins, losses: n - wins,
+    winrate: (100 * wins) / n,
+    score: avg((g) => g.score),
+    place: avg((g) => g.place),
+    kda: total((g) => g.kills + g.assists) / Math.max(1, total((g) => g.deaths)),
+    kills: avg((g) => g.kills), deaths: avg((g) => g.deaths), assists: avg((g) => g.assists),
+    damage: avg((g) => g.damage ?? 0),
+    dmgShare: avg((g) => g.dmgShare ?? 0),
+    cs: avg((g) => g.cs),
+    csMin: avg((g) => g.cs / Math.max(1, g.minutes)),
+    kp: avg((g) => g.kp ?? 0),
+    objectives: avg((g) => g.objectives ?? 0),
+    vision: avg((g) => g.vision ?? 0),
+    gold: avg((g) => g.gold ?? 0),
+    mvp: total((g) => g.mvp), ace: total((g) => g.ace),
+  };
+}
+
+// Per-game stat tiles, each compared with the rest of the group.
+const TILES = [
+  { key: 'damage', label: 'Damage / game', fmt: (a) => kNum(a.damage), sub: (a) => `${pct(a.dmgShare)} of team damage` },
+  { key: 'cs', label: 'Minions / game', fmt: (a) => Math.round(a.cs), sub: (a) => `${a.csMin.toFixed(1)} CS/min` },
+  { key: 'deaths', label: 'Deaths / game', fmt: (a) => a.deaths.toFixed(1), sub: (a) => `${a.kills.toFixed(1)} / ${a.deaths.toFixed(1)} / ${a.assists.toFixed(1)}`, lowerIsBetter: true },
+  { key: 'kp', label: 'Kill participation', fmt: (a) => pct(a.kp), sub: () => 'of team kills' },
+  { key: 'objectives', label: 'Objective damage / game', fmt: (a) => kNum(a.objectives), sub: () => 'towers, dragons, barons…' },
+  { key: 'vision', label: 'Vision score / game', fmt: (a) => a.vision.toFixed(1), sub: () => 'wards placed + cleared' },
+  { key: 'gold', label: 'Gold / game', fmt: (a) => kNum(a.gold), sub: () => '' },
+  { key: 'kda', label: 'KDA', fmt: (a) => a.kda.toFixed(2), sub: () => '(kills + assists) / deaths' },
+];
+
+function roleRows(games) {
+  const by = {};
+  for (const g of games) (by[g.position || 'NONE'] ??= []).push(g);
+  const rows = Object.entries(by).map(([role, list]) => {
+    const a = aggregate(list);
+    // Blend win rate (smoothed, so 1-0 isn't "100%") with average score.
+    const strength = 0.5 * (100 * (a.wins + 1)) / (a.n + 2) + 0.5 * a.score * 10;
+    return { role, a, strength };
+  }).sort((x, y) => y.a.n - x.a.n);
+
+  for (const minGames of [3, 2]) {
+    const eligible = rows.filter((r) => r.a.n >= minGames);
+    if (eligible.length >= 2) {
+      const sorted = [...eligible].sort((x, y) => y.strength - x.strength);
+      sorted[0].tag = 'best';
+      sorted.at(-1).tag = 'worst';
+      break;
+    }
+  }
+  return rows;
+}
+
+function playerProfileHtml(p) {
+  const games = queueGames(p);
+  const a = aggregate(games);
+  const others = board.players.filter((x) => x !== p).map((x) => aggregate(queueGames(x))).filter(Boolean);
+  const queueChips = [['all', 'All ranked'], ['420', 'Solo/Duo'], ['440', 'Flex']]
+    .map(([q, label]) => `<button data-queue="${q}" class="${profileQueue === q ? 'active' : ''}">${label}</button>`).join('');
+
+  const header = `<section class="profile-head">
+    <img class="avatar big" style="border-color:${tierColor(p)}" src="${ddragon('profileicon', p.profileIconId)}" alt="" onerror="this.style.visibility='hidden'">
+    <div class="ph-main">
+      <h2>${esc(p.name)}</h2>
+      ${p.nickname ? `<div class="nick">“${esc(p.nickname.title)}” ${p.nickname.emoji} <span class="sub">${esc(p.nickname.reason)}</span></div>` : ''}
+      <div class="sub">${esc(p.riotId)}${p.level ? ` · Level ${p.level}` : ''}</div>
+    </div>
+    <div class="ph-ranks">
+      <div><span class="sub">Solo/Duo</span> ${rankHtml(p)}</div>
+      ${p.flex ? `<div><span class="sub">Flex</span> <div class="tier" style="color:${TIER_COLORS[p.flex.tier]}">${esc(p.flex.label)}</div><div class="sub">${p.flex.wins}W ${p.flex.losses}L</div></div>` : ''}
+    </div>
+  </section>`;
+
+  if (!a) return `${header}<nav class="sort">${queueChips}</nav><p class="muted">No ${profileQueue === '440' ? 'Flex' : profileQueue === '420' ? 'Solo/Duo' : 'ranked'} games in recent history.</p>`;
+
+  const headline = `<div class="headline">
+    <div class="hl"><span class="sub">Average score</span><span class="score big ${scoreClass(a.score)}">${a.score.toFixed(1)}</span><span class="sub">over ${a.n} games</span></div>
+    <div class="hl"><span class="sub">Average finish in game</span><strong class="hl-num">${a.place.toFixed(1)}<small> / 10</small></strong><span class="sub">${a.mvp} MVP · ${a.ace} ACE</span></div>
+    <div class="hl"><span class="sub">Win rate</span><strong class="hl-num ${a.winrate >= 50 ? 'up' : 'down'}">${Math.round(a.winrate)}%</strong><span class="sub">${a.wins}W ${a.losses}L</span></div>
+  </div>`;
+
+  const tiles = TILES.map((t) => {
+    const v = a[t.key];
+    const all = [v, ...others.map((o) => o[t.key])];
+    const rank = all.filter((x) => (t.lowerIsBetter ? x < v : x > v)).length + 1;
+    const groupAvg = others.length ? others.reduce((acc, o) => acc + o[t.key], 0) / others.length : null;
+    const better = groupAvg == null ? null : t.lowerIsBetter ? v < groupAvg : v > groupAvg;
+    return `<div class="tile">
+      <div class="sub">${t.label}</div>
+      <div class="tile-num">${t.fmt(a)}</div>
+      <div class="sub">${t.sub(a)}</div>
+      ${groupAvg == null ? '' : `<div class="tile-cmp ${better ? 'up' : 'down'}">${better ? '▲' : '▼'} group avg ${t.fmt({ ...a, [t.key]: groupAvg })} · #${rank} of ${all.length}</div>`}
+    </div>`;
+  }).join('');
+
+  const roles = roleRows(games);
+  const best = roles.find((r) => r.tag === 'best');
+  const worst = roles.find((r) => r.tag === 'worst');
+  const roleSummary = best
+    ? `<p class="role-summary">💪 Strongest lane: <strong>${ROLE[best.role] ?? best.role}</strong> · 🥀 Weakest lane: <strong>${ROLE[worst.role] ?? worst.role}</strong></p>`
+    : `<p class="role-summary muted">Not enough games in different lanes to compare (needs 2+ lanes with 2+ games each).</p>`;
+  const roleTable = `<div class="table-wrap"><table class="stats">
+    <thead><tr><th>Lane</th><th>Games</th><th>Win rate</th><th>Avg score</th><th>Avg finish</th><th>KDA</th><th>Dmg / game</th><th>CS / game</th></tr></thead>
+    <tbody>${roles.map((r) => `<tr class="${r.tag ?? ''}">
+      <td><strong>${ROLE[r.role] ?? 'Other'}</strong> ${r.tag === 'best' ? '💪' : r.tag === 'worst' ? '🥀' : ''}</td>
+      <td>${r.a.n}</td>
+      <td><div class="wr"><span class="bar-track"><i style="width:${r.a.winrate}%;background:${r.a.winrate >= 50 ? 'var(--win)' : 'var(--loss)'}"></i></span>${Math.round(r.a.winrate)}% <span class="sub">${r.a.wins}W ${r.a.losses}L</span></div></td>
+      <td><span class="score ${scoreClass(r.a.score)}">${r.a.score.toFixed(1)}</span></td>
+      <td>${r.a.place.toFixed(1)}</td>
+      <td>${r.a.kda.toFixed(2)}</td>
+      <td>${kNum(r.a.damage)}</td>
+      <td>${Math.round(r.a.cs)}</td>
+    </tr>`).join('')}</tbody></table></div>`;
+
+  const champs = {};
+  for (const g of games) (champs[g.champion] ??= []).push(g);
+  const champRows = Object.entries(champs).map(([c, list]) => ({ c, a: aggregate(list) }))
+    .sort((x, y) => y.a.n - x.a.n || y.a.score - x.a.score).slice(0, 8);
+  const champTable = `<div class="table-wrap"><table class="stats">
+    <thead><tr><th>Champion</th><th>Games</th><th>Win rate</th><th>Avg score</th><th>KDA</th></tr></thead>
+    <tbody>${champRows.map(({ c, a: ca }) => `<tr>
+      <td class="champ-cell"><img src="${champImg(c)}" alt="" onerror="this.style.visibility='hidden'"> ${esc(c)}</td>
+      <td>${ca.n}</td>
+      <td class="${ca.winrate >= 50 ? 'up' : 'down'}">${Math.round(ca.winrate)}% <span class="sub">${ca.wins}W ${ca.losses}L</span></td>
+      <td><span class="score ${scoreClass(ca.score)}">${ca.score.toFixed(1)}</span></td>
+      <td>${ca.kda.toFixed(2)}</td>
+    </tr>`).join('')}</tbody></table></div>`;
+
+  return `${header}
+    <nav class="sort">${queueChips}<span class="sub">Last ${a.n} ranked games</span></nav>
+    ${headline}
+    <h3>Per game</h3><div class="tiles">${tiles}</div>
+    <h3>Lanes</h3>${roleSummary}${roleTable}
+    <h3>Champions</h3>${champTable}
+    <h3>Games</h3><div class="games profile-games">${games.map(gameHtml).join('')}</div>`;
 }
 
 function render() {
@@ -117,6 +281,15 @@ function render() {
   $('#group').textContent = board.groupName ?? 'Friends Ladder';
   document.title = board.groupName ?? 'Friends Ladder';
   $('#updated').textContent = board.updatedAt ? `Updated ${new Date(board.updatedAt).toLocaleString()} · ${board.platform?.toUpperCase() ?? ''}` : 'No data yet — add your API key and hit Refresh';
+
+  const profile = route();
+  renderTabs(profile);
+  $('#view-board').hidden = Boolean(profile);
+  $('#view-player').hidden = !profile;
+  if (profile) {
+    $('#view-player').innerHTML = playerProfileHtml(profile);
+    return;
+  }
   $('#board').innerHTML = sortedPlayers().map(playerHtml).join('') || '<p class="muted">No players yet.</p>';
 
   const errs = board.errors ?? [];
@@ -417,6 +590,19 @@ $('#board').addEventListener('click', (e) => {
   render();
 });
 
+window.addEventListener('hashchange', () => {
+  if (location.hash === '#card') return;
+  render();
+  window.scrollTo(0, 0);
+});
+
+$('#view-player').addEventListener('click', (e) => {
+  const chip = e.target.closest('[data-queue]');
+  if (!chip) return;
+  profileQueue = chip.dataset.queue;
+  render();
+});
+
 $('#together-games').addEventListener('click', (e) => {
   if (e.target.id === 'more-games') {
     showAllGames = true;
@@ -429,10 +615,10 @@ $('#together-games').addEventListener('click', (e) => {
   renderTogether();
 });
 
-document.querySelectorAll('.sort button').forEach((b) =>
+document.querySelectorAll('#sort-nav button').forEach((b) =>
   b.addEventListener('click', () => {
     sortBy = b.dataset.sort;
-    document.querySelectorAll('.sort button').forEach((x) => x.classList.toggle('active', x === b));
+    document.querySelectorAll('#sort-nav button').forEach((x) => x.classList.toggle('active', x === b));
     render();
   }),
 );
@@ -487,6 +673,6 @@ $('#copy').addEventListener('click', async () => {
   toast('Text copied! Paste it in the group chat');
 });
 
-document.querySelectorAll('.sort button').forEach((x) => x.classList.toggle('active', x.dataset.sort === sortBy));
+document.querySelectorAll('#sort-nav button').forEach((x) => x.classList.toggle('active', x.dataset.sort === sortBy));
 load();
 pollStatus();

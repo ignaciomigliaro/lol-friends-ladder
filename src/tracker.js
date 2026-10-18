@@ -12,6 +12,7 @@ const LEADERBOARD_FILE = path.join(DATA_DIR, 'leaderboard.json');
 const HISTORY_FILE = path.join(DATA_DIR, 'history.json');
 const GROUP_FILE = path.join(DATA_DIR, 'group-games.json');
 
+const RANKED_QUEUES = new Set([420, 440]); // Solo/Duo, Flex
 const round = (n, d = 1) => Math.round(n * 10 ** d) / 10 ** d;
 
 function splitRiotId(riotId) {
@@ -29,11 +30,13 @@ function queueEntry(entries, queueType) {
   };
 }
 
-export function summarizePlayer({ friend, account, summoner, entries, matches }) {
+// games keeps up to profileMatches games for the personal tab; stats/topChampions use the most
+// recent statsGames of them so the leaderboard reflects current form.
+export function summarizePlayer({ friend, account, summoner, entries, matches, statsGames = Infinity }) {
   const puuid = account.puuid;
   const games = [];
   for (const m of matches) {
-    if (!m || isRemake(m)) continue;
+    if (!m || isRemake(m) || !RANKED_QUEUES.has(m.info.queueId)) continue;
     const p = m.info.participants.find((x) => x.puuid === puuid);
     if (!p) continue;
     const s = scoreMatch(m).get(puuid);
@@ -54,17 +57,22 @@ export function summarizePlayer({ friend, account, summoner, entries, matches })
       kp: round((p.kills + p.assists) / teamKills, 2),
       dmgShare: round(p.totalDamageDealtToChampions / teamDmg, 2),
       deadPct: round((p.totalTimeSpentDead ?? 0) / m.info.gameDuration, 2),
+      damage: p.totalDamageDealtToChampions,
+      objectives: p.damageDealtToObjectives,
+      gold: p.goldEarned,
+      soloKills: p.challenges?.soloKills ?? 0,
       ...s,
     });
   }
   games.sort((a, b) => b.endTs - a.endTs);
 
-  const n = games.length;
-  const sum = (fn) => games.reduce((acc, g) => acc + fn(g), 0);
+  const recent = games.slice(0, statsGames);
+  const n = recent.length;
+  const sum = (fn) => recent.reduce((acc, g) => acc + fn(g), 0);
   const wins = sum((g) => g.win);
 
   const champs = {};
-  for (const g of games) {
+  for (const g of recent) {
     const c = (champs[g.champion] ??= { champion: g.champion, games: 0, wins: 0, score: 0 });
     c.games++; c.wins += g.win; c.score += g.score;
   }
@@ -225,11 +233,11 @@ export async function refreshAll(config, onProgress = () => {}) {
       const [summoner, entries, ids, recentIds] = await Promise.all([
         client.summoner(account.puuid),
         client.leagueEntries(account.puuid),
-        client.matchIds(account.puuid, config.matchesPerPlayer, 'ranked'),
+        client.matchIds(account.puuid, Math.max(config.matchesPerPlayer, config.profileMatches ?? 40), 'ranked'),
         client.matchIds(account.puuid, config.groupLookback ?? 20),
       ]);
       const matches = await Promise.all(ids.map((id) => client.match(id)));
-      const player = summarizePlayer({ friend, account, summoner, entries, matches });
+      const player = summarizePlayer({ friend, account, summoner, entries, matches, statsGames: config.matchesPerPlayer });
       players.push(player);
       recentByPlayer.set(account.puuid, new Set([...ids, ...recentIds]));
     } catch (err) {

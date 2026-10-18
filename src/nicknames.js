@@ -5,6 +5,8 @@
 const DAY = 24 * 60 * 60 * 1000;
 const avg = (list, fn) => list.reduce((acc, x) => acc + fn(x), 0) / list.length;
 const fmt = (n, d = 1) => Number(n.toFixed(d)).toString();
+// Nicknames are about current form: only the games the leaderboard stats use.
+const recent = (p) => p.games.slice(0, p.stats.games);
 
 function mainRole(games) {
   const counts = {};
@@ -22,30 +24,30 @@ const RULES = [
   },
   {
     title: 'Fan de la Pantalla Gris', emoji: '🪦', worse: 'high', threshold: 12, scale: 5,
-    value: (p) => 100 * avg(p.games, (g) => g.deadPct ?? 0),
+    value: (p) => 100 * avg(recent(p), (g) => g.deadPct ?? 0),
     reason: (v) => `pasa el ${fmt(v, 0)}% de la partida muerto`,
   },
   {
     title: 'El Ciego de la Grieta', emoji: '🦯', worse: 'low', scale: 0.3,
     threshold: (role) => ({ UTILITY: 1.6, JUNGLE: 0.9 })[role] ?? 0.6,
-    value: (p) => avg(p.games, (g) => (g.vision ?? 0) / Math.max(1, g.minutes)),
+    value: (p) => avg(recent(p), (g) => (g.vision ?? 0) / Math.max(1, g.minutes)),
     reason: (v) => `${fmt(v, 2)} de visión por minuto, ni un ward`,
   },
   {
     title: 'El Vegano', emoji: '🥗', worse: 'low', scale: 1.5,
     threshold: (role) => (role === 'UTILITY' ? null : role === 'JUNGLE' ? 5 : 6),
-    value: (p) => avg(p.games, (g) => g.cs / Math.max(1, g.minutes)),
+    value: (p) => avg(recent(p), (g) => g.cs / Math.max(1, g.minutes)),
     reason: (v) => `no come súbditos: ${fmt(v)} CS/min`,
   },
   {
     title: 'El Turista', emoji: '🧳', worse: 'low', threshold: 42, scale: 10,
-    value: (p) => 100 * avg(p.games, (g) => g.kp ?? 0.5),
+    value: (p) => 100 * avg(recent(p), (g) => g.kp ?? 0.5),
     reason: (v) => `solo aparece en el ${fmt(v, 0)}% de las kills de su equipo`,
   },
   {
     title: 'Daño de Algodón', emoji: '☁️', worse: 'low', scale: 5,
     threshold: (role) => (role === 'UTILITY' ? null : 18),
-    value: (p) => 100 * avg(p.games, (g) => g.dmgShare ?? 0.2),
+    value: (p) => 100 * avg(recent(p), (g) => g.dmgShare ?? 0.2),
     reason: (v) => `hace apenas el ${fmt(v, 0)}% del daño de su equipo`,
   },
   {
@@ -70,7 +72,7 @@ const RULES = [
   },
   {
     title: 'El Jubilado', emoji: '👴', worse: 'high', threshold: 7, scale: 7,
-    value: (p, now) => (now - p.games[0].endTs) / DAY,
+    value: (p, now) => (now - recent(p)[0].endTs) / DAY,
     reason: (v) => `no juega ranked hace ${fmt(v, 0)} días`,
   },
   {
@@ -80,8 +82,8 @@ const RULES = [
   },
   {
     title: 'Casado con', emoji: '💍', worse: 'high', threshold: 0.5, scale: 1,
-    value: (p) => (p.games.length >= 6 ? (p.topChampions[0]?.games ?? 0) / p.games.length : 0),
-    reason: (v, p) => `${p.topChampions[0].games} de ${p.games.length} partidas con el mismo campeón`,
+    value: (p) => (recent(p).length >= 6 ? (p.topChampions[0]?.games ?? 0) / recent(p).length : 0),
+    reason: (v, p) => `${p.topChampions[0].games} de ${recent(p).length} partidas con el mismo campeón`,
     titleFor: (p) => `Casado con ${p.topChampions[0].champion}`,
   },
 ];
@@ -99,7 +101,7 @@ export function assignNicknames(players, now = Date.now()) {
   for (const rule of RULES) {
     const rows = eligible
       .map((p) => {
-        const role = mainRole(p.games);
+        const role = mainRole(recent(p));
         const threshold = typeof rule.threshold === 'function' ? rule.threshold(role) : rule.threshold;
         const v = threshold == null ? null : rule.value(p, now);
         return v == null || Number.isNaN(v) ? null : { p, v, threshold };
