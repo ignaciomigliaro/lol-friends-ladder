@@ -1,0 +1,25 @@
+{
+  "platform": "la1",
+  "groupName": "La Grieta de los Pibes",
+  "matchesPerPlayer": 15,
+  "autoRefreshMinutes": 30,
+  "port": 3000,
+  "host": "127.0.0.1",
+  "friends": [
+    {
+      "riotId": "YourName#LAN",
+      "name": "Me"
+    },
+    "FriendOne#LAN",
+    "FriendTwo#1234"
+  ],
+  "whatsapp": {
+    "enabled": false,
+    "group": "La Grieta de los Pibes",
+    "weeklyRecap": {
+      "day": "lunes",
+      "hour": 12
+    },
+    "announceRankChanges": true
+  }
+}

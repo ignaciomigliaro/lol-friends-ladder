@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Friends Ladder</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <div>
+      <h1 id="group">Friends Ladder</h1>
+      <p id="updated" class="muted">No data yet</p>
+    </div>
+    <div class="actions">
+      <button id="send" class="primary" title="Copies the leaderboard image and opens WhatsApp so you can paste it in the group">📲 Send image to WhatsApp</button>
+      <button id="share" title="Opens the system share menu with the image">Share…</button>
+      <button id="download">Download image</button>
+      <button id="copy">Copy text</button>
+      <button id="refresh">Refresh</button>
+    </div>
+  </header>
+
+  <div id="status" class="status" hidden></div>
+
+  <nav class="sort" aria-label="Sort by">
+    <span class="muted">Sort:</span>
+    <button data-sort="rank" class="active">Rank</button>
+    <button data-sort="score">Avg score</button>
+    <button data-sort="winrate">Win rate</button>
+    <button data-sort="week">LP this week</button>
+  </nav>
+
+  <main id="board"></main>
+
+  <section id="errors" hidden></section>
+
+  <section id="together" hidden>
+    <h2>Playing together</h2>
+    <div id="together-summary"></div>
+    <div id="together-games"></div>
+  </section>
+
+  <footer class="muted">
+    <p>Score is an OP.GG-style 0–10 rating computed per game relative to the other 9 players
+    (role-weighted KDA, kill participation, damage, gold, CS, vision, tanking, objectives).
+    Averages use recent ranked games. Click a player to see their games.</p>
+    <p>This site isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or anyone
+    officially involved in producing or managing Riot Games properties. Riot Games, and all associated properties
+    are trademarks or registered trademarks of Riot Games, Inc.</p>
+  </footer>
+
+  <div id="toast" class="toast" hidden></div>
+  <script src="app.js" type="module"></script>
+</body>
+</html>

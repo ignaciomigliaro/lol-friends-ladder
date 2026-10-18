@@ -1,0 +1,58 @@
+# Refreshes the leaderboard from the Riot API and publishes it to GitHub Pages.
+name: Update leaderboard
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'   # every 30 min (GitHub may delay scheduled runs a bit)
+  workflow_dispatch:          # "Run workflow" button in the Actions tab
+  push:
+    branches: [main]
+
+permissions:
+  contents: write   # commit LP history / games-together back to the repo
+  pages: write
+  id-token: write
+
+concurrency:
+  group: update-leaderboard
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Finished matches never change, so keep the downloaded ones between runs.
+      - uses: actions/cache@v4
+        with:
+          path: data/matches
+          key: matches-${{ github.run_id }}
+          restore-keys: matches-
+
+      # No npm install needed: the tracker has no dependencies.
+      - name: Refresh and build
+        run: node build.js
+        env:
+          RIOT_API_KEY: ${{ secrets.RIOT_API_KEY }}
+
+      - name: Save LP history and games together
+        run: |
+          git config user.name "leaderboard-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/history.json data/group-games.json data/accounts.json
+          git diff --cached --quiet || (git commit -m "Update leaderboard data [skip ci]" && git pull --rebase && git push)
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - id: deploy
+        uses: actions/deploy-pages@v4

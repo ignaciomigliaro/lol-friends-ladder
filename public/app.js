@@ -1,0 +1,492 @@
+const $ = (s) => document.querySelector(s);
+
+const TIER_COLORS = {
+  IRON: '#8b8580', BRONZE: '#b07a5c', SILVER: '#a9b4c2', GOLD: '#e3b453', PLATINUM: '#4fc1b4',
+  EMERALD: '#2fcf7a', DIAMOND: '#7b9bff', MASTER: '#c06bf0', GRANDMASTER: '#f05a4f', CHALLENGER: '#f6d27a',
+};
+const ROLE = { TOP: 'Top', JUNGLE: 'Jungle', MIDDLE: 'Mid', BOTTOM: 'ADC', UTILITY: 'Support' };
+
+let board = null;
+const SORTS = ['rank', 'score', 'winrate', 'week'];
+let sortBy = SORTS.includes(new URLSearchParams(location.search).get('sort')) ? new URLSearchParams(location.search).get('sort') : 'rank';
+const open = new Set();
+
+// ---------- helpers ----------
+
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const signed = (n) => (n > 0 ? `+${n}` : `${n}`);
+const scoreClass = (s) => (s >= 8 ? 's-great' : s >= 6.5 ? 's-good' : s >= 5 ? 's-ok' : 's-low');
+const tierColor = (p) => TIER_COLORS[p.solo?.tier] ?? '#6b7390';
+
+function ddragon(kind, name) {
+  const v = board?.ddragonVersion;
+  if (!v || name == null) return '';
+  return `https://ddragon.leagueoflegends.com/cdn/${v}/img/${kind}/${name}.png`;
+}
+const champImg = (c) => ddragon('champion', c === 'FiddleSticks' ? 'Fiddlesticks' : c);
+
+function timeAgo(ts) {
+  const m = Math.round((Date.now() - ts) / 60000);
+  if (m < 60) return `${m}m ago`;
+  if (m < 60 * 24) return `${Math.round(m / 60)}h ago`;
+  return `${Math.round(m / 1440)}d ago`;
+}
+
+function toast(msg) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.hidden = false;
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => (t.hidden = true), 2500);
+}
+
+function sortedPlayers() {
+  const ps = [...(board?.players ?? [])];
+  const by = {
+    rank: (p) => p.solo?.value ?? -1,
+    score: (p) => p.stats?.avgScore ?? -1,
+    winrate: (p) => p.stats?.winrate ?? -1,
+    week: (p) => p.lpDelta?.week ?? -9999,
+  }[sortBy];
+  return ps.sort((a, b) => by(b) - by(a));
+}
+
+// ---------- rendering ----------
+
+function deltaHtml(p) {
+  const d = p.lpDelta?.week;
+  if (d == null || d === 0) return '';
+  return `<span class="delta ${d > 0 ? 'up' : 'down'}">${signed(d)} LP this week</span>`;
+}
+
+function rankHtml(p) {
+  const wl = p.solo ? `${p.solo.wins}W ${p.solo.losses}L · ${Math.round((100 * p.solo.wins) / (p.solo.wins + p.solo.losses))}%` : 'No solo/duo games';
+  return `<div class="tier" style="color:${tierColor(p)}">${esc(p.solo?.label ?? 'Unranked')}</div>
+    <div class="sub">${wl}</div>${deltaHtml(p)}`;
+}
+
+function gameHtml(g) {
+  const kda = ((g.kills + g.assists) / Math.max(1, g.deaths)).toFixed(2);
+  const badge = g.mvp ? '<span class="badge mvp">MVP</span>' : g.ace ? '<span class="badge ace">ACE</span>' : `<span class="badge place">#${g.place}</span>`;
+  return `<div class="game ${g.win ? 'w' : ''}">
+    <b></b>
+    <img src="${champImg(g.champion)}" alt="${esc(g.champion)}" onerror="this.style.visibility='hidden'">
+    <div><strong>${g.kills} / ${g.deaths} / ${g.assists}</strong><div class="sub">${kda} KDA · ${g.cs} CS</div></div>
+    <div class="hide-sm sub">${esc(g.champion)} · ${ROLE[g.position] ?? '—'}<br>${g.win ? 'Victory' : 'Defeat'} · ${g.minutes}m · ${timeAgo(g.endTs)}</div>
+    ${badge}
+    <span class="score ${scoreClass(g.score)}">${g.score.toFixed(1)}</span>
+  </div>`;
+}
+
+function playerHtml(p, i) {
+  const s = p.stats;
+  const form = (p.games ?? []).slice(0, 10).reverse().map((g) => `<i class="${g.win ? 'w' : ''}" title="${esc(g.champion)} ${g.score}"></i>`).join('');
+  const champs = (p.topChampions ?? []).map((c) => `<img src="${champImg(c.champion)}" title="${esc(c.champion)} · ${c.games}g · ${c.score} avg" alt="${esc(c.champion)}" onerror="this.remove()">`).join('');
+  const medal = ['🥇', '🥈', '🥉'][i] ?? i + 1;
+  const isOpen = open.has(p.puuid);
+
+  return `<article class="player">
+    <div class="row" data-puuid="${esc(p.puuid)}">
+      <div class="pos">${medal}</div>
+      <img class="avatar" style="border-color:${tierColor(p)}" src="${ddragon('profileicon', p.profileIconId)}" alt="" onerror="this.style.visibility='hidden'">
+      <div>
+        <div class="name">${esc(p.name)}</div>
+        ${p.nickname ? `<div class="nick" title="${esc(p.nickname.reason)}">“${esc(p.nickname.title)}” ${p.nickname.emoji}</div>` : ''}
+        <div class="sub">${esc(p.riotId)}${p.level ? ` · Lv ${p.level}` : ''}</div>
+        <div class="sm-only">${rankHtml(p)}</div>
+      </div>
+      <div class="hide-sm">${rankHtml(p)}</div>
+      <div title="Average score over last ${s?.games ?? 0} ranked games">
+        <span class="score ${s ? scoreClass(s.avgScore) : ''}">${s ? s.avgScore.toFixed(1) : '–'}</span>
+        <div class="sub">${s ? `${s.mvp} MVP · ${s.ace} ACE` : 'no games'}</div>
+      </div>
+      <div class="hide-sm">
+        <div class="form">${form}</div>
+        <div class="sub">${s ? `${s.winrate}% WR · ${s.kda} KDA · ${s.games}g` : ''}</div>
+      </div>
+      <div class="hide-sm"><div class="champs">${champs}</div>
+        <div class="sub">${s?.streak >= 3 ? `🔥 ${s.streak} win streak` : s?.streak <= -3 ? `🧊 ${-s.streak} loss streak` : ''}</div></div>
+    </div>
+    ${isOpen && p.nickname ? `<div class="games nick-reason">${p.nickname.emoji} <strong>“${esc(p.nickname.title)}”</strong>: ${esc(p.nickname.reason)}</div>` : ''}
+    ${isOpen ? `<div class="games">${(p.games ?? []).map(gameHtml).join('') || '<p class="muted">No recent ranked games.</p>'}</div>` : ''}
+  </article>`;
+}
+
+function render() {
+  if (!board) return;
+  $('#group').textContent = board.groupName ?? 'Friends Ladder';
+  document.title = board.groupName ?? 'Friends Ladder';
+  $('#updated').textContent = board.updatedAt ? `Updated ${new Date(board.updatedAt).toLocaleString()} · ${board.platform?.toUpperCase() ?? ''}` : 'No data yet — add your API key and hit Refresh';
+  $('#board').innerHTML = sortedPlayers().map(playerHtml).join('') || '<p class="muted">No players yet.</p>';
+
+  const errs = board.errors ?? [];
+  $('#errors').hidden = errs.length === 0;
+  $('#errors').innerHTML = errs.map((e) => `<div>⚠ ${esc(e.riotId)}: ${esc(e.error)}</div>`).join('');
+  renderTogether();
+}
+
+// ---------- games played together ----------
+
+const FRIEND_COLORS = ['#c8aa6e', '#60a5fa', '#f472b6', '#34d399', '#a78bfa', '#fb923c', '#f87171', '#22d3ee'];
+const openGames = new Set();
+let showAllGames = false;
+
+const kNum = (n) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : `${Math.round(n)}`);
+const pct = (x) => `${Math.round(100 * x)}%`;
+
+const METRICS = [
+  { key: 'damage', label: 'Damage to champions', fmt: (m) => `${kNum(m.damage)} · ${pct(m.damageShare)}` },
+  { key: 'kp', label: 'Kill participation', fmt: (m) => pct(m.kp) },
+  { key: 'objectives', label: 'Objective damage', fmt: (m) => `${kNum(m.objectives)} · ${pct(m.objectivesShare)}` },
+  { key: 'towers', label: 'Tower damage', fmt: (m) => `${kNum(m.towers)} · ${m.turrets} 🗼` },
+  { key: 'epic', label: 'Epic monsters', hint: 'dragons, barons, heralds, voidgrubs', fmt: (m) => `${m.epic}` },
+  { key: 'vision', label: 'Vision', fmt: (m) => `${m.vision} · ${m.visionPerMin.toFixed(1)}/min` },
+  { key: 'tanking', label: 'Damage absorbed', fmt: (m) => `${kNum(m.tanking)} · ${pct(m.tankingShare)}` },
+  { key: 'gold', label: 'Gold', fmt: (m) => `${kNum(m.gold)} · ${pct(m.goldShare)}` },
+];
+
+function friendColor(puuid) {
+  const i = (board.players ?? []).findIndex((p) => p.puuid === puuid);
+  return FRIEND_COLORS[(i < 0 ? 0 : i) % FRIEND_COLORS.length];
+}
+
+function groupGameHtml(g) {
+  const isOpen = openGames.has(g.matchId);
+  const n = g.players.length;
+  const header = `<div class="gg-head" data-match="${esc(g.matchId)}">
+    <b class="gg-result ${g.win ? 'w' : ''}">${g.win ? 'WIN' : 'LOSS'}</b>
+    <div class="gg-champs">${g.players.map((p) => `<img src="${champImg(p.champion)}" alt="" title="${esc(p.name)} · ${esc(p.champion)}" style="border-color:${friendColor(p.puuid)}" onerror="this.style.visibility='hidden'">`).join('')}</div>
+    <div class="gg-names"><strong>${g.players.map((p) => esc(p.name)).join(' + ')}</strong>
+      <div class="sub">${esc(g.queue)} · ${g.minutes}m · ${g.teamKills}–${g.enemyKills} kills · ${timeAgo(g.endTs)}</div></div>
+    <span class="gg-toggle">${isOpen ? '▾' : '▸'}</span>
+  </div>`;
+  if (!isOpen) return `<article class="gg">${header}</article>`;
+
+  const ranking = g.players.map((p, i) => {
+    const tag = i === 0 ? '<span class="badge mvp">👑 Carry del grupo</span>' : i === n - 1 ? '<span class="badge place">🎒 Mochila del grupo</span>' : '';
+    const lobby = p.mvp ? '<span class="badge mvp">MVP</span>' : p.ace ? '<span class="badge ace">ACE</span>' : `<span class="badge place">#${p.place} of 10</span>`;
+    return `<div class="gg-rank">
+      <span class="pos">${i + 1}</span>
+      <img src="${champImg(p.champion)}" alt="" style="border-color:${friendColor(p.puuid)}" onerror="this.style.visibility='hidden'">
+      <div><strong>${esc(p.name)}</strong> <span class="sub">${esc(p.champion)}${ROLE[p.position] ? ` · ${ROLE[p.position]}` : ''}</span>
+        <div class="sub">${p.kills} / ${p.deaths} / ${p.assists} · ${((p.kills + p.assists) / Math.max(1, p.deaths)).toFixed(2)} KDA</div></div>
+      <div class="gg-badges">${lobby}${tag}</div>
+      <span class="score ${scoreClass(p.score)}">${p.score.toFixed(1)}</span>
+    </div>`;
+  }).join('');
+
+  const bars = METRICS.map((metric) => {
+    const best = Math.max(...g.players.map((p) => p.m[metric.key]));
+    const rows = g.players.map((p) => {
+      const v = p.m[metric.key];
+      const w = Math.max(2, Math.min(100, (100 * v) / (g.lobbyMax[metric.key] || 1)));
+      return `<div class="bar-row${v === best && v > 0 ? ' best' : ''}">
+        <span class="bar-name">${esc(p.name)}</span>
+        <span class="bar-track"><i style="width:${w}%;background:${friendColor(p.puuid)}"></i></span>
+        <span class="bar-val">${metric.fmt(p.m)}</span>
+      </div>`;
+    }).join('');
+    return `<div class="metric"><div class="metric-title">${metric.label}${metric.hint ? ` <span class="sub">(${metric.hint})</span>` : ''}</div>${rows}</div>`;
+  }).join('');
+
+  return `<article class="gg open">${header}
+    <div class="gg-body">
+      <div class="gg-ranking">${ranking}</div>
+      <div class="metrics">${bars}</div>
+      <p class="sub">Full bar = best of all 10 players in the game. Ranking uses the 0–10 score.</p>
+    </div>
+  </article>`;
+}
+
+function renderTogether() {
+  const games = board.groupGames ?? [];
+  const sec = $('#together');
+  sec.hidden = games.length === 0;
+  if (!games.length) return;
+  if (openGames.size === 0 && !renderTogether.init) openGames.add(games[0].matchId);
+  renderTogether.init = true;
+
+  const s = board.groupSummary;
+  const wr = Math.round((100 * s.wins) / Math.max(1, s.games));
+  $('#together-summary').innerHTML = `
+    <p class="muted">${s.games} games with 2+ of you on the same team · <strong class="${wr >= 50 ? 'up' : 'down'}">${s.wins}W ${s.games - s.wins}L (${wr}%)</strong></p>
+    <div class="together-grid">
+      <div class="tcard"><div class="metric-title">When playing together</div>
+        ${s.players.map((p) => `<div class="trow"><span>${esc(p.name)}</span><span class="sub">${p.games}g · ${p.winrate}% WR · 👑${p.carries} 🎒${p.last}</span><span class="score ${scoreClass(p.score)}">${p.score.toFixed(1)}</span></div>`).join('')}
+      </div>
+      <div class="tcard"><div class="metric-title">Duos</div>
+        ${s.duos.slice(0, 6).map((d) => `<div class="trow"><span>${d.names.map(esc).join(' + ')}</span><span class="sub">${d.games}g</span><strong class="${d.winrate >= 50 ? 'up' : 'down'}">${d.wins}W ${d.games - d.wins}L</strong></div>`).join('')}
+      </div>
+    </div>`;
+
+  const list = showAllGames ? games : games.slice(0, 8);
+  $('#together-games').innerHTML = list.map(groupGameHtml).join('') +
+    (games.length > list.length ? `<button id="more-games">Show all ${games.length} games</button>` : '');
+}
+
+async function load() {
+  board = await (await fetch('leaderboard.json', { cache: 'no-store' })).json();
+  render();
+  // Open /#card to preview the share image full size (/?sort=score#card for another order).
+  // The WhatsApp bot renders its images through this too.
+  if (location.hash === '#card') {
+    document.body.replaceChildren(drawCard());
+    document.body.dataset.cardReady = 'true';
+  }
+}
+
+// ---------- refresh ----------
+
+async function pollStatus() {
+  const res = await fetch('api/status').catch(() => null);
+  if (!res?.ok) {
+    // Static site (GitHub Pages): data is refreshed on a schedule, there's no server to ask.
+    $('#refresh').hidden = true;
+    return;
+  }
+  const st = await res.json();
+  const box = $('#status');
+  $('#refresh').disabled = st.running;
+  if (st.running) {
+    const { done = 0, total = 1, current } = st.progress ?? {};
+    box.className = 'status';
+    box.hidden = false;
+    box.innerHTML = `Refreshing ${current ? esc(current) : ''} (${done}/${total})… first run can take a few minutes because of Riot's rate limits.
+      <div class="bar"><i style="width:${(100 * done) / total}%"></i></div>`;
+    setTimeout(pollStatus, 1500);
+  } else {
+    box.hidden = !st.error;
+    box.className = 'status error';
+    box.textContent = st.error ?? '';
+    if (pollStatus.wasRunning) load();
+  }
+  pollStatus.wasRunning = st.running;
+}
+
+// ---------- sharing ----------
+
+async function whatsappText() {
+  return (await fetch('whatsapp.txt', { cache: 'no-store' })).text();
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.roundRect(x, y, w, h, r);
+  ctx.fill();
+}
+
+
+// Draws a WhatsApp-friendly leaderboard card (text only, so the canvas never gets tainted).
+function drawCard() {
+  const players = sortedPlayers();
+  const nicknamed = players.filter((p) => p.nickname);
+  const W = 1080, ROW = 118, TOP = 210, PAD = 48, NICK_ROW = 44;
+  const nickTop = TOP + players.length * ROW + 30;
+  const H = nickTop + (nicknamed.length ? 56 + nicknamed.length * NICK_ROW : 0) + 80;
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const ctx = c.getContext('2d');
+  const font = (w, s, style = '') => `${style} ${w} ${s}px "Segoe UI", "Segoe UI Emoji", system-ui, -apple-system, Roboto, sans-serif`;
+
+  const bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, '#111a33'); bg.addColorStop(1, '#070b16');
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#c8aa6e'; ctx.fillRect(0, 0, W, 8);
+
+  ctx.fillStyle = '#c8aa6e'; ctx.font = font(800, 54);
+  ctx.fillText(fit(ctx, board.groupName ?? 'Friends Ladder', W - 2 * PAD), PAD, 92);
+  ctx.fillStyle = '#8a94b0'; ctx.font = font(500, 26);
+  const sortName = { rank: 'Solo/Duo rank', score: 'avg score', winrate: 'win rate', week: 'LP this week' }[sortBy];
+  ctx.fillText(`Ranked leaderboard · sorted by ${sortName} · ${new Date(board.updatedAt).toLocaleDateString()}`, PAD, 136);
+  ctx.fillStyle = '#5d6786'; ctx.font = font(600, 20);
+  ctx.fillText('RANK', 375, 190); ctx.fillText('SCORE', 640, 190); ctx.fillText('WIN RATE', 800, 190);
+
+  players.forEach((p, i) => {
+    const y = TOP + i * ROW;
+    ctx.fillStyle = i % 2 ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.06)';
+    roundRect(ctx, PAD - 16, y, W - 2 * PAD + 32, ROW - 12, 18);
+    const color = tierColor(p);
+    ctx.fillStyle = color; roundRect(ctx, PAD - 16, y, 8, ROW - 12, 4);
+
+    const mid = y + (ROW - 12) / 2;
+    ctx.fillStyle = i < 3 ? ['#f6d27a', '#cfd6e4', '#d9925f'][i] : '#8a94b0';
+    ctx.font = font(800, 40); ctx.textAlign = 'center';
+    ctx.fillText(String(i + 1), PAD + 30, mid + 14);
+    ctx.textAlign = 'left';
+
+    ctx.fillStyle = '#e8ecf6'; ctx.font = font(700, 32);
+    ctx.fillText(fit(ctx, p.name, 260), 100, mid - 4);
+    if (p.nickname) {
+      ctx.fillStyle = '#c8aa6e'; ctx.font = font(600, 19, 'italic');
+      ctx.fillText(fit(ctx, `“${p.nickname.title}” ${p.nickname.emoji}`, 265), 100, mid + 26);
+    } else {
+      ctx.fillStyle = '#8a94b0'; ctx.font = font(500, 20);
+      ctx.fillText(fit(ctx, p.riotId, 260), 100, mid + 26);
+    }
+
+    ctx.fillStyle = color; ctx.font = font(700, 28);
+    ctx.fillText(fit(ctx, p.solo?.label ?? 'Unranked', 255), 375, mid - 4);
+    const d = p.lpDelta?.week;
+    if (d) {
+      ctx.fillStyle = d > 0 ? '#4ade80' : '#f87171'; ctx.font = font(700, 21);
+      ctx.fillText(`${d > 0 ? '▲' : '▼'} ${signed(d)} LP this week`, 375, mid + 26);
+    }
+
+    const s = p.stats;
+    if (s) {
+      const pill = { 's-great': ['#c8aa6e', '#1a1408'], 's-good': ['#2563eb', '#fff'], 's-ok': ['#0f766e', '#fff'], 's-low': ['#3a425c', '#cfd5e6'] }[scoreClass(s.avgScore)];
+      ctx.fillStyle = pill[0]; roundRect(ctx, 640, mid - 30, 118, 52, 26);
+      ctx.fillStyle = pill[1]; ctx.font = font(800, 32); ctx.textAlign = 'center';
+      ctx.fillText(s.avgScore.toFixed(1), 699, mid + 7);
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#8a94b0'; ctx.font = font(500, 18);
+      ctx.fillText(s.mvp ? `${s.mvp}× MVP` : '', 648, mid + 46);
+
+      ctx.fillStyle = s.winrate >= 50 ? '#e8ecf6' : '#f87171'; ctx.font = font(700, 30);
+      ctx.fillText(`${s.winrate}%`, 800, mid - 2);
+      ctx.fillStyle = '#8a94b0'; ctx.font = font(500, 20);
+      ctx.fillText(`${s.wins}W ${s.games - s.wins}L · ${s.kda} KDA`, 800, mid + 28);
+    }
+  });
+
+  if (nicknamed.length) {
+    ctx.fillStyle = '#c8aa6e'; ctx.font = font(800, 30);
+    ctx.fillText('🎭 Apodos de la semana', PAD, nickTop + 30);
+    nicknamed.forEach((p, i) => {
+      const y = nickTop + 56 + i * NICK_ROW + 24;
+      let x = PAD;
+      const piece = (text, color, f) => {
+        ctx.fillStyle = color; ctx.font = f;
+        const t = fit(ctx, text, W - PAD - x);
+        ctx.fillText(t, x, y);
+        x += ctx.measureText(t).width;
+      };
+      piece(`${p.nickname.emoji}  `, '#e8ecf6', font(500, 22));
+      piece(p.name, '#e8ecf6', font(700, 22));
+      piece(' es ', '#8a94b0', font(500, 22));
+      piece(`“${p.nickname.title}”`, '#c8aa6e', font(700, 22, 'italic'));
+      piece(`: ${p.nickname.reason}`, '#8a94b0', font(500, 22));
+    });
+  }
+
+  ctx.fillStyle = '#5d6786'; ctx.font = font(500, 20);
+  ctx.fillText('Score: OP.GG-style 0–10 rating, average of recent ranked games', PAD, H - 36);
+  return c;
+}
+
+function fit(ctx, text, maxW) {
+  if (maxW <= 0) return '';
+  if (ctx.measureText(text).width <= maxW) return text;
+  while (text.length > 1 && ctx.measureText(text + '…').width > maxW) text = text.slice(0, -1);
+  return text + '…';
+}
+
+const cardBlob = () => new Promise((resolve) => drawCard().toBlob(resolve, 'image/png'));
+const fileName = () => `leaderboard-${new Date().toISOString().slice(0, 10)}.png`;
+
+async function downloadCard(blob) {
+  const url = URL.createObjectURL(blob ?? (await cardBlob()));
+  const a = Object.assign(document.createElement('a'), { href: url, download: fileName() });
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// Keeps a copy of every image that gets sent in data/cards/ on the PC running the server.
+function keepCard(blob) {
+  if ($('#refresh').hidden) return; // static site: nowhere to save it
+  fetch('api/card', { method: 'POST', body: blob, headers: { 'Content-Type': 'image/png' } }).catch(() => {});
+}
+
+function showSentHelp() {
+  const box = $('#status');
+  box.className = 'status ok';
+  box.hidden = false;
+  box.innerHTML = `✅ <strong>Image copied.</strong> In WhatsApp, open the group and press <kbd>Ctrl</kbd>+<kbd>V</kbd>, then send.
+    WhatsApp didn't open? <a href="whatsapp://">Open WhatsApp app</a> · <a href="https://web.whatsapp.com" target="_blank" rel="noopener">WhatsApp Web</a>`;
+  clearTimeout(showSentHelp.timer);
+  showSentHelp.timer = setTimeout(() => (box.hidden = true), 20000);
+}
+
+// ---------- wiring ----------
+
+$('#board').addEventListener('click', (e) => {
+  const row = e.target.closest('.row');
+  if (!row) return;
+  const id = row.dataset.puuid;
+  open.has(id) ? open.delete(id) : open.add(id);
+  render();
+});
+
+$('#together-games').addEventListener('click', (e) => {
+  if (e.target.id === 'more-games') {
+    showAllGames = true;
+    return renderTogether();
+  }
+  const head = e.target.closest('.gg-head');
+  if (!head) return;
+  const id = head.dataset.match;
+  openGames.has(id) ? openGames.delete(id) : openGames.add(id);
+  renderTogether();
+});
+
+document.querySelectorAll('.sort button').forEach((b) =>
+  b.addEventListener('click', () => {
+    sortBy = b.dataset.sort;
+    document.querySelectorAll('.sort button').forEach((x) => x.classList.toggle('active', x === b));
+    render();
+  }),
+);
+
+$('#refresh').addEventListener('click', async () => {
+  await fetch('api/refresh', { method: 'POST' });
+  pollStatus();
+});
+
+// Main action: copy the leaderboard image and jump to WhatsApp so it can be pasted into the group.
+$('#send').addEventListener('click', async () => {
+  // On phones the share menu attaches the image straight to a WhatsApp chat.
+  if (matchMedia('(pointer: coarse)').matches && navigator.canShare) return $('#share').click();
+  const blob = cardBlob();
+  blob.then(keepCard);
+  try {
+    // Handing ClipboardItem a promise keeps the click's user activation for the clipboard write.
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+  } catch {
+    await downloadCard(await blob);
+    toast('Could not copy the image, so it was downloaded. Attach it in WhatsApp.');
+    return;
+  }
+  showSentHelp();
+  location.href = 'whatsapp://';
+});
+
+$('#share').addEventListener('click', async () => {
+  const blob = await cardBlob();
+  keepCard(blob);
+  const file = new File([blob], fileName(), { type: 'image/png' });
+  if (!navigator.canShare?.({ files: [file] })) {
+    await downloadCard(blob);
+    toast('Sharing is not supported here, so the image was downloaded');
+    return;
+  }
+  try {
+    await navigator.share({ files: [file] });
+  } catch (err) {
+    if (err.name !== 'AbortError') toast('Sharing failed: ' + err.message);
+  }
+});
+
+$('#download').addEventListener('click', async () => {
+  const blob = await cardBlob();
+  keepCard(blob);
+  downloadCard(blob);
+});
+
+$('#copy').addEventListener('click', async () => {
+  await navigator.clipboard.writeText(await whatsappText());
+  toast('Text copied! Paste it in the group chat');
+});
+
+document.querySelectorAll('.sort button').forEach((x) => x.classList.toggle('active', x.dataset.sort === sortBy));
+load();
+pollStatus();

@@ -1,0 +1,9 @@
+secrets.json
+node_modules/
+site/
+
+# Only the small state files are committed (the GitHub Action updates them).
+data/*
+!data/history.json
+!data/group-games.json
+!data/accounts.json

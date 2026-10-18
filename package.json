@@ -1,0 +1,21 @@
+{
+  "name": "lol-friends-tracker",
+  "version": "1.0.0",
+  "description": "Tracks your friends' League of Legends rank and per-game performance score (OP.GG-style), with WhatsApp-ready sharing.",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "refresh": "node report.js --refresh",
+    "report": "node report.js",
+    "demo": "node src/demo.js && node server.js",
+    "build": "node build.js"
+  },
+  "dependencies": {
+    "qrcode-terminal": "0.12.0",
+    "whatsapp-web.js": "1.34.7"
+  }
+}
