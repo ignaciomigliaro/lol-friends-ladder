@@ -305,6 +305,160 @@ function roleRows(games) {
   return rows;
 }
 
+// ---------- trend charts (SVG line chart with hover crosshair) ----------
+
+const charts = new Map(); // chart id -> points in SVG coordinates, for the hover layer
+let chartSeq = 0;
+// A compact viewBox keeps axis text readable when the chart scales down to phone width.
+const CHART_W = 480, CHART_H = 210;
+const TIER_NAMES = ['Iron', 'Bronze', 'Silver', 'Gold', 'Plat', 'Emerald', 'Diamond'];
+const shortDate = (ts) => new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+
+// Inverse of ranks.js rankValue(): 1 point = 1 LP, Iron IV 0 LP = 0.
+function lpLabel(v, withLp = true) {
+  if (v >= 2800) return `Master+ ${v - 2800} LP`;
+  const tier = TIER_NAMES[Math.floor(v / 400)];
+  const div = ['IV', 'III', 'II', 'I'][Math.floor((v % 400) / 100)];
+  return withLp ? `${tier} ${div} ${v % 100} LP` : `${tier} ${div}`;
+}
+
+// points: [{ xv, line, dot?, rows: [[value, label], ...] }] in drawing order (oldest first).
+function lineChart({ points, xTicks, yDomain, yTicks, color, endLabel, ariaLabel }) {
+  const id = `chart-${++chartSeq}`;
+  const L = 70, R = 14, T = 16, B = 30;
+  const x0 = points[0].xv, x1 = points.at(-1).xv;
+  const sx = (v) => L + (x1 === x0 ? (CHART_W - L - R) / 2 : ((v - x0) / (x1 - x0)) * (CHART_W - L - R));
+  const [y0, y1] = yDomain;
+  const sy = (v) => T + (1 - (v - y0) / (y1 - y0)) * (CHART_H - T - B);
+
+  const grid = yTicks.map((t) => `<line class="grid" x1="${L}" x2="${CHART_W - R}" y1="${sy(t.v)}" y2="${sy(t.v)}"/>
+    <text class="axis" x="${L - 8}" y="${sy(t.v) + 4}" text-anchor="end">${esc(t.label)}</text>`).join('');
+  const xs = xTicks.map((t, i) => `<text class="axis" x="${sx(t.v)}" y="${CHART_H - 8}" text-anchor="${i === 0 ? 'start' : i === xTicks.length - 1 ? 'end' : 'middle'}">${esc(t.label)}</text>`).join('');
+  const dots = points.filter((p) => p.dot != null).map((p) => `<circle class="gdot" cx="${sx(p.xv)}" cy="${sy(p.dot)}" r="3"/>`).join('');
+  const path = points.map((p, i) => `${i ? 'L' : 'M'}${sx(p.xv).toFixed(1)},${sy(p.line).toFixed(1)}`).join('');
+  const last = points.at(-1);
+  const ex = sx(last.xv), ey = sy(last.line);
+
+  charts.set(id, points.map((p) => ({ x: sx(p.xv), y: sy(p.line), rows: p.rows })));
+  return `<div class="chart" data-chart="${id}" tabindex="0" aria-label="${esc(ariaLabel)}. Use left and right arrows to read values.">
+    <svg viewBox="0 0 ${CHART_W} ${CHART_H}" role="img" aria-label="${esc(ariaLabel)}">
+      ${grid}${xs}${dots}
+      <path d="${path}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      <circle class="ring" cx="${ex}" cy="${ey}" r="5" fill="${color}"/>
+      <text class="end-label" x="${ex - 8}" y="${ey - 10}" text-anchor="end">${esc(endLabel)}</text>
+      <line class="xhair" x1="0" x2="0" y1="${T}" y2="${CHART_H - B}" visibility="hidden"/>
+      <circle class="hdot ring" r="5" fill="${color}" visibility="hidden"/>
+    </svg>
+    <div class="chart-tip" hidden></div>
+  </div>`;
+}
+
+function showChartPoint(el, index) {
+  const pts = charts.get(el.dataset.chart);
+  if (!pts) return;
+  const i = Math.max(0, Math.min(pts.length - 1, index));
+  const p = pts[i];
+  el.dataset.index = i;
+  const svg = el.querySelector('svg');
+  const xh = svg.querySelector('.xhair');
+  xh.setAttribute('x1', p.x); xh.setAttribute('x2', p.x); xh.setAttribute('visibility', 'visible');
+  const hd = svg.querySelector('.hdot');
+  hd.setAttribute('cx', p.x); hd.setAttribute('cy', p.y); hd.setAttribute('visibility', 'visible');
+
+  // Values lead, labels follow. Built with textContent: champion names come from the API.
+  const tip = el.querySelector('.chart-tip');
+  tip.replaceChildren(...p.rows.map(([value, label]) => {
+    const row = document.createElement('div');
+    const strong = document.createElement('strong');
+    strong.textContent = value;
+    const sub = document.createElement('span');
+    sub.textContent = label;
+    row.append(strong, ' ', sub);
+    return row;
+  }));
+  tip.hidden = false;
+  const w = el.clientWidth;
+  const px = (p.x / CHART_W) * w;
+  tip.style.left = `${Math.min(Math.max(px - tip.offsetWidth / 2, 0), w - tip.offsetWidth)}px`;
+}
+
+function hideChartPoint(el) {
+  el.querySelector('.xhair')?.setAttribute('visibility', 'hidden');
+  el.querySelector('.hdot')?.setAttribute('visibility', 'hidden');
+  el.querySelector('.chart-tip').hidden = true;
+}
+
+function evenTicks(n, count) {
+  if (n <= 1) return [0];
+  const k = Math.min(count, n);
+  return [...new Set(Array.from({ length: k }, (_, i) => Math.round((i * (n - 1)) / (k - 1))))];
+}
+
+function scoreChartHtml(games) {
+  const chrono = [...games].sort((a, b) => a.endTs - b.endTs);
+  if (chrono.length < 3) return '<div class="chart-card"><div class="chart-title">Score over time</div><p class="muted">Not enough games yet.</p></div>';
+  const points = chrono.map((g, i) => {
+    const win = chrono.slice(Math.max(0, i - 4), i + 1);
+    const avg = win.reduce((acc, x) => acc + x.score, 0) / win.length;
+    return {
+      xv: i, line: avg, dot: g.score,
+      rows: [
+        [avg.toFixed(1), `${win.length}-game average`],
+        [g.score.toFixed(1), `${g.champion} · ${g.win ? 'Win' : 'Loss'} · ${shortDate(g.endTs)}`],
+      ],
+    };
+  });
+  const chart = lineChart({
+    points,
+    xTicks: evenTicks(chrono.length, 4).map((i) => ({ v: i, label: shortDate(chrono[i].endTs) })),
+    yDomain: [0, 10],
+    yTicks: [0, 2, 4, 6, 8, 10].map((v) => ({ v, label: String(v) })),
+    color: '#c98500',
+    endLabel: points.at(-1).line.toFixed(1),
+    ariaLabel: `Score over the last ${chrono.length} games, 5-game average`,
+  });
+  return `<div class="chart-card">
+    <div class="chart-title">Score over time</div>
+    <div class="chart-legend"><span class="key-line" style="background:#c98500"></span>5-game average <span class="key-dot"></span>Single game</div>
+    ${chart}
+  </div>`;
+}
+
+function lpChartHtml(p) {
+  const hist = p.lpHistory ?? [];
+  const head = '<div class="chart-title">Solo/Duo LP over time</div>';
+  if (!p.solo) return `<div class="chart-card">${head}<p class="muted">Unranked in Solo/Duo.</p></div>`;
+  if (hist.length < 2 || hist.every((s) => s.v === hist[0].v)) {
+    const since = hist[0] ? shortDate(hist[0].t) : 'today';
+    return `<div class="chart-card">${head}<p class="muted">Riot doesn't keep LP history, so it's recorded on every update starting ${since}. The line appears once ${esc(p.name)}'s LP changes.</p>
+      <p><strong>${esc(p.solo.label)}</strong></p></div>`;
+  }
+  const vs = hist.map((s) => s.v);
+  const lo = Math.min(...vs), hi = Math.max(...vs);
+  const span = Math.max(hi - lo, 40);
+  const step = span > 400 ? 100 : span > 150 ? 50 : 25;
+  const y0 = Math.floor((lo - span * 0.15) / step) * step;
+  const y1 = Math.ceil((hi + span * 0.15) / step) * step;
+  const yTicks = [];
+  for (let v = y0; v <= y1; v += step) yTicks.push({ v, label: v % 100 === 0 ? lpLabel(v, false) : `${v % 100} LP` });
+  const points = hist.map((s) => ({ xv: s.t, line: s.v, rows: [[lpLabel(s.v), new Date(s.t).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })]] }));
+  const chart = lineChart({
+    points,
+    // Under two days of history every date is the same, so label times instead.
+    xTicks: evenTicks(hist.length, 3).map((i) => ({
+      v: hist[i].t,
+      label: hist.at(-1).t - hist[0].t < 2 * 864e5 ? new Date(hist[i].t).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : shortDate(hist[i].t),
+    })),
+    yDomain: [y0, y1],
+    yTicks,
+    color: '#3987e5',
+    endLabel: lpLabel(vs.at(-1)),
+    ariaLabel: `Solo/Duo LP from ${shortDate(hist[0].t)} to now`,
+  });
+  return `<div class="chart-card">${head}<div class="chart-legend">Recorded on each update since ${shortDate(hist[0].t)}</div>${chart}
+    <details><summary class="sub">Show data</summary><table class="stats">${[...hist].reverse().map((s) => `<tr><td>${new Date(s.t).toLocaleString()}</td><td>${lpLabel(s.v)}</td></tr>`).join('')}</table></details></div>`;
+}
+
 function playerProfileHtml(p) {
   const games = queueGames(p);
   const a = aggregate(games);
@@ -383,6 +537,7 @@ function playerProfileHtml(p) {
   return `${header}
     <nav class="sort">${queueChips}<span class="sub">Last ${a.n} ranked games</span></nav>
     ${headline}
+    <h3>Trends</h3><div class="charts">${scoreChartHtml(games)}${lpChartHtml(p)}</div>
     <h3>Vs players at your elo</h3>${eloHtml(p, games)}
     <h3>Per game vs the group</h3><div class="tiles">${tiles}</div>
     <h3>Lanes</h3>${roleSummary}${roleTable}
@@ -405,6 +560,7 @@ function render() {
     return;
   }
   if (view === 'player') {
+    charts.clear();
     $('#view-player').innerHTML = playerSwitcherHtml(player) + playerProfileHtml(player);
     return;
   }
@@ -716,6 +872,33 @@ window.addEventListener('hashchange', () => {
   if (location.hash === '#card') return;
   render();
   window.scrollTo(0, 0);
+});
+
+// Chart hover: the crosshair snaps to the nearest point, so readers aim at a date, not a 2px line.
+$('#view-player').addEventListener('pointermove', (e) => {
+  const el = e.target.closest('.chart');
+  if (!el) return;
+  const pts = charts.get(el.dataset.chart);
+  const r = el.querySelector('svg').getBoundingClientRect();
+  const vx = ((e.clientX - r.left) / r.width) * CHART_W;
+  let best = 0;
+  pts.forEach((p, i) => { if (Math.abs(p.x - vx) < Math.abs(pts[best].x - vx)) best = i; });
+  showChartPoint(el, best);
+});
+$('#view-player').addEventListener('pointerleave', (e) => {
+  if (e.target.classList?.contains('chart')) hideChartPoint(e.target);
+}, true);
+$('#view-player').addEventListener('focusin', (e) => {
+  if (e.target.classList?.contains('chart')) showChartPoint(e.target, charts.get(e.target.dataset.chart).length - 1);
+});
+$('#view-player').addEventListener('focusout', (e) => {
+  if (e.target.classList?.contains('chart')) hideChartPoint(e.target);
+});
+$('#view-player').addEventListener('keydown', (e) => {
+  const el = e.target.closest?.('.chart');
+  if (!el || !['ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+  e.preventDefault();
+  showChartPoint(el, Number(el.dataset.index ?? 0) + (e.key === 'ArrowRight' ? 1 : -1));
 });
 
 $('#view-player').addEventListener('change', (e) => {

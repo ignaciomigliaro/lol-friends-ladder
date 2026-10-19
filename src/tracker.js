@@ -218,6 +218,8 @@ export async function saveLeaderboard(config, players, errors, ddragonVersion, f
 
   recordHistory(history, players, now);
   attachDeltas(players, history, now);
+  // Solo/Duo LP snapshots for the LP-over-time chart (value = comparable LP, see ranks.js).
+  for (const p of players) p.lpHistory = (history[p.puuid] ?? []).map((s) => ({ t: s.t, v: s.value }));
   await writeJson(HISTORY_FILE, history);
 
   const board = {
