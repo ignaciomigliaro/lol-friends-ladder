@@ -259,6 +259,11 @@
       "t": 1793404662886,
       "value": 1750,
       "label": "Platinum III 50 LP"
+    },
+    {
+      "t": 1793444692862,
+      "value": 1750,
+      "label": "Platinum III 50 LP"
     }
   ],
   "ToxVjzrmk2jV_GDehmSC0nu8uCCuMqROwsKTHz74i5BsSpAe3yYxUfRNd6xRZ6WqdtFiM5QJP-r8rQ": [
@@ -773,6 +778,11 @@
       "t": 1793404662886,
       "value": 2245,
       "label": "Emerald II 45 LP"
+    },
+    {
+      "t": 1793444692862,
+      "value": 2245,
+      "label": "Emerald II 45 LP"
     }
   ],
   "YVKlQrZq066j4x-SKaNL52mTgNu_XyziI9CpEraoqX8aK1IJVpVS0r8LU2Ci_VxZ8WuR_eZ9KPf30Q": [
@@ -963,6 +973,11 @@
     },
     {
       "t": 1793404662886,
+      "value": 1666,
+      "label": "Platinum IV 66 LP"
+    },
+    {
+      "t": 1793444692862,
       "value": 1666,
       "label": "Platinum IV 66 LP"
     }
@@ -1197,6 +1212,11 @@
       "t": 1793404662886,
       "value": 1949,
       "label": "Platinum I 49 LP"
+    },
+    {
+      "t": 1793444692862,
+      "value": 1949,
+      "label": "Platinum I 49 LP"
     }
   ],
   "D5R2pMMvX46TgVd72OCokbTeltRmpCwNSw39XfzTtr-JqaqHknHFSNdfGv4YDRo5PSZy85csuqiuXg": [
@@ -1387,6 +1407,11 @@
     },
     {
       "t": 1793404662886,
+      "value": 635,
+      "label": "Bronze II 35 LP"
+    },
+    {
+      "t": 1793444692862,
       "value": 635,
       "label": "Bronze II 35 LP"
     }
