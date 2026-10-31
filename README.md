@@ -124,9 +124,9 @@ and how each duo does. The last 60 games together are kept in `data/group-games.
 
 "LP this week" resets every **Monday at 00:00**. It compares current Solo/Duo LP with the last snapshot
 taken before the week started. Promotions and demotions count as 100 LP per division. A friend added
-mid-week counts from their first snapshot. The time zone and start day are set in :
- (any IANA zone, e.g.
-).
+mid-week counts from their first snapshot. The time zone and start day are set in `config.json`:
+`"weekStart": { "day": "monday", "timeZone": "America/New_York" }` (any IANA zone, e.g.
+`America/Argentina/Buenos_Aires`).
 
 ## Apodos (nicknames)
 
