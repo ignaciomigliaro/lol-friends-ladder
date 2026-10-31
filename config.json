@@ -25,5 +25,9 @@
     },
     "announceRankChanges": true
   },
-  "updateUrl": "https://lol-ladder-update.ignaciomigliaro.workers.dev"
+  "updateUrl": "https://lol-ladder-update.ignaciomigliaro.workers.dev",
+  "weekStart": {
+    "day": "monday",
+    "timeZone": "America/New_York"
+  }
 }

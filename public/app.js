@@ -57,7 +57,8 @@ function sortedPlayers() {
 function deltaHtml(p) {
   const d = p.lpDelta?.week;
   if (d == null || d === 0) return '';
-  return `<span class="delta ${d > 0 ? 'up' : 'down'}">${signed(d)} LP this week</span>`;
+  const since = board.weekStart ? ` title="Since ${new Date(board.weekStart).toLocaleString(undefined, { weekday: 'long', month: 'short', day: 'numeric', hour: 'numeric' })}"` : '';
+  return `<span class="delta ${d > 0 ? 'up' : 'down'}"${since}>${signed(d)} LP this week</span>`;
 }
 
 function rankHtml(p) {
@@ -731,7 +732,7 @@ function roundRect(ctx, x, y, w, h, r) {
 function drawCard() {
   const players = sortedPlayers();
   const nicknamed = players.filter((p) => p.nickname);
-  const W = 1080, ROW = 118, TOP = 210, PAD = 48, NICK_ROW = 44;
+  const W = 1080, ROW = 118, TOP = 210, PAD = 48, NICK_ROW = 70;
   const nickTop = TOP + players.length * ROW + 30;
   const H = nickTop + (nicknamed.length ? 56 + nicknamed.length * NICK_ROW : 0) + 80;
   const c = document.createElement('canvas');
@@ -816,7 +817,9 @@ function drawCard() {
       piece(p.name, '#e8ecf6', font(700, 22));
       piece(' es ', '#8a94b0', font(500, 22));
       piece(`“${p.nickname.title}”`, '#c8aa6e', font(700, 22, 'italic'));
-      piece(`: ${p.nickname.reason}`, '#8a94b0', font(500, 22));
+      // The reason gets its own line so the roast isn't cut off.
+      ctx.fillStyle = '#8a94b0'; ctx.font = font(500, 19);
+      ctx.fillText(fit(ctx, p.nickname.reason, W - 2 * PAD - 38), PAD + 38, y + 27);
     });
   }
 

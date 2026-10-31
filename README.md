@@ -120,12 +120,21 @@ There are also totals across those games: each friend's record and average score
 and how each duo does. The last 60 games together are kept in `data/group-games.json`.
 `groupLookback` in `config.json` changes how many recent matches are checked (default 20).
 
+## LP this week
+
+"LP this week" resets every **Monday at 00:00**. It compares current Solo/Duo LP with the last snapshot
+taken before the week started. Promotions and demotions count as 100 LP per division. A friend added
+mid-week counts from their first snapshot. The time zone and start day are set in :
+ (any IANA zone, e.g.
+).
+
 ## Apodos (nicknames)
 
-Each friend gets a Spanish nickname for their worst habit in recent games: *El Feeder Oficial*,
-*El Vegano* (low CS), *El Ciego de la Grieta* (low vision), *El Turista* (low kill participation),
-*Daño de Algodón*, *La Mochila*, *El Tilteado*, *Bolsa en Picada*, *El Jubilado* and more. Nobody
-shares a nickname, and they change as people play. The rules and their thresholds are in
+Each friend gets a Spanish nickname that roasts their worst habit in recent games: *El Feeder Oficial*,
+*El Kamikaze*, *Donador de Oro* (gives gold to their lane rival), *Sparring del Rival*, *Manco Certificado*,
+*Pecho Frío*, *El Ciego de la Grieta*, *El Vegano*, *El Granjero*, *Robakills*, *Main de Cartón*,
+*Refugiado en Flex*, *Ludópata del Ranked*, *El Último Orejón del Tarro* and more (26 in total). Nobody shares
+a nickname, and they change as people play. The rules, thresholds and jokes are in
 [src/nicknames.js](src/nicknames.js).
 
 From the terminal, `npm run refresh` pulls fresh data and prints the WhatsApp message. It also saves

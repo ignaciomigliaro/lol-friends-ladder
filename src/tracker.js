@@ -154,12 +154,38 @@ function lpChange(arr = [], now, value, windowMs) {
   return value - before.value;
 }
 
-export function attachDeltas(players, history, now) {
+// Start of the current week (default Monday 00:00 in the given time zone) as a UTC timestamp.
+const WEEKDAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+export function weekStart(now, { day = 'monday', timeZone = 'America/New_York' } = {}) {
+  const parts = (ts) => Object.fromEntries(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone, hourCycle: 'h23', weekday: 'long',
+      year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric',
+    }).formatToParts(ts).map((x) => [x.type, x.value]),
+  );
+  const p = parts(now);
+  const back = (WEEKDAYS.indexOf(p.weekday.toLowerCase()) - WEEKDAYS.indexOf(day) + 7) % 7;
+  // Local midnight of that day, converted to UTC using the zone's offset at that moment.
+  const guess = Date.UTC(+p.year, +p.month - 1, +p.day - back);
+  const q = parts(guess);
+  const offset = Date.UTC(+q.year, +q.month - 1, +q.day, +q.hour, +q.minute, +q.second) - guess;
+  return guess - offset;
+}
+
+// "This week" resets every week: compare with the last snapshot from before the week started.
+// Someone added mid-week is compared with their first snapshot instead.
+function weekChange(arr = [], value, start) {
+  if (value < 0 || arr.length === 0) return null;
+  const base = arr.filter((s) => s.t <= start).at(-1) ?? arr[0];
+  return value - base.value;
+}
+
+export function attachDeltas(players, history, now, week) {
   for (const p of players) {
     const v = p.solo?.value ?? -1;
     p.lpDelta = {
       day: lpChange(history[p.puuid], now, v, DAY),
-      week: lpChange(history[p.puuid], now, v, 7 * DAY),
+      week: weekChange(history[p.puuid], v, week),
     };
   }
 }
@@ -217,7 +243,8 @@ export async function saveLeaderboard(config, players, errors, ddragonVersion, f
   await writeJson(GROUP_FILE, groupGames);
 
   recordHistory(history, players, now);
-  attachDeltas(players, history, now);
+  const week = weekStart(now, config.weekStart);
+  attachDeltas(players, history, now, week);
   // Solo/Duo LP snapshots for the LP-over-time chart (value = comparable LP, see ranks.js).
   for (const p of players) p.lpHistory = (history[p.puuid] ?? []).map((s) => ({ t: s.t, v: s.value }));
   await writeJson(HISTORY_FILE, history);
@@ -232,6 +259,7 @@ export async function saveLeaderboard(config, players, errors, ddragonVersion, f
     groupGames,
     groupSummary: groupSummary(groupGames),
     updateUrl: config.updateUrl ?? null,
+    weekStart: week,
   };
   assignNicknames(board.players, now);
   await writeJson(LEADERBOARD_FILE, board);
