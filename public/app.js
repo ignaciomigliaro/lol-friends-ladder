@@ -83,7 +83,7 @@ function gameHtml(g) {
     <b></b>
     <img src="${champImg(g.champion)}" alt="${esc(g.champion)}" onerror="this.style.visibility='hidden'">
     <div><strong>${g.kills} / ${g.deaths} / ${g.assists}</strong><div class="sub">${kda} KDA · ${g.cs} CS</div></div>
-    <div class="hide-sm sub">${esc(g.champion)} · ${ROLE[g.position] ?? '—'} · ${QUEUE[g.queueId] ?? 'Ranked'}<br>${g.win ? 'Victory' : 'Defeat'} · ${g.minutes}m · ${timeAgo(g.endTs)}</div>
+    <div class="hide-sm sub">${esc(g.champion)}${g.opp ? ` vs ${esc(g.opp.champion)}` : ''} · ${ROLE[g.position] ?? '—'} · ${QUEUE[g.queueId] ?? 'Ranked'}<br>${g.win ? 'Victory' : 'Defeat'} · ${g.minutes}m · ${timeAgo(g.endTs)}</div>
     <div class="game-place" title="Finished ${ordinal(g.place)} of the 10 players by score">${badge}<span class="badge place">${ordinal(g.place)} / 10</span></div>
     <span class="score ${scoreClass(g.score)}">${g.score.toFixed(1)}</span>
   </div>`;
@@ -466,6 +466,70 @@ function lpChartHtml(p) {
     <details><summary class="sub">Show data</summary><table class="stats">${[...hist].reverse().map((s) => `<tr><td>${new Date(s.t).toLocaleString()}</td><td>${lpLabel(s.v)}</td></tr>`).join('')}</table></details></div>`;
 }
 
+let selectedChamp = null;
+let showAllChamps = false;
+
+function champDetailHtml(champ, list) {
+  const a = aggregate(list);
+  const laned = list.filter((g) => g.opp);
+  const outscored = laned.filter((g) => g.score > (g.opp.score ?? 0)).length;
+  const stat = (label, value, sub = '') => `<div class="cstat"><span class="sub">${label}</span><strong>${value}</strong>${sub ? `<span class="sub">${sub}</span>` : ''}</div>`;
+  const summary = `<div class="cstats">
+    ${stat('Win rate', `${Math.round(a.winrate)}%`, `${a.wins}W ${a.losses}L`)}
+    ${stat('Avg score', `<span class="score ${scoreClass(a.score)}">${a.score.toFixed(1)}</span>`)}
+    ${stat('Avg finish', `${a.place.toFixed(1)} / 10`, `${a.mvp} MVP · ${a.ace} ACE`)}
+    ${stat('KDA', a.kda.toFixed(2), `${a.kills.toFixed(1)} / ${a.deaths.toFixed(1)} / ${a.assists.toFixed(1)}`)}
+    ${stat('CS / min', a.csMin.toFixed(1), `${Math.round(a.cs)} per game`)}
+    ${stat('Damage / game', kNum(a.damage), `${pct(a.dmgShare)} of team`)}
+    ${laned.length ? stat('Beat lane opponent', `${Math.round((100 * outscored) / laned.length)}%`, `${outscored} of ${laned.length} by score`) : ''}
+  </div>`;
+
+  // Matchups: the enemy champion in the same role, grouped.
+  const byOpp = {};
+  for (const g of laned) (byOpp[g.opp.champion] ??= []).push(g);
+  const matchups = Object.entries(byOpp).map(([opp, gs]) => {
+    const n = gs.length;
+    const wins = gs.filter((g) => g.win).length;
+    const mean = (fn) => gs.reduce((acc, g) => acc + fn(g), 0) / n;
+    return {
+      opp, n, wins, wr: (100 * wins) / n,
+      you: mean((g) => g.score), them: mean((g) => g.opp.score ?? 0),
+      gold: mean((g) => (g.gold ?? 0) - g.opp.gold),
+      cs: mean((g) => g.cs - g.opp.cs),
+    };
+  }).sort((x, y) => y.n - x.n || y.wr - x.wr);
+
+  // Best and worst only count matchups played at least twice, so a single game can't decide it.
+  const repeat = matchups.filter((m) => m.n >= 2);
+  const strength = (m) => m.wr + 10 * (m.you - m.them);
+  const best = repeat.length >= 2 ? [...repeat].sort((x, y) => strength(y) - strength(x))[0] : null;
+  const worst = repeat.length >= 2 ? [...repeat].sort((x, y) => strength(x) - strength(y))[0] : null;
+  const diff = (v) => `<span class="${v > 0 ? 'up' : v < 0 ? 'down' : 'muted'}">${v > 0 ? '+' : ''}${Math.round(v)}</span>`;
+
+  const matchupTable = matchups.length ? `
+    ${best ? `<p class="matchup-callout">👍 Best matchup: <strong>${esc(best.opp)}</strong> (${best.wins}W ${best.n - best.wins}L) · 👎 Worst: <strong>${esc(worst.opp)}</strong> (${worst.wins}W ${worst.n - worst.wins}L)</p>` : ''}
+    <div class="table-wrap"><table class="stats matchups">
+      <thead><tr><th>Vs</th><th>Games</th><th>Win rate</th><th>Your score</th><th>Their score</th><th>Gold diff</th><th>CS diff</th></tr></thead>
+      <tbody>${matchups.map((m) => `<tr class="${m === best ? 'best' : m === worst ? 'worst' : ''}">
+        <td class="champ-cell"><img src="${champImg(m.opp)}" alt="" onerror="this.style.visibility='hidden'"> ${esc(m.opp)}</td>
+        <td>${m.n}</td>
+        <td class="${m.wr >= 50 ? 'up' : 'down'}">${Math.round(m.wr)}% <span class="sub">${m.wins}W ${m.n - m.wins}L</span></td>
+        <td><span class="score ${scoreClass(m.you)}">${m.you.toFixed(1)}</span></td>
+        <td><span class="score ${scoreClass(m.them)}">${m.them.toFixed(1)}</span></td>
+        <td>${diff(m.gold)}</td>
+        <td>${diff(m.cs)}</td>
+      </tr>`).join('')}</tbody>
+    </table></div>
+    <p class="sub">Opponent = the enemy in the same role. Gold and CS diff are per game; + means ahead. A matchup played once is only a hint.</p>`
+    : '<p class="muted">No lane opponents recorded for this champion.</p>';
+
+  return `<div class="champ-panel">
+    ${summary}
+    <h4>Matchups on ${esc(champ)}</h4>${matchupTable}
+    <h4>Games on ${esc(champ)}</h4><div class="games profile-games">${list.map(gameHtml).join('')}</div>
+  </div>`;
+}
+
 function playerProfileHtml(p) {
   const games = queueGames(p);
   const a = aggregate(games);
@@ -529,17 +593,35 @@ function playerProfileHtml(p) {
 
   const champs = {};
   for (const g of games) (champs[g.champion] ??= []).push(g);
-  const champRows = Object.entries(champs).map(([c, list]) => ({ c, a: aggregate(list) }))
-    .sort((x, y) => y.a.n - x.a.n || y.a.score - x.a.score).slice(0, 8);
-  const champTable = `<div class="table-wrap"><table class="stats">
-    <thead><tr><th>Champion</th><th>Games</th><th>Win rate</th><th>Avg score</th><th>KDA</th></tr></thead>
-    <tbody>${champRows.map(({ c, a: ca }) => `<tr>
-      <td class="champ-cell"><img src="${champImg(c)}" alt="" onerror="this.style.visibility='hidden'"> ${esc(c)}</td>
-      <td>${ca.n}</td>
-      <td class="${ca.winrate >= 50 ? 'up' : 'down'}">${Math.round(ca.winrate)}% <span class="sub">${ca.wins}W ${ca.losses}L</span></td>
-      <td><span class="score ${scoreClass(ca.score)}">${ca.score.toFixed(1)}</span></td>
-      <td>${ca.kda.toFixed(2)}</td>
-    </tr>`).join('')}</tbody></table></div>`;
+  const champRows = Object.entries(champs).map(([c, list]) => ({ c, list, a: aggregate(list) }))
+    .sort((x, y) => y.a.n - x.a.n || y.a.score - x.a.score);
+  const shownChamps = showAllChamps ? champRows : champRows.slice(0, 8);
+  const champTable = `<p class="sub">Click a champion to see its matchups and games.</p>
+    <div class="table-wrap"><table class="stats champs-table">
+    <thead><tr><th>Champion</th><th>Games</th><th>Win rate</th><th>Avg score</th><th>Avg finish</th><th>MVP</th><th>KDA</th><th></th></tr></thead>
+    <tbody>${shownChamps.map(({ c, list, a: ca }) => {
+      const isOpen = selectedChamp === c;
+      return `<tr class="champ-row${isOpen ? ' open' : ''}" data-champ="${esc(c)}" tabindex="0" aria-expanded="${isOpen}">
+        <td class="champ-cell"><img src="${champImg(c)}" alt="" onerror="this.style.visibility='hidden'"> ${esc(c)}</td>
+        <td>${ca.n}</td>
+        <td class="${ca.winrate >= 50 ? 'up' : 'down'}">${Math.round(ca.winrate)}% <span class="sub">${ca.wins}W ${ca.losses}L</span></td>
+        <td><span class="score ${scoreClass(ca.score)}">${ca.score.toFixed(1)}</span></td>
+        <td>${ca.place.toFixed(1)}</td>
+        <td>${ca.mvp || '–'}</td>
+        <td>${ca.kda.toFixed(2)}</td>
+        <td class="sub">${isOpen ? '▾' : '▸'}</td>
+      </tr>`;
+    }).join('')}</tbody></table></div>
+    ${champRows.length > 8 && !showAllChamps ? `<button class="show-all-champs">Show all ${champRows.length} champions</button>` : ''}
+    ${(() => {
+      const sel = champRows.find((r) => r.c === selectedChamp);
+      return sel ? `<section class="champ-detail-card" id="champ-detail">
+        <div class="champ-detail-head">
+          <img src="${champImg(sel.c)}" alt="" onerror="this.style.visibility='hidden'">
+          <h4>${esc(sel.c)}</h4>
+          <button class="close-champ" aria-label="Close">✕</button>
+        </div>${champDetailHtml(sel.c, sel.list)}</section>` : '';
+    })()}`;
 
   return `${header}
     <nav class="sort">${queueChips}<span class="sub">Last ${a.n} ranked games</span></nav>
@@ -882,6 +964,8 @@ $('#board').addEventListener('click', (e) => {
 
 window.addEventListener('hashchange', () => {
   if (location.hash === '#card') return;
+  selectedChamp = null;
+  showAllChamps = false;
   render();
   window.scrollTo(0, 0);
 });
@@ -907,6 +991,11 @@ $('#view-player').addEventListener('focusout', (e) => {
   if (e.target.classList?.contains('chart')) hideChartPoint(e.target);
 });
 $('#view-player').addEventListener('keydown', (e) => {
+  const champRow = e.target.closest?.('.champ-row');
+  if (champRow && (e.key === 'Enter' || e.key === ' ')) {
+    e.preventDefault();
+    return champRow.click();
+  }
   const el = e.target.closest?.('.chart');
   if (!el || !['ArrowLeft', 'ArrowRight'].includes(e.key)) return;
   e.preventDefault();
@@ -918,6 +1007,22 @@ $('#view-player').addEventListener('change', (e) => {
 });
 
 $('#view-player').addEventListener('click', (e) => {
+  if (e.target.closest('.show-all-champs')) {
+    showAllChamps = true;
+    return render();
+  }
+  if (e.target.closest('.close-champ')) {
+    selectedChamp = null;
+    return render();
+  }
+  const row = e.target.closest('.champ-row');
+  if (row) {
+    selectedChamp = selectedChamp === row.dataset.champ ? null : row.dataset.champ;
+    render();
+    // Bring the panel into view (it sits under the table, which can be long).
+    $('#champ-detail')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
   const chip = e.target.closest('[data-queue]');
   if (!chip) return;
   profileQueue = chip.dataset.queue;

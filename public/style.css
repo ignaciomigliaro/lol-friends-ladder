@@ -248,7 +248,8 @@ footer { margin-top: 28px; font-size: 12px; max-width: 70ch; }
   .row { grid-template-columns: 28px 44px 1fr auto; row-gap: 6px; }
   .avatar { width: 44px; height: 44px; }
   .row .hide-sm { display: none; }
-  .game { grid-template-columns: 6px 36px 1fr auto; }
+  .game { grid-template-columns: 6px 36px 1fr auto auto; gap: 8px; }
+  .game-place .badge.place { white-space: nowrap; }
   .game .hide-sm { display: none; }
 }
 
@@ -283,3 +284,21 @@ footer { margin-top: 28px; font-size: 12px; max-width: 70ch; }
 
 .deltas { display: flex; flex-wrap: wrap; column-gap: 10px; }
 .deltas .delta { cursor: help; }
+
+/* ---- Champion detail ---- */
+.champ-row { cursor: pointer; }
+.champ-row:hover td, .champ-row.open td { background: var(--panel-2); }
+.champ-row:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px; }
+.champ-detail-card { margin-top: 12px; background: #10162a; border: 1px solid var(--gold); border-radius: 12px; padding: 12px 14px 14px; scroll-margin-top: 12px; }
+.champ-detail-head { display: flex; align-items: center; gap: 10px; }
+.champ-detail-head img { width: 40px; height: 40px; border-radius: 8px; }
+.champ-detail-head h4 { margin: 0; font-size: 18px; flex: 1; }
+.close-champ { padding: 4px 10px; }
+.champ-panel { padding-top: 10px; }
+.champ-panel h4 { margin-top: 16px; }
+.cstats { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+.cstat { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; display: flex; flex-direction: column; gap: 2px; align-items: flex-start; }
+.cstat strong { font-size: 18px; }
+.matchup-callout { margin: 0 0 8px; }
+.champ-panel .table-wrap { background: var(--panel); }
+.show-all-champs { margin-top: 8px; width: 100%; }
