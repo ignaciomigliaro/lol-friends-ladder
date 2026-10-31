@@ -280,3 +280,6 @@ footer { margin-top: 28px; font-size: 12px; max-width: 70ch; }
 .chart-tip span { color: var(--muted); }
 .chart-card details { margin-top: 8px; }
 .chart-card summary { cursor: pointer; }
+
+.deltas { display: flex; flex-wrap: wrap; column-gap: 10px; }
+.deltas .delta { cursor: help; }

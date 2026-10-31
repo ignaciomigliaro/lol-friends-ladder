@@ -29,5 +29,6 @@
   "weekStart": {
     "day": "monday",
     "timeZone": "America/New_York"
-  }
+  },
+  "seasonStart": null
 }

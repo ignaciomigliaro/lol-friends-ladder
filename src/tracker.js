@@ -141,10 +141,13 @@ export function recordHistory(history, players, now) {
     if (!p.solo) continue;
     const arr = (history[p.puuid] ??= []);
     const last = arr.at(-1);
-    if (!last || last.value !== p.solo.value || now - last.t > DAY / 4) {
-      arr.push({ t: now, value: p.solo.value, label: p.solo.label });
+    // g = season games played; it drops when Riot resets ranks, which marks a new season.
+    const g = p.solo.wins + p.solo.losses;
+    if (!last || last.value !== p.solo.value || (last.g != null && g < last.g) || now - last.t > DAY / 4) {
+      arr.push({ t: now, value: p.solo.value, label: p.solo.label, g });
     }
-    history[p.puuid] = arr.filter((s) => now - s.t < 60 * DAY);
+    // Keep a year: long enough for a whole season's LP line.
+    history[p.puuid] = arr.filter((s) => now - s.t < 365 * DAY);
   }
 }
 
@@ -180,12 +183,26 @@ function weekChange(arr = [], value, start) {
   return value - base.value;
 }
 
-export function attachDeltas(players, history, now, week) {
+// "This season" counts from the first snapshot after the latest rank reset (season games dropped),
+// or after config.seasonStart, or else from when tracking started. Riot has no LP history to go further back.
+function seasonBase(arr = [], seasonStart) {
+  let from = arr.findIndex((s) => !seasonStart || s.t >= seasonStart);
+  if (from < 0) return null;
+  for (let i = arr.length - 1; i > from; i--) {
+    if (arr[i].g != null && arr[i - 1].g != null && arr[i].g < arr[i - 1].g) { from = i; break; }
+  }
+  return arr[from];
+}
+
+export function attachDeltas(players, history, now, week, seasonStart) {
   for (const p of players) {
     const v = p.solo?.value ?? -1;
+    const base = v < 0 ? null : seasonBase(history[p.puuid], seasonStart);
     p.lpDelta = {
       day: lpChange(history[p.puuid], now, v, DAY),
       week: weekChange(history[p.puuid], v, week),
+      season: base ? v - base.value : null,
+      seasonSince: base?.t ?? null,
     };
   }
 }
@@ -244,7 +261,7 @@ export async function saveLeaderboard(config, players, errors, ddragonVersion, f
 
   recordHistory(history, players, now);
   const week = weekStart(now, config.weekStart);
-  attachDeltas(players, history, now, week);
+  attachDeltas(players, history, now, week, config.seasonStart ? Date.parse(config.seasonStart) : null);
   // Solo/Duo LP snapshots for the LP-over-time chart (value = comparable LP, see ranks.js).
   for (const p of players) p.lpHistory = (history[p.puuid] ?? []).map((s) => ({ t: s.t, v: s.value }));
   await writeJson(HISTORY_FILE, history);

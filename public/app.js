@@ -8,7 +8,7 @@ const ROLE = { TOP: 'Top', JUNGLE: 'Jungle', MIDDLE: 'Mid', BOTTOM: 'ADC', UTILI
 
 let board = null;
 let staticMode = false;
-const SORTS = ['rank', 'score', 'winrate', 'week'];
+const SORTS = ['rank', 'score', 'winrate', 'week', 'season'];
 let sortBy = SORTS.includes(new URLSearchParams(location.search).get('sort')) ? new URLSearchParams(location.search).get('sort') : 'rank';
 const open = new Set();
 
@@ -48,17 +48,23 @@ function sortedPlayers() {
     score: (p) => p.stats?.avgScore ?? -1,
     winrate: (p) => p.stats?.winrate ?? -1,
     week: (p) => p.lpDelta?.week ?? -9999,
+    season: (p) => p.lpDelta?.season ?? -9999,
   }[sortBy];
   return ps.sort((a, b) => by(b) - by(a));
 }
 
 // ---------- rendering ----------
 
+const sinceText = (ts) => new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+
 function deltaHtml(p) {
-  const d = p.lpDelta?.week;
-  if (d == null || d === 0) return '';
-  const since = board.weekStart ? ` title="Since ${new Date(board.weekStart).toLocaleString(undefined, { weekday: 'long', month: 'short', day: 'numeric', hour: 'numeric' })}"` : '';
-  return `<span class="delta ${d > 0 ? 'up' : 'down'}"${since}>${signed(d)} LP this week</span>`;
+  const d = p.lpDelta ?? {};
+  const line = (v, label, title) => (v == null || v === 0 ? '' :
+    `<span class="delta ${v > 0 ? 'up' : 'down'}" title="${esc(title)}">${signed(v)} LP ${label}</span>`);
+  const week = board.weekStart ? `Since ${new Date(board.weekStart).toLocaleString(undefined, { weekday: 'long', month: 'short', day: 'numeric', hour: 'numeric' })}` : '';
+  const season = d.seasonSince ? `Since ${sinceText(d.seasonSince)}. Riot doesn't keep LP history, so the season count starts when tracking started, and restarts on its own when ranks reset.` : '';
+  const parts = [line(d.week, 'this week', week), line(d.season, 'this season', season)].filter(Boolean);
+  return parts.length ? `<div class="deltas">${parts.join('')}</div>` : '';
 }
 
 function rankHtml(p) {
@@ -748,7 +754,7 @@ function drawCard() {
   ctx.fillStyle = '#c8aa6e'; ctx.font = font(800, 54);
   ctx.fillText(fit(ctx, board.groupName ?? 'Friends Ladder', W - 2 * PAD), PAD, 92);
   ctx.fillStyle = '#8a94b0'; ctx.font = font(500, 26);
-  const sortName = { rank: 'Solo/Duo rank', score: 'avg score', winrate: 'win rate', week: 'LP this week' }[sortBy];
+  const sortName = { rank: 'Solo/Duo rank', score: 'avg score', winrate: 'win rate', week: 'LP this week', season: 'LP this season' }[sortBy];
   ctx.fillText(`Ranked leaderboard · sorted by ${sortName} · ${new Date(board.updatedAt).toLocaleDateString()}`, PAD, 136);
   ctx.fillStyle = '#5d6786'; ctx.font = font(600, 20);
   ctx.fillText('RANK', 375, 190); ctx.fillText('SCORE', 640, 190); ctx.fillText('WIN RATE', 800, 190);
@@ -778,10 +784,13 @@ function drawCard() {
 
     ctx.fillStyle = color; ctx.font = font(700, 28);
     ctx.fillText(fit(ctx, p.solo?.label ?? 'Unranked', 255), 375, mid - 4);
-    const d = p.lpDelta?.week;
-    if (d) {
-      ctx.fillStyle = d > 0 ? '#4ade80' : '#f87171'; ctx.font = font(700, 21);
-      ctx.fillText(`${d > 0 ? '▲' : '▼'} ${signed(d)} LP this week`, 375, mid + 26);
+    let dx = 375;
+    for (const [v, label] of [[p.lpDelta?.week, 'week'], [p.lpDelta?.season, 'season']]) {
+      if (!v) continue;
+      ctx.fillStyle = v > 0 ? '#4ade80' : '#f87171'; ctx.font = font(700, 17);
+      const text = fit(ctx, `${v > 0 ? '▲' : '▼'} ${signed(v)} ${label}`, 625 - dx); // stop before the score bubble
+      ctx.fillText(text, dx, mid + 26);
+      dx += ctx.measureText(text).width + 12;
     }
 
     const s = p.stats;

@@ -6,8 +6,10 @@ const signed = (n) => (n > 0 ? `+${n}` : `${n}`);
 
 function lpTag(p) {
   const d = p.lpDelta?.week;
-  if (d == null || d === 0) return '';
-  return d > 0 ? ` 📈${signed(d)}` : ` 📉${signed(d)}`;
+  const s = p.lpDelta?.season;
+  const week = d ? (d > 0 ? ` 📈${signed(d)} sem` : ` 📉${signed(d)} sem`) : '';
+  const season = s ? ` · ${signed(s)} temp` : '';
+  return week + season;
 }
 
 export function whatsappMessage(board) {
@@ -49,6 +51,6 @@ export function whatsappMessage(board) {
     for (const p of nicknamed) lines.push(`${p.nickname.emoji} *${p.name}*: "${p.nickname.title}" (${p.nickname.reason})`);
   }
 
-  lines.push('', '_Score = OP.GG-style 0–10 rating, avg of recent ranked games_');
+  lines.push('', '_Score = OP.GG-style 0–10 rating, avg of recent ranked games · sem = LP desde el lunes · temp = LP en la temporada_');
   return lines.join('\n');
 }
