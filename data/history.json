@@ -274,6 +274,12 @@
       "t": 1793476460566,
       "value": 1840,
       "label": "Platinum II 40 LP"
+    },
+    {
+      "t": 1793485767114,
+      "value": 1820,
+      "label": "Platinum II 20 LP",
+      "g": 137
     }
   ],
   "ToxVjzrmk2jV_GDehmSC0nu8uCCuMqROwsKTHz74i5BsSpAe3yYxUfRNd6xRZ6WqdtFiM5QJP-r8rQ": [
@@ -546,6 +552,12 @@
       "t": 1793463262421,
       "value": 2276,
       "label": "Emerald II 76 LP"
+    },
+    {
+      "t": 1793485767114,
+      "value": 2276,
+      "label": "Emerald II 76 LP",
+      "g": 172
     }
   ],
   "IM-_6s5ry6dIGhtqbtuCoeoGchb8An_cnNpQ6OFrTtQc9MFoAgHYUNKAjJetwvt6jcW51ryVNua2fg": [
@@ -1449,6 +1461,12 @@
       "t": 1793473607750,
       "value": 635,
       "label": "Bronze II 35 LP"
+    },
+    {
+      "t": 1793485767114,
+      "value": 625,
+      "label": "Bronze II 25 LP",
+      "g": 19
     }
   ]
 }
