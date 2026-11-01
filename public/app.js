@@ -24,7 +24,8 @@ function ddragon(kind, name) {
   if (!v || name == null) return '';
   return `https://ddragon.leagueoflegends.com/cdn/${v}/img/${kind}/${name}.png`;
 }
-const champImg = (c) => ddragon('champion', c === 'FiddleSticks' ? 'Fiddlesticks' : c);
+// Names are display names (Wukong); images are keyed by Riot's id (MonkeyKing).
+const champImg = (c) => ddragon('champion', board?.champIds?.[c] ?? (c === 'FiddleSticks' ? 'Fiddlesticks' : c));
 
 function timeAgo(ts) {
   const m = Math.round((Date.now() - ts) / 60000);

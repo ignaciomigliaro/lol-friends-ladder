@@ -213,6 +213,32 @@ export function sortPlayers(players) {
   );
 }
 
+// Match data names champions by internal id (MonkeyKing, Chogath, KSante...). Data Dragon maps
+// each id to the name players know (Wukong, Cho'Gath, K'Sante).
+async function championNames(version) {
+  try {
+    const res = await fetch(`https://ddragon.leagueoflegends.com/cdn/${version}/data/en_US/champion.json`);
+    const { data } = await res.json();
+    return Object.values(data).map((c) => ({ id: c.id, name: c.name }));
+  } catch {
+    return null;
+  }
+}
+
+// Rewrites every champion field to its display name; returns name -> image id for the ones that differ.
+function renameChampions(players, groupGames, champions) {
+  if (!champions) return {};
+  const byId = new Map(champions.map((c) => [c.id.toLowerCase(), c.name]));
+  const name = (id) => byId.get(String(id).toLowerCase()) ?? id;
+  const fix = (o) => { if (o?.champion) o.champion = name(o.champion); };
+  for (const p of players) {
+    for (const g of p.games ?? []) { fix(g); fix(g.opp); }
+    for (const c of p.topChampions ?? []) fix(c);
+  }
+  for (const g of groupGames) for (const p of g.players) fix(p);
+  return Object.fromEntries(champions.filter((c) => c.name !== c.id).map((c) => [c.name, c.id]));
+}
+
 async function latestDdragonVersion() {
   try {
     const res = await fetch('https://ddragon.leagueoflegends.com/api/versions.json');
@@ -256,6 +282,7 @@ export async function saveLeaderboard(config, players, errors, ddragonVersion, f
   const history = await readJson(HISTORY_FILE, {});
   remapPuuids(history, stored, puuidRemap);
   const groupGames = mergeGroupGames(stored, freshGroupGames);
+  const champIds = renameChampions(players, groupGames, ddragonVersion ? await championNames(ddragonVersion) : null);
   for (const g of groupGames) for (const p of g.players) p.name = names.get(p.puuid) ?? p.name;
   await writeJson(GROUP_FILE, groupGames);
 
@@ -277,6 +304,7 @@ export async function saveLeaderboard(config, players, errors, ddragonVersion, f
     groupSummary: groupSummary(groupGames),
     updateUrl: config.updateUrl ?? null,
     weekStart: week,
+    champIds,
   };
   assignNicknames(board.players, now);
   await writeJson(LEADERBOARD_FILE, board);
