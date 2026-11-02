@@ -1143,6 +1143,12 @@
       "value": 1666,
       "label": "Platinum IV 66 LP",
       "g": 110
+    },
+    {
+      "t": 1793582486374,
+      "value": 1666,
+      "label": "Platinum IV 66 LP",
+      "g": 110
     }
   ],
   "o0WdHi0_-B6f3XGQffY8d7XReGCwmT0q-kpnOlJjD5J_WoCacKC2EH_UiBFPJjiJXustTfbnIPusKQ": [
@@ -1403,6 +1409,12 @@
       "value": 1949,
       "label": "Platinum I 49 LP",
       "g": 70
+    },
+    {
+      "t": 1793582486374,
+      "value": 1949,
+      "label": "Platinum I 49 LP",
+      "g": 70
     }
   ],
   "D5R2pMMvX46TgVd72OCokbTeltRmpCwNSw39XfzTtr-JqaqHknHFSNdfGv4YDRo5PSZy85csuqiuXg": [
@@ -1626,6 +1638,12 @@
     },
     {
       "t": 1793560301882,
+      "value": 615,
+      "label": "Bronze II 15 LP",
+      "g": 20
+    },
+    {
+      "t": 1793582486374,
       "value": 615,
       "label": "Bronze II 15 LP",
       "g": 20
