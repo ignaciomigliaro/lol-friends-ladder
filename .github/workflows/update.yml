@@ -11,7 +11,7 @@ on:
   pull_request:               # test proposed changes before they are merged
 
 permissions:
-  contents: write   # commit LP history / games-together back to the repo
+  contents: write   # save LP history / games-together to the data branch
   pages: write
   id-token: write
 
@@ -71,18 +71,29 @@ jobs:
           key: matches-${{ github.run_id }}
           restore-keys: matches-
 
+      # LP history, games together and account ids live on the "data" branch, so the bot can
+      # save them without bypassing the pull-request rule on main.
+      - name: Load saved data
+        run: |
+          git fetch --depth=1 origin data && git checkout FETCH_HEAD -- data/history.json data/group-games.json data/accounts.json             || echo "No data branch yet: starting fresh."
+
       # No npm install needed: building the site has no dependencies.
       - name: Refresh and build
         run: node build.js
         env:
           RIOT_API_KEY: ${{ secrets.RIOT_API_KEY }}
 
-      - name: Save LP history and games together
+      - name: Save LP history and games together (data branch)
         run: |
-          git config user.name "leaderboard-bot"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/history.json data/group-games.json data/accounts.json
-          git diff --cached --quiet || (git commit -m "Update leaderboard data [skip ci]" && git pull --rebase && git push)
+          git config --global user.name "leaderboard-bot"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch --depth=1 origin data
+          git worktree add "$RUNNER_TEMP/data" FETCH_HEAD
+          mkdir -p "$RUNNER_TEMP/data/data"
+          cp data/history.json data/group-games.json data/accounts.json "$RUNNER_TEMP/data/data/"
+          cd "$RUNNER_TEMP/data"
+          git add data
+          git diff --cached --quiet || (git commit -q -m "Update leaderboard data" && git push origin HEAD:data)
 
       - uses: actions/upload-pages-artifact@v3
         with:

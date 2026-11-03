@@ -2,11 +2,8 @@ secrets.json
 node_modules/
 site/
 
-# Only the small state files are committed (the GitHub Action updates them).
-data/*
-!data/history.json
-!data/group-games.json
-!data/accounts.json
+# Saved data lives on the "data" branch (written by the GitHub Action), not on main.
+data/
 
 worker/.github-token
 .wrangler/
