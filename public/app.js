@@ -752,15 +752,19 @@ $('#test-discord-btn')?.addEventListener('click', async () => {
   }
 });
 
-// WhatsApp Share button
-$('#header-share-btn')?.addEventListener('click', async () => {
+// WhatsApp Share buttons (Sidebar and legacy)
+const shareWhatsApp = async () => {
   const res = await fetch('/api/whatsapp').catch(() => null);
   const text = res?.ok ? await res.text() : '';
   if (text) {
     await navigator.clipboard.writeText(text);
-    toast('¡Texto formateado copiado al portapapeles!');
+    toast('¡Resumen para WhatsApp copiado al portapapeles!');
+  } else {
+    toast('No se pudo generar el texto para WhatsApp.');
   }
-});
+};
+$('#header-share-btn')?.addEventListener('click', shareWhatsApp);
+$('#nav-btn-whatsapp')?.addEventListener('click', shareWhatsApp);
 
 // ---------- Initial Load ----------
 async function load() {
