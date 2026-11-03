@@ -46,6 +46,24 @@ Runs smoothly as an automated site on **GitHub Pages** (refreshed every 30 minut
 
 ---
 
+## Contributing (pull requests)
+
+`main` only accepts changes through a **pull request**, and a pull request can only be merged once the
+tests pass. Nobody can push straight to `main`, force-push over it or delete it.
+
+```bash
+git switch -c my-change          # work on a branch
+# ...edit, then run npm test and npm run test:e2e locally...
+git push -u origin my-change
+gh pr create --fill              # or open the PR on github.com
+```
+
+GitHub runs the tests on the PR. When the **test** check is green, press **Merge**; the site updates
+right after. If it's red, open the check to see what broke, fix it on the same branch and push again.
+
+The bot's saved data (LP history, games together, account ids) lives on the separate **`data`**
+branch, which the Action reads before each update and writes after it.
+
 ## Tests
 
 Every push and pull request runs two test suites on GitHub **before** anything is published. If a
