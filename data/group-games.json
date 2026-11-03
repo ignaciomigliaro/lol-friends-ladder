@@ -108,7 +108,7 @@
       {
         "puuid": "IM-_6s5ry6dIGhtqbtuCoeoGchb8An_cnNpQ6OFrTtQc9MFoAgHYUNKAjJetwvt6jcW51ryVNua2fg",
         "name": "ChubbyKop",
-        "champion": "Kaisa",
+        "champion": "Kai'Sa",
         "position": "BOTTOM",
         "kills": 11,
         "deaths": 7,
@@ -280,7 +280,7 @@
       {
         "puuid": "ToxVjzrmk2jV_GDehmSC0nu8uCCuMqROwsKTHz74i5BsSpAe3yYxUfRNd6xRZ6WqdtFiM5QJP-r8rQ",
         "name": "Yúta Okkotsu",
-        "champion": "Chogath",
+        "champion": "Cho'Gath",
         "position": "TOP",
         "kills": 6,
         "deaths": 2,
@@ -366,7 +366,7 @@
       {
         "puuid": "IM-_6s5ry6dIGhtqbtuCoeoGchb8An_cnNpQ6OFrTtQc9MFoAgHYUNKAjJetwvt6jcW51ryVNua2fg",
         "name": "ChubbyKop",
-        "champion": "Kaisa",
+        "champion": "Kai'Sa",
         "position": "BOTTOM",
         "kills": 29,
         "deaths": 14,
@@ -516,7 +516,7 @@
       {
         "puuid": "ToxVjzrmk2jV_GDehmSC0nu8uCCuMqROwsKTHz74i5BsSpAe3yYxUfRNd6xRZ6WqdtFiM5QJP-r8rQ",
         "name": "Yúta Okkotsu",
-        "champion": "MonkeyKing",
+        "champion": "Wukong",
         "position": "JUNGLE",
         "kills": 1,
         "deaths": 8,
@@ -634,7 +634,7 @@
       {
         "puuid": "ToxVjzrmk2jV_GDehmSC0nu8uCCuMqROwsKTHz74i5BsSpAe3yYxUfRNd6xRZ6WqdtFiM5QJP-r8rQ",
         "name": "Yúta Okkotsu",
-        "champion": "Chogath",
+        "champion": "Cho'Gath",
         "position": "JUNGLE",
         "kills": 3,
         "deaths": 8,
@@ -688,7 +688,7 @@
       {
         "puuid": "ToxVjzrmk2jV_GDehmSC0nu8uCCuMqROwsKTHz74i5BsSpAe3yYxUfRNd6xRZ6WqdtFiM5QJP-r8rQ",
         "name": "Yúta Okkotsu",
-        "champion": "MonkeyKing",
+        "champion": "Wukong",
         "position": "JUNGLE",
         "kills": 11,
         "deaths": 6,
@@ -774,7 +774,7 @@
       {
         "puuid": "ToxVjzrmk2jV_GDehmSC0nu8uCCuMqROwsKTHz74i5BsSpAe3yYxUfRNd6xRZ6WqdtFiM5QJP-r8rQ",
         "name": "Yúta Okkotsu",
-        "champion": "MonkeyKing",
+        "champion": "Wukong",
         "position": "JUNGLE",
         "kills": 4,
         "deaths": 3,
@@ -892,7 +892,7 @@
       {
         "puuid": "ToxVjzrmk2jV_GDehmSC0nu8uCCuMqROwsKTHz74i5BsSpAe3yYxUfRNd6xRZ6WqdtFiM5QJP-r8rQ",
         "name": "Yúta Okkotsu",
-        "champion": "Chogath",
+        "champion": "Cho'Gath",
         "position": "JUNGLE",
         "kills": 3,
         "deaths": 4,
@@ -946,7 +946,7 @@
       {
         "puuid": "ToxVjzrmk2jV_GDehmSC0nu8uCCuMqROwsKTHz74i5BsSpAe3yYxUfRNd6xRZ6WqdtFiM5QJP-r8rQ",
         "name": "Yúta Okkotsu",
-        "champion": "Chogath",
+        "champion": "Cho'Gath",
         "position": "JUNGLE",
         "kills": 12,
         "deaths": 4,
@@ -1010,7 +1010,7 @@
       {
         "puuid": "IM-_6s5ry6dIGhtqbtuCoeoGchb8An_cnNpQ6OFrTtQc9MFoAgHYUNKAjJetwvt6jcW51ryVNua2fg",
         "name": "ChubbyKop",
-        "champion": "AurelionSol",
+        "champion": "Aurelion Sol",
         "position": "MIDDLE",
         "kills": 9,
         "deaths": 10,
@@ -1128,7 +1128,7 @@
       {
         "puuid": "IM-_6s5ry6dIGhtqbtuCoeoGchb8An_cnNpQ6OFrTtQc9MFoAgHYUNKAjJetwvt6jcW51ryVNua2fg",
         "name": "ChubbyKop",
-        "champion": "Belveth",
+        "champion": "Bel'Veth",
         "position": "JUNGLE",
         "kills": 5,
         "deaths": 13,
@@ -1214,7 +1214,7 @@
       {
         "puuid": "IM-_6s5ry6dIGhtqbtuCoeoGchb8An_cnNpQ6OFrTtQc9MFoAgHYUNKAjJetwvt6jcW51ryVNua2fg",
         "name": "ChubbyKop",
-        "champion": "JarvanIV",
+        "champion": "Jarvan IV",
         "position": "JUNGLE",
         "kills": 8,
         "deaths": 6,
@@ -1268,7 +1268,7 @@
       {
         "puuid": "ToxVjzrmk2jV_GDehmSC0nu8uCCuMqROwsKTHz74i5BsSpAe3yYxUfRNd6xRZ6WqdtFiM5QJP-r8rQ",
         "name": "Yúta Okkotsu",
-        "champion": "MonkeyKing",
+        "champion": "Wukong",
         "position": "JUNGLE",
         "kills": 4,
         "deaths": 7,
@@ -1354,7 +1354,7 @@
       {
         "puuid": "ToxVjzrmk2jV_GDehmSC0nu8uCCuMqROwsKTHz74i5BsSpAe3yYxUfRNd6xRZ6WqdtFiM5QJP-r8rQ",
         "name": "Yúta Okkotsu",
-        "champion": "MonkeyKing",
+        "champion": "Wukong",
         "position": "JUNGLE",
         "kills": 7,
         "deaths": 8,
@@ -1472,7 +1472,7 @@
       {
         "puuid": "ToxVjzrmk2jV_GDehmSC0nu8uCCuMqROwsKTHz74i5BsSpAe3yYxUfRNd6xRZ6WqdtFiM5QJP-r8rQ",
         "name": "Yúta Okkotsu",
-        "champion": "MonkeyKing",
+        "champion": "Wukong",
         "position": "JUNGLE",
         "kills": 13,
         "deaths": 8,
@@ -1526,7 +1526,7 @@
       {
         "puuid": "ToxVjzrmk2jV_GDehmSC0nu8uCCuMqROwsKTHz74i5BsSpAe3yYxUfRNd6xRZ6WqdtFiM5QJP-r8rQ",
         "name": "Yúta Okkotsu",
-        "champion": "Chogath",
+        "champion": "Cho'Gath",
         "position": "JUNGLE",
         "kills": 2,
         "deaths": 3,
@@ -2094,7 +2094,7 @@
       {
         "puuid": "ToxVjzrmk2jV_GDehmSC0nu8uCCuMqROwsKTHz74i5BsSpAe3yYxUfRNd6xRZ6WqdtFiM5QJP-r8rQ",
         "name": "Yúta Okkotsu",
-        "champion": "MonkeyKing",
+        "champion": "Wukong",
         "position": "JUNGLE",
         "kills": 6,
         "deaths": 7,
@@ -2308,7 +2308,7 @@
       {
         "puuid": "ToxVjzrmk2jV_GDehmSC0nu8uCCuMqROwsKTHz74i5BsSpAe3yYxUfRNd6xRZ6WqdtFiM5QJP-r8rQ",
         "name": "Yúta Okkotsu",
-        "champion": "MonkeyKing",
+        "champion": "Wukong",
         "position": "JUNGLE",
         "kills": 3,
         "deaths": 2,
@@ -2426,7 +2426,7 @@
       {
         "puuid": "ToxVjzrmk2jV_GDehmSC0nu8uCCuMqROwsKTHz74i5BsSpAe3yYxUfRNd6xRZ6WqdtFiM5QJP-r8rQ",
         "name": "Yúta Okkotsu",
-        "champion": "MonkeyKing",
+        "champion": "Wukong",
         "position": "JUNGLE",
         "kills": 4,
         "deaths": 3,
@@ -2576,7 +2576,7 @@
       {
         "puuid": "ToxVjzrmk2jV_GDehmSC0nu8uCCuMqROwsKTHz74i5BsSpAe3yYxUfRNd6xRZ6WqdtFiM5QJP-r8rQ",
         "name": "Yúta Okkotsu",
-        "champion": "Chogath",
+        "champion": "Cho'Gath",
         "position": "JUNGLE",
         "kills": 7,
         "deaths": 4,
@@ -2920,7 +2920,7 @@
       {
         "puuid": "ToxVjzrmk2jV_GDehmSC0nu8uCCuMqROwsKTHz74i5BsSpAe3yYxUfRNd6xRZ6WqdtFiM5QJP-r8rQ",
         "name": "Yúta Okkotsu",
-        "champion": "MonkeyKing",
+        "champion": "Wukong",
         "position": "JUNGLE",
         "kills": 9,
         "deaths": 10,
@@ -3006,7 +3006,7 @@
       {
         "puuid": "ToxVjzrmk2jV_GDehmSC0nu8uCCuMqROwsKTHz74i5BsSpAe3yYxUfRNd6xRZ6WqdtFiM5QJP-r8rQ",
         "name": "Yúta Okkotsu",
-        "champion": "MonkeyKing",
+        "champion": "Wukong",
         "position": "JUNGLE",
         "kills": 3,
         "deaths": 2,
@@ -3124,7 +3124,7 @@
       {
         "puuid": "ToxVjzrmk2jV_GDehmSC0nu8uCCuMqROwsKTHz74i5BsSpAe3yYxUfRNd6xRZ6WqdtFiM5QJP-r8rQ",
         "name": "Yúta Okkotsu",
-        "champion": "MonkeyKing",
+        "champion": "Wukong",
         "position": "JUNGLE",
         "kills": 7,
         "deaths": 1,
@@ -3242,7 +3242,7 @@
       {
         "puuid": "ToxVjzrmk2jV_GDehmSC0nu8uCCuMqROwsKTHz74i5BsSpAe3yYxUfRNd6xRZ6WqdtFiM5QJP-r8rQ",
         "name": "Yúta Okkotsu",
-        "champion": "MonkeyKing",
+        "champion": "Wukong",
         "position": "JUNGLE",
         "kills": 11,
         "deaths": 2,
@@ -3704,7 +3704,7 @@
       {
         "puuid": "IM-_6s5ry6dIGhtqbtuCoeoGchb8An_cnNpQ6OFrTtQc9MFoAgHYUNKAjJetwvt6jcW51ryVNua2fg",
         "name": "ChubbyKop",
-        "champion": "MonkeyKing",
+        "champion": "Wukong",
         "position": "JUNGLE",
         "kills": 9,
         "deaths": 4,
@@ -3876,7 +3876,7 @@
       {
         "puuid": "IM-_6s5ry6dIGhtqbtuCoeoGchb8An_cnNpQ6OFrTtQc9MFoAgHYUNKAjJetwvt6jcW51ryVNua2fg",
         "name": "ChubbyKop",
-        "champion": "Chogath",
+        "champion": "Cho'Gath",
         "position": "JUNGLE",
         "kills": 9,
         "deaths": 9,
@@ -3930,7 +3930,7 @@
       {
         "puuid": "0mYmlyl77kdcCNMtIV0qHM2Qq2X5zo8TcPOpKNEZn0Z8y2Orwn6Lsq1b0d0D6EAoQ1sSPfxv83X3uw",
         "name": "Panda",
-        "champion": "Kaisa",
+        "champion": "Kai'Sa",
         "position": "BOTTOM",
         "kills": 19,
         "deaths": 3,
@@ -6088,7 +6088,7 @@
       {
         "puuid": "IM-_6s5ry6dIGhtqbtuCoeoGchb8An_cnNpQ6OFrTtQc9MFoAgHYUNKAjJetwvt6jcW51ryVNua2fg",
         "name": "ChubbyKop",
-        "champion": "Leblanc",
+        "champion": "LeBlanc",
         "position": "MIDDLE",
         "kills": 9,
         "deaths": 5,
