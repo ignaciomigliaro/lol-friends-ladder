@@ -1,63 +1,396 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Friends Ladder</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>La Grieta de los Pibes — Tracker & Leaderboard</title>
+  <link rel="icon" type="image/jpeg" href="assets/logo.jpg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header>
-    <div>
-      <h1 id="group">Friends Ladder</h1>
-      <p id="updated" class="muted">No data yet</p>
+  <div class="app-layout">
+    <!-- Desktop Left Sidebar -->
+    <aside id="sidebar" class="sidebar">
+      <div class="sidebar-brand">
+        <img src="assets/logo.jpg" alt="Logo Oficial La Grieta de los Pibes" class="brand-logo-img">
+        <div class="brand-text">
+          <span class="brand-title">La Grieta</span>
+          <span class="brand-subtitle">de los Pibes · Esports</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div>
+          <div class="nav-group-title">Competir</div>
+          <ul class="nav-list">
+            <li>
+              <a class="nav-link active" data-view="overview">
+                <span class="nav-icon">📊</span>
+                <span>Overview</span>
+              </a>
+            </li>
+            <li>
+              <a class="nav-link" data-view="leaderboard">
+                <span class="nav-icon">🏆</span>
+                <span>Leaderboard</span>
+              </a>
+            </li>
+            <li>
+              <a class="nav-link" data-view="duels">
+                <span class="nav-icon">⚔️</span>
+                <span>1v1 Duels</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        <div>
+          <div class="nav-group-title">Analizar</div>
+          <ul class="nav-list">
+            <li>
+              <a class="nav-link" data-view="synergy">
+                <span class="nav-icon">👥</span>
+                <span>Synergy & Duos</span>
+              </a>
+            </li>
+            <li>
+              <a class="nav-link" data-view="apodos">
+                <span class="nav-icon">🎭</span>
+                <span>Apodos & Roasts</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        <div>
+          <div class="nav-group-title">Comunidad</div>
+          <ul class="nav-list">
+            <li>
+              <a class="nav-link" id="nav-btn-friends">
+                <span class="nav-icon">➕</span>
+                <span>Gestionar Amigos</span>
+              </a>
+            </li>
+            <li>
+              <a class="nav-link" id="nav-btn-discord">
+                <span class="nav-icon">💬</span>
+                <span>Discord Webhook</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="status-pill">
+          <span class="status-dot"></span>
+          <span id="sidebar-status-text">Servidor Activo</span>
+        </div>
+        <div class="region-tag" id="sidebar-region">Temporada 2026 · LAN</div>
+      </div>
+    </aside>
+
+    <!-- Main Wrapper -->
+    <div class="main-wrapper">
+      <!-- Top Navigation Header -->
+      <header class="top-header">
+        <div class="header-left">
+          <button id="mobile-toggle" class="mobile-menu-toggle" aria-label="Abrir Menú">☰</button>
+          <div class="breadcrumb-group">
+            <span class="section-title" id="page-title">Overview Dashboard</span>
+            <span class="section-subtitle" id="group-subtitle">La Grieta de los Pibes</span>
+          </div>
+        </div>
+
+        <div class="header-right">
+          <div class="search-input-wrap">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="friend-search" class="search-input" placeholder="Buscar invocador...">
+          </div>
+          <button id="header-manage-btn" class="btn btn-primary">👥 Amigos</button>
+          <button id="header-refresh-btn" class="btn" title="Buscar partidas nuevas de Riot Games">🔄 Actualizar</button>
+          <button id="header-share-btn" class="btn btn-ghost" title="Compartir en WhatsApp">📲 WhatsApp</button>
+        </div>
+      </header>
+
+      <!-- Sync Progress Notification -->
+      <div id="sync-banner" class="sync-banner" hidden>
+        <div id="sync-text" style="font-weight: 600; font-size: 13px;">Sincronizando partidas con Riot Games…</div>
+        <div class="sync-progress-bar">
+          <div id="sync-progress-fill" class="sync-progress-fill" style="width: 0%;"></div>
+        </div>
+      </div>
+
+      <!-- Main Content Body -->
+      <main class="content-body">
+
+        <!-- ==================== VIEW 1: OVERVIEW DASHBOARD ==================== -->
+        <section id="view-overview" class="view-section active-view">
+          <!-- MVP Card -->
+          <div id="mvp-container"></div>
+
+          <!-- 4 Stats Cards -->
+          <div class="stat-grid-4">
+            <div class="stat-card">
+              <div class="stat-icon-wrap stat-icon-gold">👥</div>
+              <div class="stat-info">
+                <span class="stat-val" id="stat-total-friends">0</span>
+                <span class="stat-lbl">Invocadores en Lista</span>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon-wrap stat-icon-cyan">🎯</div>
+              <div class="stat-info">
+                <span class="stat-val" id="stat-avg-winrate">0%</span>
+                <span class="stat-lbl">Win Rate Promedio</span>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon-wrap stat-icon-green">📈</div>
+              <div class="stat-info">
+                <span class="stat-val" id="stat-total-lp">+0 LP</span>
+                <span class="stat-lbl">LP Ganados esta Semana</span>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon-wrap stat-icon-purple">⚔️</div>
+              <div class="stat-info">
+                <span class="stat-val" id="stat-total-games">0</span>
+                <span class="stat-lbl">Partidas Jugadas Juntos</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Podium Top 3 -->
+          <div class="filter-bar">
+            <h2 style="font-family: var(--font-heading); font-size: 20px;">🏆 Top Competidores</h2>
+            <div class="pill-group">
+              <button class="pill-btn active" data-sort="rank">Rango Solo/Duo</button>
+              <button class="pill-btn" data-sort="score">Score OP.GG</button>
+              <button class="pill-btn" data-sort="winrate">Win Rate</button>
+              <button class="pill-btn" data-sort="week">LP Semanal</button>
+            </div>
+          </div>
+          <div id="podium-container" class="podium-container"></div>
+
+          <!-- Table Header -->
+          <div class="leaderboard-table-header">
+            <span class="col-pos">POS</span>
+            <span class="col-identity">INVOCADOR / RANGO</span>
+            <span class="col-winrate">WIN RATE</span>
+            <span class="col-delta">LP SEMANAL</span>
+            <span class="col-spark">TENDENCIA</span>
+            <span class="col-score">SCORE</span>
+          </div>
+
+          <!-- Quick Leaderboard List Preview -->
+          <div id="overview-leaderboard" class="leaderboard-list"></div>
+        </section>
+
+        <!-- ==================== VIEW 2: LEADERBOARD ==================== -->
+        <section id="view-leaderboard" class="view-section">
+          <div class="filter-bar">
+            <div>
+              <h2 style="font-family: var(--font-heading); font-size: 22px; color: var(--gold);">Tabla de Clasificación Oficial</h2>
+              <p class="muted">Clasificación en tiempo real basada en Solo/Duo, desempeño OP.GG y LP ganados.</p>
+            </div>
+            <div class="pill-group">
+              <button class="pill-btn active" data-sort="rank">Rango</button>
+              <button class="pill-btn" data-sort="score">Score</button>
+              <button class="pill-btn" data-sort="winrate">Win Rate</button>
+              <button class="pill-btn" data-sort="week">Esta Semana</button>
+              <button class="pill-btn" data-sort="season">Temporada</button>
+            </div>
+          </div>
+
+          <!-- Top 3 Podium in Leaderboard View -->
+          <div id="leaderboard-podium-container" class="podium-container" style="margin-bottom: 24px;"></div>
+
+          <!-- Table Header -->
+          <div class="leaderboard-table-header">
+            <span class="col-pos">POS</span>
+            <span class="col-identity">INVOCADOR / RANGO</span>
+            <span class="col-winrate">WIN RATE</span>
+            <span class="col-delta">LP SEMANAL</span>
+            <span class="col-spark">TENDENCIA</span>
+            <span class="col-score">SCORE</span>
+          </div>
+
+          <div id="full-leaderboard" class="leaderboard-list"></div>
+        </section>
+
+        <!-- ==================== VIEW 3: 1V1 DUELS ARENA ==================== -->
+        <section id="view-duels" class="view-section">
+          <div style="margin-bottom: 24px;">
+            <h2 style="font-family: var(--font-heading); font-size: 22px; color: var(--gold);">⚔️ Arena de Duelo 1v1 — Cara a Cara</h2>
+            <p class="muted">Compara las estadísticas head-to-head de dos amigos de tu grupo.</p>
+          </div>
+
+          <div class="duels-arena">
+            <div class="duel-selectors">
+              <!-- Player A -->
+              <div class="duel-player-box">
+                <div class="duel-avatar-wrap">
+                  <img id="duel-avatar-a" src="" alt="" style="width:100%;height:100%;object-fit:cover;">
+                </div>
+                <select id="duel-select-a" class="duel-select-dropdown"></select>
+                <div id="duel-tier-a" style="font-weight: 700; color: var(--ice-blue);">Emerald II</div>
+              </div>
+
+              <!-- VS Badge -->
+              <div class="duel-vs-badge">VS</div>
+
+              <!-- Player B -->
+              <div class="duel-player-box">
+                <div class="duel-avatar-wrap" style="border-color: var(--gold);">
+                  <img id="duel-avatar-b" src="" alt="" style="width:100%;height:100%;object-fit:cover;">
+                </div>
+                <select id="duel-select-b" class="duel-select-dropdown"></select>
+                <div id="duel-tier-b" style="font-weight: 700; color: var(--gold);">Diamond IV</div>
+              </div>
+            </div>
+
+            <!-- Comparison Bars -->
+            <div id="duel-comparison-bars" class="duel-bars-container"></div>
+          </div>
+        </section>
+
+        <!-- ==================== VIEW 4: SYNERGY & DUOS ==================== -->
+        <section id="view-synergy" class="view-section">
+          <div style="margin-bottom: 24px;">
+            <h2 style="font-family: var(--font-heading); font-size: 22px; color: var(--gold);">👥 Sinergia y Partidas en Grupo</h2>
+            <p class="muted">Descubre quién carrea al equipo y qué duos tienen el mejor porcentaje de victorias.</p>
+          </div>
+
+          <div class="synergy-grid">
+            <div class="synergy-card">
+              <div class="synergy-card-title">👑 Rendimiento al Jugar Juntos</div>
+              <div id="synergy-players-list"></div>
+            </div>
+
+            <div class="synergy-card">
+              <div class="synergy-card-title">🔥 Duos Más Efectivos</div>
+              <div id="synergy-duos-list"></div>
+            </div>
+          </div>
+
+          <div style="margin-top: 32px;">
+            <h3 style="font-family: var(--font-heading); font-size: 18px; margin-bottom: 14px;">Historial de Partidas en Grupo</h3>
+            <div id="synergy-games-list"></div>
+          </div>
+        </section>
+
+        <!-- ==================== VIEW 5: APODOS & ROASTS ==================== -->
+        <section id="view-apodos" class="view-section">
+          <div style="margin-bottom: 24px;">
+            <h2 style="font-family: var(--font-heading); font-size: 22px; color: var(--gold);">🎭 Apodos de la Semana</h2>
+            <p class="muted">Apodos generados algorítmicamente según las debilidades reales de cada jugador.</p>
+          </div>
+
+          <div id="apodos-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;"></div>
+        </section>
+
+        <!-- ==================== VIEW 6: DETAILED PLAYER PROFILE ==================== -->
+        <section id="view-player" class="view-section">
+          <button id="back-from-player-btn" class="btn btn-ghost" style="margin-bottom: 16px;">← Volver al Leaderboard</button>
+          <div id="player-profile-content"></div>
+        </section>
+
+      </main>
     </div>
-    <div class="actions">
-      <button id="send" class="primary" title="Copies the leaderboard image and opens WhatsApp so you can paste it in the group">📲 Send image to WhatsApp</button>
-      <button id="share" title="Opens the system share menu with the image">Share…</button>
-      <button id="download">Download image</button>
-      <button id="copy">Copy text</button>
-      <button id="refresh">Refresh</button>
-    </div>
-  </header>
-
-  <div id="status" class="status" hidden></div>
-
-  <nav id="tabs" class="tabs" aria-label="Views"></nav>
-
-  <div id="view-board">
-    <nav id="sort-nav" class="sort" aria-label="Sort by">
-      <span class="muted">Sort:</span>
-      <button data-sort="rank" class="active">Rank</button>
-      <button data-sort="score">Avg score</button>
-      <button data-sort="winrate">Win rate</button>
-      <button data-sort="week">LP this week</button>
-      <button data-sort="season">LP this season</button>
-    </nav>
-
-    <main id="board"></main>
-
-    <section id="errors" hidden></section>
-
-    <section id="together" hidden>
-      <h2>Playing together</h2>
-      <div id="together-summary"></div>
-      <div id="together-games"></div>
-    </section>
   </div>
 
-  <main id="view-player" hidden></main>
+  <!-- Mobile Bottom Navigation Bar (Matching Mockup) -->
+  <nav class="mobile-bottom-nav">
+    <button class="mobile-nav-item active" data-view="overview">
+      <span class="nav-icon">🏆</span>
+      <span>Leaderboard</span>
+    </button>
+    <button class="mobile-nav-item" data-view="duels">
+      <span class="nav-icon">⚔️</span>
+      <span>1v1 Duels</span>
+    </button>
+    <button class="mobile-nav-item" data-view="synergy">
+      <span class="nav-icon">👥</span>
+      <span>Synergy</span>
+    </button>
+    <button class="mobile-nav-item" id="mobile-manage-btn">
+      <span class="nav-icon">⚙️</span>
+      <span>Config</span>
+    </button>
+  </nav>
 
-  <footer class="muted">
-    <p>Score is an OP.GG-style 0–10 rating computed per game relative to the other 9 players
-    (role-weighted KDA, kill participation, damage, gold, CS, vision, tanking, objectives).
-    Averages use recent ranked games. Click a player to see their games.</p>
-    <p>This site isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or anyone
-    officially involved in producing or managing Riot Games properties. Riot Games, and all associated properties
-    are trademarks or registered trademarks of Riot Games, Inc.</p>
-  </footer>
+  <!-- Dialog 1: Manage Friends Modal -->
+  <dialog id="friends-dialog" class="modal-dialog">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h2>👥 Gestionar Jugadores del Grupo</h2>
+        <button type="button" id="close-dialog-btn" class="icon-btn">&times;</button>
+      </div>
+      <form id="friends-form">
+        <div class="form-grid">
+          <label class="form-field">
+            <span>Nombre del Grupo</span>
+            <input type="text" id="cfg-group-name" required placeholder="La Grieta de los Pibes">
+          </label>
+          <label class="form-field">
+            <span>Región Predeterminada</span>
+            <select id="cfg-platform">
+              <option value="la1">LAN (Latinoamérica Norte)</option>
+              <option value="la2">LAS (Latinoamérica Sur)</option>
+              <option value="na1">NA (Norteamérica)</option>
+              <option value="br1">Brasil</option>
+              <option value="euw1">EUW (Europa Oeste)</option>
+              <option value="kr">Corea</option>
+            </select>
+          </label>
+        </div>
 
+        <div class="friends-head">
+          <h3>Lista de Amigos</h3>
+          <p class="muted sub">Ingresa el Riot ID completo en formato <code>Nombre#TAG</code>. El apodo y región son opcionales.</p>
+        </div>
+
+        <div id="friends-container" class="friends-container"></div>
+
+        <button type="button" id="add-friend-row-btn" class="btn secondary add-row-btn">➕ Agregar otro jugador</button>
+
+        <div class="modal-foot">
+          <button type="button" id="cancel-dialog-btn" class="btn">Cancelar</button>
+          <button type="submit" id="save-friends-btn" class="btn btn-primary">💾 Guardar y Actualizar</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- Dialog 2: Discord Webhook Modal -->
+  <dialog id="discord-dialog" class="modal-dialog">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h2>💬 Integración Discord Webhook</h2>
+        <button type="button" id="close-discord-btn" class="icon-btn">&times;</button>
+      </div>
+      <div style="display:flex; flex-direction:column; gap: 14px; margin-bottom: 20px;">
+        <p class="muted">Configura una URL de Webhook de Discord para enviar la tabla y anuncios automáticos a tu canal de texto.</p>
+        <label class="form-field">
+          <span>URL del Webhook de Discord:</span>
+          <input type="url" id="discord-webhook-url" placeholder="https://discord.com/api/webhooks/...">
+        </label>
+        <button type="button" id="test-discord-btn" class="btn">🚀 Enviar mensaje de prueba a Discord</button>
+      </div>
+      <div class="modal-foot">
+        <button type="button" id="cancel-discord-btn" class="btn">Cerrar</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Floating Toast Notification -->
   <div id="toast" class="toast" hidden></div>
+
+  <!-- JavaScript Module -->
   <script src="app.js" type="module"></script>
 </body>
 </html>

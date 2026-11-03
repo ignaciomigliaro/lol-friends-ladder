@@ -1,4 +1,4 @@
-# LoL Friends Tracker
+# La Grieta de los Pibes
 
 A leaderboard for your friend group: Solo/Duo rank, LP gained or lost this week, win rate, and an
 **OP.GG-style 0–10 performance score** for every ranked game. It also gives a detailed breakdown of

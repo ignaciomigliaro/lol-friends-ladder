@@ -1,7 +1,7 @@
 {
   "name": "lol-friends-tracker",
   "version": "1.0.0",
-  "description": "Tracks your friends' League of Legends rank and per-game performance score (OP.GG-style), with WhatsApp-ready sharing.",
+  "description": "La Grieta de los Pibes — Tracker de League of Legends con ranking, desempeño estilo OP.GG y análisis competitivo para amigos.",
   "type": "module",
   "private": true,
   "engines": {

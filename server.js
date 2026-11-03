@@ -166,7 +166,7 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(config.port, config.host, async () => {
   const shown = config.host === '0.0.0.0' ? 'localhost' : config.host;
-  console.log(`LoL Friends Tracker running at http://${shown}:${config.port}`);
+  console.log(`La Grieta de los Pibes running at http://${shown}:${config.port}`);
 
   if (config.whatsapp?.enabled) {
     try {
