@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { DATA_DIR } from './config.js';
-import { RiotClient, AuthError } from './riot.js';
+import { RiotClient, AuthError, PLATFORM_TO_REGION } from './riot.js';
 import { scoreMatch, isRemake } from './score.js';
 import { rankValue, rankLabel } from './ranks.js';
 import { assignNicknames } from './nicknames.js';
@@ -217,7 +217,9 @@ export function sortPlayers(players) {
 // each id to the name players know (Wukong, Cho'Gath, K'Sante).
 async function championNames(version) {
   try {
-    const res = await fetch(`https://ddragon.leagueoflegends.com/cdn/${version}/data/en_US/champion.json`);
+    const res = await fetch(`https://ddragon.leagueoflegends.com/cdn/${version}/data/en_US/champion.json`, {
+      signal: AbortSignal.timeout(10_000),
+    });
     const { data } = await res.json();
     return Object.values(data).map((c) => ({ id: c.id, name: c.name }));
   } catch {
@@ -241,7 +243,9 @@ function renameChampions(players, groupGames, champions) {
 
 async function latestDdragonVersion() {
   try {
-    const res = await fetch('https://ddragon.leagueoflegends.com/api/versions.json');
+    const res = await fetch('https://ddragon.leagueoflegends.com/api/versions.json', {
+      signal: AbortSignal.timeout(10_000),
+    });
     return (await res.json())[0];
   } catch {
     return null;
@@ -257,8 +261,16 @@ export async function readJson(file, fallback) {
 }
 
 export async function writeJson(file, data) {
-  await fs.mkdir(path.dirname(file), { recursive: true });
-  await fs.writeFile(file, JSON.stringify(data, null, 2));
+  const dir = path.dirname(file);
+  await fs.mkdir(dir, { recursive: true });
+  const tmpFile = path.join(dir, `.${path.basename(file)}.tmp.${Date.now()}.${Math.random().toString(36).slice(2)}`);
+  try {
+    await fs.writeFile(tmpFile, JSON.stringify(data, null, 2), 'utf8');
+    await fs.rename(tmpFile, file);
+  } catch (err) {
+    await fs.unlink(tmpFile).catch(() => {});
+    throw err;
+  }
 }
 
 export const readLeaderboard = () => readJson(LEADERBOARD_FILE, null);
@@ -323,23 +335,26 @@ export async function refreshAll(config, onProgress = () => {}) {
     onProgress({ done: i, total, current: friend.riotId });
     try {
       const [gameName, tagLine] = splitRiotId(friend.riotId);
-      const account = await client.account(gameName, tagLine);
+      const platform = (friend.platform ?? config.platform).toLowerCase();
+      const region = PLATFORM_TO_REGION[platform] ?? client.region;
+      const account = await client.account(gameName, tagLine, region);
       if (!account) throw new Error('Riot ID not found (check spelling and tag)');
       // Solo/Duo and Flex are fetched separately so a player who grinds one queue still
       // has their other queue's history on the profile.
       const perQueue = Math.max(config.matchesPerPlayer, config.profileMatches ?? 40);
       const [summoner, entries, soloIds, flexIds, recentIds] = await Promise.all([
-        client.summoner(account.puuid),
-        client.leagueEntries(account.puuid),
-        client.matchIds(account.puuid, perQueue, { queue: 420 }),
-        client.matchIds(account.puuid, perQueue, { queue: 440 }),
-        client.matchIds(account.puuid, config.groupLookback ?? 20),
+        client.summoner(account.puuid, platform),
+        client.leagueEntries(account.puuid, platform),
+        client.matchIds(account.puuid, perQueue, { queue: 420 }, region),
+        client.matchIds(account.puuid, perQueue, { queue: 440 }, region),
+        client.matchIds(account.puuid, config.groupLookback ?? 20, {}, region),
       ]);
       const ids = [...soloIds, ...flexIds];
-      const matches = await Promise.all(ids.map((id) => client.match(id)));
+      const matches = await Promise.all(ids.map((id) => client.match(id, region)));
       const player = summarizePlayer({ friend, account, summoner, entries, matches, statsGames: config.matchesPerPlayer });
+      player.platform = platform;
       players.push(player);
-      recentByPlayer.set(account.puuid, new Set([...ids, ...recentIds]));
+      recentByPlayer.set(account.puuid, { ids: new Set([...ids, ...recentIds]), region });
     } catch (err) {
       if (err instanceof AuthError) throw err;
       errors.push({ riotId: friend.riotId, error: err.message });
@@ -348,10 +363,16 @@ export async function refreshAll(config, onProgress = () => {}) {
   // Games together: only download matches that show up in 2+ friends' recent history.
   onProgress({ done: total, total, current: 'games played together' });
   const seen = new Map();
-  for (const idSet of recentByPlayer.values()) for (const id of idSet) seen.set(id, (seen.get(id) ?? 0) + 1);
+  const matchRegion = new Map();
+  for (const { ids, region } of recentByPlayer.values()) {
+    for (const id of ids) {
+      seen.set(id, (seen.get(id) ?? 0) + 1);
+      matchRegion.set(id, region);
+    }
+  }
   const shared = [...seen].filter(([, n]) => n >= 2).map(([id]) => id);
   const friendsByPuuid = new Map(players.map((p) => [p.puuid, p.name]));
-  const groupGames = (await Promise.all(shared.map((id) => client.match(id))))
+  const groupGames = (await Promise.all(shared.map((id) => client.match(id, matchRegion.get(id) ?? client.region))))
     .filter(Boolean)
     .map((m) => buildGroupGame(m, friendsByPuuid))
     .filter(Boolean);

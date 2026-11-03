@@ -21,5 +21,9 @@
       "hour": 12
     },
     "announceRankChanges": true
+  },
+  "discord": {
+    "enabled": false,
+    "webhookUrl": ""
   }
 }

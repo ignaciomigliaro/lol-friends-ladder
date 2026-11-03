@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
 
-const PLATFORM_TO_REGION = {
+export const PLATFORM_TO_REGION = {
   na1: 'americas', br1: 'americas', la1: 'americas', la2: 'americas',
   euw1: 'europe', eun1: 'europe', tr1: 'europe', ru: 'europe', me1: 'europe',
   kr: 'asia', jp1: 'asia',
@@ -22,7 +22,68 @@ export class AuthError extends Error {}
 
 const scopeOf = (puuid) => crypto.createHash('sha256').update(puuid).digest('hex').slice(0, 12);
 
-class RateLimiter {
+async function atomicWriteFile(file, content) {
+  const dir = path.dirname(file);
+  await fs.mkdir(dir, { recursive: true });
+  const tmp = path.join(dir, `.${path.basename(file)}.tmp.${Date.now()}.${Math.random().toString(36).slice(2)}`);
+  try {
+    await fs.writeFile(tmp, content, 'utf8');
+    await fs.rename(tmp, file);
+  } catch (err) {
+    await fs.unlink(tmp).catch(() => {});
+    throw err;
+  }
+}
+
+export function pruneMatch(m) {
+  if (!m?.info?.participants) return m;
+  return {
+    metadata: { matchId: m.metadata?.matchId },
+    info: {
+      queueId: m.info.queueId,
+      gameDuration: m.info.gameDuration,
+      gameEndTimestamp: m.info.gameEndTimestamp,
+      gameCreation: m.info.gameCreation,
+      participants: m.info.participants.map((p) => ({
+        puuid: p.puuid,
+        teamId: p.teamId,
+        teamPosition: p.teamPosition,
+        championName: p.championName,
+        win: p.win,
+        gameEndedInEarlySurrender: p.gameEndedInEarlySurrender,
+        kills: p.kills ?? 0,
+        deaths: p.deaths ?? 0,
+        assists: p.assists ?? 0,
+        totalMinionsKilled: p.totalMinionsKilled ?? 0,
+        neutralMinionsKilled: p.neutralMinionsKilled ?? 0,
+        visionScore: p.visionScore ?? 0,
+        totalDamageDealtToChampions: p.totalDamageDealtToChampions ?? 0,
+        totalDamageTaken: p.totalDamageTaken ?? 0,
+        damageSelfMitigated: p.damageSelfMitigated ?? 0,
+        damageDealtToObjectives: p.damageDealtToObjectives ?? 0,
+        damageDealtToBuildings: p.damageDealtToBuildings ?? p.damageDealtToTurrets ?? 0,
+        damageDealtToTurrets: p.damageDealtToTurrets ?? 0,
+        turretTakedowns: p.turretTakedowns ?? p.turretKills ?? 0,
+        turretKills: p.turretKills ?? 0,
+        goldEarned: p.goldEarned ?? 0,
+        totalTimeSpentDead: p.totalTimeSpentDead ?? 0,
+        totalHealsOnTeammates: p.totalHealsOnTeammates ?? 0,
+        totalDamageShieldedOnTeammates: p.totalDamageShieldedOnTeammates ?? 0,
+        dragonKills: p.dragonKills ?? 0,
+        baronKills: p.baronKills ?? 0,
+        challenges: {
+          soloKills: p.challenges?.soloKills ?? 0,
+          dragonTakedowns: p.challenges?.dragonTakedowns ?? 0,
+          baronTakedowns: p.challenges?.baronTakedowns ?? 0,
+          riftHeraldTakedowns: p.challenges?.riftHeraldTakedowns ?? 0,
+          voidMonsterKill: p.challenges?.voidMonsterKill ?? 0,
+        },
+      })),
+    },
+  };
+}
+
+export class RateLimiter {
   constructor(limits) {
     this.limits = limits;
     this.stamps = [];
@@ -58,7 +119,7 @@ class RateLimiter {
 }
 
 export class RiotClient {
-  constructor({ apiKey, platform, dataDir, rateLimits }) {
+  constructor({ apiKey, platform = 'la1', dataDir, rateLimits }) {
     if (!apiKey || apiKey.includes('xxxx')) {
       throw new AuthError('No Riot API key configured. Put it in config.json ("apiKey") or the RIOT_API_KEY env var.');
     }
@@ -71,9 +132,6 @@ export class RiotClient {
     this.accountsFile = path.join(dataDir, 'accounts.json');
     this.accounts = null;
     this.loading = null;
-    // Riot encrypts PUUIDs per app, so switching API key app (dev -> personal) changes every
-    // player's PUUID. `scope` identifies the app the cached data belongs to, and `puuidRemap`
-    // maps old PUUIDs to new ones so saved history can be carried over.
     this.scope = null;
     this.previous = {};
     this.puuidRemap = new Map();
@@ -86,7 +144,7 @@ export class RiotClient {
   #loadAccounts() {
     this.loading ??= (async () => {
       const raw = JSON.parse(await fs.readFile(this.accountsFile, 'utf8').catch(() => '{}'));
-      const legacy = !raw.accounts; // older files were a plain { riotId: account } map
+      const legacy = !raw.accounts;
       const entries = legacy ? raw : raw.accounts;
       const first = Object.values(entries)[0];
       let valid = false;
@@ -105,8 +163,6 @@ export class RiotClient {
         this.accounts = {};
         if (raw.scope) await fs.rm(path.join(this.matchRoot, raw.scope), { recursive: true, force: true });
       }
-      // Matches cached before scopes existed sit directly in data/matches/. Their app is unknown,
-      // so drop them; they're re-downloaded once.
       const loose = (await fs.readdir(this.matchRoot).catch(() => [])).filter((f) => f.endsWith('.json'));
       for (const f of loose) await fs.rm(path.join(this.matchRoot, f), { force: true });
     })();
@@ -114,8 +170,7 @@ export class RiotClient {
   }
 
   async #saveAccounts() {
-    await fs.mkdir(path.dirname(this.accountsFile), { recursive: true });
-    await fs.writeFile(this.accountsFile, JSON.stringify({ scope: this.scope, accounts: this.accounts }, null, 2));
+    await atomicWriteFile(this.accountsFile, JSON.stringify({ scope: this.scope, accounts: this.accounts }, null, 2));
   }
 
   async #get(host, pathname, query = {}) {
@@ -124,29 +179,41 @@ export class RiotClient {
 
     for (let attempt = 0; attempt < 5; attempt++) {
       await this.limiter.acquire();
-      const res = await fetch(url, { headers: { 'X-Riot-Token': this.apiKey } });
-      if (res.ok) return res.json();
-      if (res.status === 404) return null;
-      if (res.status === 401 || res.status === 403) {
-        const reason = (await res.json().catch(() => null))?.status?.message ?? res.statusText;
-        throw new AuthError(`Riot API key was rejected (${res.status}: ${reason}). Development keys expire every 24h; get a fresh one at https://developer.riotgames.com`);
+      try {
+        const res = await fetch(url, {
+          headers: { 'X-Riot-Token': this.apiKey },
+          signal: AbortSignal.timeout(15_000),
+        });
+        if (res.ok) return await res.json();
+        if (res.status === 404) return null;
+        if (res.status === 401 || res.status === 403) {
+          const reason = (await res.json().catch(() => null))?.status?.message ?? res.statusText;
+          throw new AuthError(`Riot API key was rejected (${res.status}: ${reason}). Development keys expire every 24h; get a fresh one at https://developer.riotgames.com`);
+        }
+        if (res.status === 429 || res.status >= 500) {
+          const retryAfter = Number(res.headers.get('retry-after'));
+          await sleep(retryAfter > 0 ? retryAfter * 1000 : 1000 * 2 ** attempt);
+          continue;
+        }
+        throw new Error(`Riot API ${res.status} on ${url.pathname}`);
+      } catch (err) {
+        if (err instanceof AuthError) throw err;
+        if (attempt < 4 && (err.name === 'TimeoutError' || err.name === 'AbortError' || err.code === 'ECONNRESET' || err.code === 'ETIMEDOUT')) {
+          await sleep(1000 * 2 ** attempt);
+          continue;
+        }
+        throw err;
       }
-      if (res.status === 429 || res.status >= 500) {
-        const retryAfter = Number(res.headers.get('retry-after'));
-        await sleep(retryAfter > 0 ? retryAfter * 1000 : 1000 * 2 ** attempt);
-        continue;
-      }
-      throw new Error(`Riot API ${res.status} on ${url.pathname}`);
     }
     throw new Error(`Riot API kept failing on ${url.pathname}`);
   }
 
-  async account(gameName, tagLine) {
+  async account(gameName, tagLine, region = this.region) {
     const key = `${gameName}#${tagLine}`.toLowerCase();
     await this.#loadAccounts();
     if (this.accounts[key]) return this.accounts[key];
 
-    const acc = await this.#get(this.region, `/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`);
+    const acc = await this.#get(region, `/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`);
     if (acc) {
       this.scope ??= scopeOf(acc.puuid);
       const old = this.previous[key]?.puuid;
@@ -157,31 +224,31 @@ export class RiotClient {
     return acc;
   }
 
-  summoner(puuid) {
-    return this.#get(this.platform, `/lol/summoner/v4/summoners/by-puuid/${puuid}`);
+  summoner(puuid, platform = this.platform) {
+    return this.#get(platform.toLowerCase(), `/lol/summoner/v4/summoners/by-puuid/${puuid}`);
   }
 
-  async leagueEntries(puuid) {
-    return (await this.#get(this.platform, `/lol/league/v4/entries/by-puuid/${puuid}`)) ?? [];
+  async leagueEntries(puuid, platform = this.platform) {
+    return (await this.#get(platform.toLowerCase(), `/lol/league/v4/entries/by-puuid/${puuid}`)) ?? [];
   }
 
-  // filter: { type: 'ranked' | 'normal' | ... } or { queue: 420 }; omit for every queue.
-  async matchIds(puuid, count, filter = {}) {
+  async matchIds(puuid, count, filter = {}, region = this.region) {
     const query = { start: 0, count, ...filter };
-    return (await this.#get(this.region, `/lol/match/v5/matches/by-puuid/${puuid}/ids`, query)) ?? [];
+    return (await this.#get(region, `/lol/match/v5/matches/by-puuid/${puuid}/ids`, query)) ?? [];
   }
 
-  // Finished matches never change, so they're cached on disk forever.
-  async match(matchId) {
+  // Finished matches never change, so they are pruned and cached on disk forever.
+  async match(matchId, region = this.region) {
     const file = path.join(this.matchDir, `${matchId}.json`);
     const cached = await fs.readFile(file, 'utf8').catch(() => null);
     if (cached) return JSON.parse(cached);
 
-    const match = await this.#get(this.region, `/lol/match/v5/matches/${matchId}`);
-    if (match) {
-      await fs.mkdir(this.matchDir, { recursive: true });
-      await fs.writeFile(file, JSON.stringify(match));
+    const raw = await this.#get(region, `/lol/match/v5/matches/${matchId}`);
+    if (raw) {
+      const pruned = pruneMatch(raw);
+      await atomicWriteFile(file, JSON.stringify(pruned));
+      return pruned;
     }
-    return match;
+    return raw;
   }
 }

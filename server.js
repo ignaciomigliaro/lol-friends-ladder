@@ -7,7 +7,16 @@ import { whatsappMessage } from './src/whatsapp.js';
 
 let config = loadConfig();
 const PUBLIC_DIR = path.join(ROOT, 'public');
-const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png' };
+const MIME = {
+  '.html': 'text/html',
+  '.js': 'text/javascript',
+  '.css': 'text/css',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp',
+};
 
 const status = { running: false, progress: null, error: null, lastRun: null };
 
@@ -36,6 +45,15 @@ async function doRefresh() {
     for (const e of board.errors) console.warn(`  ! ${e.riotId}: ${e.error}`);
     console.log(`[${new Date().toLocaleTimeString()}] Done.`);
     await bot?.onRefresh(before, board).catch((err) => console.error('[bot] Announcement failed:', err.message));
+    if (config.discord?.enabled && config.discord?.webhookUrl) {
+      try {
+        const { formatDiscordLeaderboard, sendDiscordWebhook } = await import('./src/discord.js');
+        await sendDiscordWebhook(config.discord.webhookUrl, formatDiscordLeaderboard(board));
+        console.log('[discord] Leaderboard posted to Discord webhook.');
+      } catch (err) {
+        console.error('[discord] Webhook failed:', err.message);
+      }
+    }
   } catch (err) {
     status.error = err.message;
     console.error(`Refresh failed: ${err.message}`);
@@ -64,6 +82,17 @@ async function saveCard(req) {
   return path.relative(ROOT, file);
 }
 
+async function parseJson(req) {
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of req) {
+    size += chunk.length;
+    if (size > 1024 * 1024) throw new Error('Body too large');
+    chunks.push(chunk);
+  }
+  return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+}
+
 function send(res, code, body, type = 'application/json') {
   res.writeHead(code, { 'Content-Type': `${type}; charset=utf-8`, 'Cache-Control': 'no-store' });
   res.end(typeof body === 'string' ? body : JSON.stringify(body));
@@ -85,6 +114,43 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/refresh' && req.method === 'POST') {
       runRefresh();
       return send(res, 202, status);
+    }
+    if (url.pathname === '/api/config' && req.method === 'GET') {
+      config = loadConfig();
+      return send(res, 200, {
+        groupName: config.groupName,
+        platform: config.platform,
+        friends: config.friends,
+      });
+    }
+    if (url.pathname === '/api/config/friends' && req.method === 'POST') {
+      const body = await parseJson(req);
+      if (!Array.isArray(body.friends)) return send(res, 400, { error: 'friends must be an array' });
+      const rawConfig = JSON.parse(await fs.readFile(path.join(ROOT, 'config.json'), 'utf8'));
+      if (body.groupName) rawConfig.groupName = String(body.groupName).trim();
+      if (body.platform) rawConfig.platform = String(body.platform).trim().toLowerCase();
+      rawConfig.friends = body.friends.map((f) => {
+        if (typeof f === 'string') return f.trim();
+        const obj = { riotId: f.riotId.trim() };
+        if (f.name && f.name.trim()) obj.name = f.name.trim();
+        if (f.platform && f.platform.trim()) obj.platform = f.platform.trim().toLowerCase();
+        return obj;
+      }).filter((f) => (typeof f === 'string' ? f.includes('#') : f.riotId.includes('#')));
+
+      const { writeJson } = await import('./src/tracker.js');
+      await writeJson(path.join(ROOT, 'config.json'), rawConfig);
+      config = loadConfig();
+      if (body.refresh !== false) {
+        runRefresh();
+      }
+      return send(res, 200, { ok: true, config: { groupName: config.groupName, platform: config.platform, friends: config.friends }, status });
+    }
+    if (url.pathname === '/api/discord' && req.method === 'POST') {
+      config = loadConfig();
+      if (!config.discord?.webhookUrl) return send(res, 400, { error: 'No discord.webhookUrl configured in config.json' });
+      const { formatDiscordLeaderboard, sendDiscordWebhook } = await import('./src/discord.js');
+      const ok = await sendDiscordWebhook(config.discord.webhookUrl, formatDiscordLeaderboard(await readLeaderboard()));
+      return send(res, ok ? 200 : 502, { ok });
     }
 
     const file = path.join(PUBLIC_DIR, url.pathname === '/' ? 'index.html' : url.pathname);
