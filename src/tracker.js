@@ -6,6 +6,8 @@ import { scoreMatch, isRemake } from './score.js';
 import { rankValue, rankLabel } from './ranks.js';
 import { assignNicknames } from './nicknames.js';
 import { buildGroupGame, mergeGroupGames, groupSummary } from './group.js';
+import { computeGroupRecords } from './records.js';
+import { computeGroupMeta } from './meta.js';
 
 const DAY = 24 * 60 * 60 * 1000;
 const LEADERBOARD_FILE = path.join(DATA_DIR, 'leaderboard.json');
@@ -273,7 +275,14 @@ export async function writeJson(file, data) {
   }
 }
 
-export const readLeaderboard = () => readJson(LEADERBOARD_FILE, null);
+export const readLeaderboard = async () => {
+  const board = await readJson(LEADERBOARD_FILE, null);
+  if (board?.players) {
+    if (!board.records) board.records = computeGroupRecords(board.players);
+    if (!board.meta) board.meta = computeGroupMeta(board.players);
+  }
+  return board;
+};
 
 // After an API key switch, every PUUID changes: move saved history and games to the new ones.
 function remapPuuids(history, groupGames, remap) {
@@ -317,6 +326,8 @@ export async function saveLeaderboard(config, players, errors, ddragonVersion, f
     updateUrl: config.updateUrl ?? null,
     weekStart: week,
     champIds,
+    records: computeGroupRecords(players),
+    meta: computeGroupMeta(players),
   };
   assignNicknames(board.players, now);
   await writeJson(LEADERBOARD_FILE, board);

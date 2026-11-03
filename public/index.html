@@ -44,6 +44,12 @@
                 <span>1v1 Duels</span>
               </a>
             </li>
+            <li>
+              <a class="nav-link" data-view="records">
+                <span class="nav-icon">🎖️</span>
+                <span>Salón de la Fama</span>
+              </a>
+            </li>
           </ul>
         </div>
 
@@ -60,6 +66,12 @@
               <a class="nav-link" data-view="apodos">
                 <span class="nav-icon">🎭</span>
                 <span>Apodos & Roasts</span>
+              </a>
+            </li>
+            <li>
+              <a class="nav-link" data-view="meta">
+                <span class="nav-icon">🛡️</span>
+                <span>Meta & Champion Pool</span>
               </a>
             </li>
           </ul>
@@ -86,7 +98,7 @@
 
       <div class="sidebar-footer">
         <div class="status-pill">
-          <span class="status-dot"></span>
+          <span class="status-dot" id="sidebar-status-dot"></span>
           <span id="sidebar-status-text">Servidor Activo</span>
         </div>
         <div class="region-tag" id="sidebar-region">Temporada 2026 · LAN</div>
@@ -123,6 +135,9 @@
 
         <!-- ==================== VIEW 1: OVERVIEW DASHBOARD ==================== -->
         <section id="view-overview" class="view-section active-view">
+          <!-- Live Tracker Banner (Spectator v5) -->
+          <div id="live-tracker-banner" class="live-tracker-banner" style="margin-bottom: 20px;"></div>
+
           <!-- MVP Card -->
           <div id="mvp-container"></div>
 
@@ -249,6 +264,9 @@
 
             <!-- Comparison Bars -->
             <div id="duel-comparison-bars" class="duel-bars-container"></div>
+
+            <!-- Cara a Cara Directo / Guerra Civil -->
+            <div id="duel-head-to-head" class="duel-head-to-head" style="margin-top: 28px;"></div>
           </div>
         </section>
 
@@ -287,7 +305,94 @@
           <div id="apodos-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;"></div>
         </section>
 
-        <!-- ==================== VIEW 6: DETAILED PLAYER PROFILE ==================== -->
+        <!-- ==================== VIEW 6: HALL OF FAME / RECORDS ==================== -->
+        <section id="view-records" class="view-section">
+          <div style="margin-bottom: 24px;">
+            <h2 style="font-family: var(--font-heading); font-size: 22px; color: var(--gold);">🎖️ Salón de la Fama & Récords</h2>
+            <p class="muted">Hazañas legendarias, récords históricos y momentos memorables de La Grieta de los Pibes.</p>
+          </div>
+
+          <!-- Group Totals Banner -->
+          <div id="records-totals-banner" class="records-totals-banner"></div>
+
+          <!-- Records Cards Grid -->
+          <div id="records-grid" class="records-grid"></div>
+        </section>
+
+        <!-- ==================== VIEW 7: META & CHAMPION POOL ==================== -->
+        <section id="view-meta" class="view-section">
+          <div style="margin-bottom: 24px;">
+            <h2 style="font-family: var(--font-heading); font-size: 22px; color: var(--gold);">🛡️ Meta & Tier List del Grupo</h2>
+            <p class="muted">Radiografía competitiva de los campeones jugados por La Grieta de los Pibes: Picks de Oro, Campeones Malditos y especialistas por carril.</p>
+          </div>
+
+          <!-- Highlights: God Tier vs Cursed Tier -->
+          <div class="meta-highlights-grid">
+            <!-- God Tier Card -->
+            <div class="meta-tier-card god">
+              <div class="meta-tier-header">
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <span style="font-size:22px;">👑</span>
+                  <div>
+                    <h3 style="font-family:var(--font-heading); font-size:16px; color:var(--gold-bright); margin:0;">Picks de Oro (Tier S+)</h3>
+                    <span class="muted sub">Mayor Win Rate del grupo (mínimo 3 partidas)</span>
+                  </div>
+                </div>
+                <span class="meta-badge-god">TIER S+</span>
+              </div>
+              <div id="meta-god-list" class="meta-champs-list"></div>
+            </div>
+
+            <!-- Cursed Tier Card -->
+            <div class="meta-tier-card cursed">
+              <div class="meta-tier-header">
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <span style="font-size:22px;">💀</span>
+                  <div>
+                    <h3 style="font-family:var(--font-heading); font-size:16px; color:var(--danger); margin:0;">Campeones Malditos</h3>
+                    <span class="muted sub">Drenadores de LP (menos de 35% Win Rate)</span>
+                  </div>
+                </div>
+                <span class="meta-badge-cursed">PROHIBIDO</span>
+              </div>
+              <div id="meta-cursed-list" class="meta-champs-list"></div>
+            </div>
+          </div>
+
+          <!-- Role Meta Breakdown -->
+          <div style="margin: 32px 0 16px;">
+            <h3 style="font-family: var(--font-heading); font-size: 18px; color: var(--cyan); margin-bottom: 4px;">⚔️ Especialistas & Meta por Rol</h3>
+            <p class="muted sub">Quién domina cada posición y cuáles son los picks más utilizados.</p>
+          </div>
+          <div id="meta-roles-grid" class="meta-roles-grid"></div>
+
+          <!-- All Champions Search & Filter Pool -->
+          <div style="margin: 36px 0 16px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+              <div>
+                <h3 style="font-family: var(--font-heading); font-size: 18px; color: var(--gold); margin-bottom: 4px;">📚 La Armería Completa</h3>
+                <span id="meta-total-count" class="muted sub">Todos los campeones jugados en partidas clasificatorias</span>
+              </div>
+              <div class="meta-controls">
+                <div class="meta-role-pills" id="meta-role-filters">
+                  <button class="pill-btn active" data-role="ALL">Todos</button>
+                  <button class="pill-btn" data-role="TOP">Top</button>
+                  <button class="pill-btn" data-role="JUNGLE">Jungla</button>
+                  <button class="pill-btn" data-role="MIDDLE">Mid</button>
+                  <button class="pill-btn" data-role="BOTTOM">ADC</button>
+                  <button class="pill-btn" data-role="UTILITY">Support</button>
+                </div>
+                <div class="search-input-wrap" style="width:200px;">
+                  <span class="search-icon">🔍</span>
+                  <input type="text" id="meta-champ-search" class="search-input" placeholder="Buscar campeón...">
+                </div>
+              </div>
+            </div>
+          </div>
+          <div id="meta-all-champs-grid" class="meta-all-champs-grid"></div>
+        </section>
+
+        <!-- ==================== VIEW 8: DETAILED PLAYER PROFILE ==================== -->
         <section id="view-player" class="view-section">
           <button id="back-from-player-btn" class="btn btn-ghost" style="margin-bottom: 16px;">← Volver al Leaderboard</button>
           <div id="player-profile-content"></div>
@@ -305,7 +410,11 @@
     </button>
     <button class="mobile-nav-item" data-view="duels">
       <span class="nav-icon">⚔️</span>
-      <span>1v1 Duels</span>
+      <span>Duels</span>
+    </button>
+    <button class="mobile-nav-item" data-view="records">
+      <span class="nav-icon">🎖️</span>
+      <span>Récords</span>
     </button>
     <button class="mobile-nav-item" data-view="synergy">
       <span class="nav-icon">👥</span>
@@ -377,6 +486,68 @@
       </div>
       <div class="modal-foot">
         <button type="button" id="cancel-discord-btn" class="btn">Cerrar</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Dialog 3: Match Breakdown Modal -->
+  <dialog id="match-dialog" class="modal-dialog match-modal-dialog">
+    <div class="modal-card match-modal-card">
+      <div class="modal-head">
+        <div>
+          <h2 id="match-modal-title">⚔️ Detalle de Partida</h2>
+          <div id="match-modal-subtitle" class="muted sub">Cargando estadísticas de la partida...</div>
+        </div>
+        <button type="button" id="close-match-btn" class="icon-btn">&times;</button>
+      </div>
+      <div id="match-modal-body" class="match-modal-body">
+        <div style="text-align:center; padding: 40px;" class="muted">Cargando datos de Riot Games...</div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" id="cancel-match-btn" class="btn">Cerrar</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Dialog 4: Gamer Card Generator Modal -->
+  <dialog id="gamer-card-dialog" class="modal-dialog gamer-card-modal-dialog">
+    <div class="modal-card gamer-card-modal-card">
+      <div class="modal-head">
+        <div>
+          <h2>🃏 Tarjeta Oficial de Invocador</h2>
+          <div class="muted sub">Generada en alta definición para compartir en Discord o redes</div>
+        </div>
+        <button type="button" id="close-gamer-card-btn" class="icon-btn">&times;</button>
+      </div>
+      <div class="gamer-card-body" style="text-align: center; padding: 14px 0;">
+        <canvas id="gamer-card-canvas" width="1200" height="675" style="display:none;"></canvas>
+        <img id="gamer-card-preview" class="gamer-card-preview-img" alt="Tarjeta de Invocador" style="max-width:100%; border-radius:12px; box-shadow:0 8px 32px rgba(0,0,0,0.6); border:1px solid var(--gold);">
+      </div>
+      <div class="modal-foot" style="display:flex; justify-content: space-between; align-items:center;">
+        <button type="button" id="cancel-gamer-card-btn" class="btn btn-ghost">Cerrar</button>
+        <a id="download-gamer-card-btn" class="btn btn-primary" download="tarjeta-invocador.png">📥 Descargar Imagen (PNG)</a>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Dialog 5: Champion Build & Items Modal -->
+  <dialog id="build-dialog" class="modal-dialog build-modal-dialog">
+    <div class="modal-card build-modal-card">
+      <div class="modal-head">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <img id="build-modal-champ-img" class="build-champ-avatar" src="" alt="">
+          <div>
+            <h2 id="build-modal-title">🎒 Build Recomendada</h2>
+            <div id="build-modal-subtitle" class="muted sub">Temporada 2026 · Meta Competitivo</div>
+          </div>
+        </div>
+        <button type="button" id="close-build-dialog-btn" class="icon-btn">&times;</button>
+      </div>
+      <div id="build-modal-body" class="build-modal-body">
+        <!-- Injected via JavaScript -->
+      </div>
+      <div class="modal-foot">
+        <button type="button" id="cancel-build-dialog-btn" class="btn btn-ghost">Cerrar</button>
       </div>
     </div>
   </dialog>

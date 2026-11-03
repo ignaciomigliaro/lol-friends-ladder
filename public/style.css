@@ -1712,3 +1712,1190 @@ dialog.modal-dialog::backdrop {
     width: 50px;
   }
 }
+
+
+/* ==========================================================================
+   HALL OF FAME & RECORDS VIEW
+   ========================================================================== */
+
+.records-totals-banner {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  background: linear-gradient(135deg, rgba(13, 21, 37, 0.9) 0%, rgba(18, 30, 50, 0.9) 100%);
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+  padding: 18px 24px;
+  margin-bottom: 28px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.records-stat-box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.records-stat-num {
+  font-family: var(--font-heading);
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--gold-bright);
+}
+
+.records-stat-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.records-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+.record-card {
+  background: var(--surface-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.record-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--gold);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 16px var(--gold-glow);
+}
+
+.record-card.highlight {
+  border-color: rgba(200, 170, 110, 0.6);
+  background: linear-gradient(160deg, rgba(18, 30, 50, 0.9) 0%, rgba(13, 21, 37, 0.95) 100%);
+}
+
+.record-badge-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.record-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.record-icon {
+  font-size: 22px;
+}
+
+.record-title {
+  font-family: var(--font-heading);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--gold-bright);
+}
+
+.record-tag {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 20px;
+  background: rgba(57, 197, 245, 0.15);
+  color: var(--cyan);
+  border: 1px solid rgba(57, 197, 245, 0.3);
+  text-transform: uppercase;
+}
+
+.record-player-center {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.record-champ-avatar {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  border: 2px solid var(--gold);
+  object-fit: cover;
+  flex-shrink: 0;
+  box-shadow: 0 0 12px var(--gold-glow);
+}
+
+.record-player-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.record-player-name {
+  font-family: var(--font-heading);
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.record-champ-name {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.record-value-emblem {
+  background: rgba(8, 13, 25, 0.7);
+  border: 1px solid rgba(200, 170, 110, 0.4);
+  border-radius: 10px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.record-val-big {
+  font-family: var(--font-heading);
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--cyan);
+}
+
+.record-val-unit {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.record-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-muted);
+  padding-top: 8px;
+  border-top: 1px solid rgba(36, 51, 75, 0.5);
+}
+
+.record-match-btn {
+  background: transparent;
+  border: 1px solid var(--border-light);
+  color: var(--text-secondary);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.record-match-btn:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+/* ==========================================================================
+   DUELS HEAD-TO-HEAD & CIVIL WAR
+   ========================================================================== */
+
+.duel-h2h-card {
+  background: var(--surface-card);
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+  padding: 20px 24px;
+}
+
+.duel-h2h-header {
+  font-family: var(--font-heading);
+  font-size: 16px;
+  color: var(--gold);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.duel-h2h-banner {
+  background: rgba(8, 13, 25, 0.6);
+  border: 1px solid rgba(57, 197, 245, 0.3);
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.duel-h2h-pill {
+  font-size: 13px;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.duel-h2h-wr {
+  font-family: var(--font-heading);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--gold-bright);
+}
+
+/* ==========================================================================
+   MATCH BREAKDOWN MODAL
+   ========================================================================== */
+
+dialog.match-modal-dialog {
+  width: 920px;
+  max-width: 96vw;
+}
+
+.match-modal-card {
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.match-modal-body {
+  overflow-y: auto;
+  padding: 16px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.match-team-card {
+  background: rgba(8, 13, 25, 0.5);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.match-team-header {
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.match-team-header.blue {
+  background: rgba(57, 197, 245, 0.12);
+  border-bottom: 1px solid rgba(57, 197, 245, 0.25);
+  color: var(--cyan);
+}
+
+.match-team-header.red {
+  background: rgba(241, 108, 120, 0.12);
+  border-bottom: 1px solid rgba(241, 108, 120, 0.25);
+  color: var(--danger);
+}
+
+.match-player-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.match-player-row {
+  border-bottom: 1px solid rgba(36, 51, 75, 0.4);
+  font-size: 13px;
+  transition: background 0.15s ease;
+}
+
+.match-player-row:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.match-player-row.is-friend {
+  background: rgba(200, 170, 110, 0.08);
+}
+
+.match-player-row td {
+  padding: 8px 12px;
+  vertical-align: middle;
+}
+
+.match-champ-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.match-champ-icon-small {
+  width: 34px;
+  height: 34px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.match-player-name-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.match-friend-badge {
+  font-size: 9px;
+  color: var(--gold);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.match-damage-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 110px;
+}
+
+.match-damage-track {
+  width: 100%;
+  height: 6px;
+  background: rgba(36, 51, 75, 0.6);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.match-damage-fill {
+  height: 100%;
+  border-radius: 3px;
+}
+
+.match-damage-fill.blue {
+  background: var(--cyan);
+}
+
+.match-damage-fill.red {
+  background: var(--danger);
+}
+
+/* ==========================================================================
+   GAMER CARD & PROFILE MATCH CLICKABLE
+   ========================================================================== */
+
+dialog.gamer-card-modal-dialog {
+  width: 820px;
+  max-width: 95vw;
+}
+
+.profile-match-card {
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.profile-match-card:hover {
+  transform: translateX(4px);
+  border-color: var(--gold);
+}
+
+@media (max-width: 768px) {
+  .records-totals-banner {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    padding: 14px 16px;
+  }
+  .records-grid {
+    grid-template-columns: 1fr;
+  }
+  dialog.match-modal-dialog {
+    width: 96vw;
+  }
+  .match-modal-body {
+    padding: 10px 12px;
+  }
+  .match-player-row td {
+    padding: 6px 8px;
+    font-size: 11px;
+  }
+  .match-champ-icon-small {
+    width: 26px;
+    height: 26px;
+  }
+  .match-damage-wrap {
+    width: 70px;
+  }
+}
+
+
+/* ==========================================================================
+   LIVE GAME TRACKER (SPECTATOR V5)
+   ========================================================================== */
+
+.live-card-active {
+  background: linear-gradient(135deg, rgba(241, 108, 120, 0.12) 0%, rgba(13, 21, 37, 0.95) 100%);
+  border: 1px solid rgba(241, 108, 120, 0.4);
+  border-radius: 14px;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 16px rgba(241, 108, 120, 0.2);
+  animation: live-glow 3s infinite alternate;
+}
+
+@keyframes live-glow {
+  0% { border-color: rgba(241, 108, 120, 0.35); }
+  100% { border-color: rgba(241, 108, 120, 0.7); box-shadow: 0 0 20px rgba(241, 108, 120, 0.3); }
+}
+
+.live-card-idle {
+  background: rgba(13, 21, 37, 0.6);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.live-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(241, 108, 120, 0.2);
+  color: #ff7b89;
+  border: 1px solid rgba(241, 108, 120, 0.4);
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+
+.live-pulse-dot {
+  width: 8px;
+  height: 8px;
+  background-color: #ff4d61;
+  border-radius: 50%;
+  animation: live-pulse 1.6s infinite ease-out;
+}
+
+@keyframes live-pulse {
+  0% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(255, 77, 97, 0.8); }
+  70% { transform: scale(1.1); box-shadow: 0 0 0 8px rgba(255, 77, 97, 0); }
+  100% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(255, 77, 97, 0); }
+}
+
+.status-dot.live {
+  background-color: #ff4d61;
+  box-shadow: 0 0 10px #ff4d61;
+  animation: live-pulse 1.6s infinite ease-out;
+}
+
+.live-players-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.live-player-chip {
+  background: rgba(8, 13, 25, 0.8);
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  padding: 8px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.live-champ-img {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  border: 1px solid var(--gold);
+  object-fit: cover;
+}
+
+.live-refresh-btn {
+  background: transparent;
+  border: 1px solid var(--border-light);
+  color: var(--text-secondary);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.live-refresh-btn:hover {
+  border-color: var(--cyan);
+  color: var(--cyan);
+}
+
+.live-toggle-teams-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-light);
+  color: var(--text-primary);
+  border-radius: 6px;
+  padding: 5px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.live-toggle-teams-btn:hover {
+  background: rgba(0, 180, 216, 0.15);
+  border-color: var(--cyan);
+  color: var(--cyan);
+}
+
+.live-teams-container {
+  margin-top: 10px;
+  background: rgba(8, 13, 25, 0.9);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: fadeIn 0.25s ease-out;
+}
+
+.live-teams-grid {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 14px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .live-teams-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+}
+
+.live-team-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.live-team-badge {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.live-team-badge.blue {
+  background: rgba(0, 180, 216, 0.15);
+  color: #38bdf8;
+  border: 1px solid rgba(0, 180, 216, 0.35);
+}
+
+.live-team-badge.red {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+.live-participant-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  transition: all 0.15s ease;
+}
+
+.live-participant-row:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.live-participant-row.friend {
+  background: rgba(212, 175, 55, 0.12);
+  border-color: rgba(212, 175, 55, 0.5);
+  box-shadow: 0 0 12px rgba(212, 175, 55, 0.2);
+}
+
+.live-participant-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.live-champ-thumb {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  object-fit: cover;
+  border: 1px solid var(--border-light);
+  flex-shrink: 0;
+}
+
+.live-participant-row.friend .live-champ-thumb {
+  border-color: var(--gold);
+}
+
+.live-spells-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.live-spell-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  object-fit: cover;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.live-participant-names {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  margin-left: 2px;
+}
+
+.live-participant-player {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.live-participant-champ {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.live-friend-tag {
+  font-size: 9px;
+  font-weight: 800;
+  color: var(--gold-bright);
+  background: rgba(212, 175, 55, 0.25);
+  padding: 1px 5px;
+  border-radius: 4px;
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.live-vs-divider {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 4px;
+}
+
+.live-vs-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 11px;
+  color: var(--gold-bright);
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.2);
+}
+
+.live-bans-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding: 4px 6px;
+}
+
+.live-ban-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+  filter: grayscale(1) opacity(0.65);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  object-fit: cover;
+}
+
+
+/* ==========================================================================
+   LP EVOLUTION & ELO CHART (INTERACTIVE SVG)
+   ========================================================================== */
+
+.lp-history-card {
+  background: var(--surface-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px 22px;
+  margin: 24px 0 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.lp-history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.lp-history-metrics {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.lp-metric-pill {
+  background: rgba(8, 13, 25, 0.7);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.lp-chart-wrap {
+  width: 100%;
+  position: relative;
+  border-radius: 10px;
+  background: rgba(4, 7, 15, 0.4);
+  border: 1px solid rgba(36, 51, 75, 0.5);
+  padding: 10px 4px 6px;
+}
+
+.lp-svg-chart {
+  width: 100%;
+  height: 230px;
+  display: block;
+  overflow: visible;
+}
+
+@media (max-width: 600px) {
+  .lp-history-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .lp-history-metrics {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .lp-svg-chart {
+    height: 180px;
+  }
+}
+
+
+/* ==========================================================================
+   META & CHAMPION POOL VIEW
+   ========================================================================== */
+
+.meta-highlights-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+.meta-tier-card {
+  background: var(--surface-card);
+  border-radius: 14px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.meta-tier-card.god {
+  border: 1px solid rgba(200, 170, 110, 0.5);
+  background: linear-gradient(145deg, rgba(200, 170, 110, 0.08) 0%, rgba(13, 21, 37, 0.95) 100%);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 16px var(--gold-glow);
+}
+
+.meta-tier-card.cursed {
+  border: 1px solid rgba(241, 108, 120, 0.5);
+  background: linear-gradient(145deg, rgba(241, 108, 120, 0.08) 0%, rgba(13, 21, 37, 0.95) 100%);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 16px rgba(241, 108, 120, 0.2);
+}
+
+.meta-tier-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(36, 51, 75, 0.6);
+}
+
+.meta-badge-god {
+  background: rgba(200, 170, 110, 0.2);
+  color: var(--gold-bright);
+  border: 1px solid var(--gold);
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+}
+
+.meta-badge-cursed {
+  background: rgba(241, 108, 120, 0.2);
+  color: #ff6b7a;
+  border: 1px solid rgba(241, 108, 120, 0.5);
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+}
+
+.meta-champs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.meta-champ-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(8, 13, 25, 0.6);
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  padding: 10px 14px;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.meta-champ-row:hover {
+  transform: translateX(4px);
+  border-color: var(--gold);
+}
+
+.meta-champ-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.meta-champ-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid var(--border-light);
+}
+
+.meta-champ-avatar.god {
+  border-color: var(--gold);
+  box-shadow: 0 0 10px var(--gold-glow);
+}
+
+.meta-champ-avatar.cursed {
+  border-color: var(--danger);
+  box-shadow: 0 0 10px rgba(241, 108, 120, 0.3);
+}
+
+.meta-champ-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.meta-roles-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+}
+
+.meta-role-card {
+  background: var(--surface-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.meta-role-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--cyan);
+}
+
+.meta-role-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--font-heading);
+  font-size: 13px;
+  color: var(--gold);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.meta-specialist-box {
+  background: rgba(8, 13, 25, 0.7);
+  border: 1px solid rgba(57, 197, 245, 0.25);
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.meta-role-topchamps {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.meta-role-champ-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+.meta-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.meta-all-champs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
+}
+
+.meta-champ-card {
+  background: var(--surface-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.meta-champ-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-light);
+}
+
+@media (max-width: 900px) {
+  .meta-highlights-grid {
+    grid-template-columns: 1fr;
+  }
+  .meta-roles-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 500px) {
+  .meta-roles-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ==========================================================================
+   CHAMPION BUILD & RECOMMENDED ITEMS MODAL
+   ========================================================================== */
+
+.build-modal-card {
+  max-width: 680px;
+  width: 95vw;
+}
+
+.build-champ-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 1.5px solid var(--gold);
+  box-shadow: 0 0 12px rgba(212, 175, 55, 0.25);
+}
+
+.build-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px 0;
+}
+
+.build-overview-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  padding: 12px 16px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.build-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0, 180, 216, 0.12);
+  color: #38bdf8;
+  border: 1px solid rgba(0, 180, 216, 0.3);
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.build-badge.runes {
+  background: rgba(212, 175, 55, 0.12);
+  color: var(--gold-bright);
+  border-color: rgba(212, 175, 55, 0.3);
+}
+
+.build-badge.skills {
+  background: rgba(168, 85, 247, 0.12);
+  color: #c084fc;
+  border-color: rgba(168, 85, 247, 0.3);
+}
+
+.build-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: rgba(10, 15, 28, 0.6);
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.build-section-title {
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.build-items-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.build-item-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  padding: 6px 12px;
+  transition: all 0.15s ease;
+}
+
+.build-item-chip:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: var(--gold);
+}
+
+.build-item-chip.core {
+  border-color: rgba(212, 175, 55, 0.35);
+  background: rgba(212, 175, 55, 0.05);
+}
+
+.build-item-img {
+  width: 34px;
+  height: 34px;
+  border-radius: 6px;
+  object-fit: cover;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.build-item-chip.core .build-item-img {
+  border-color: var(--gold);
+}
+
+.build-item-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.build-tips-box {
+  background: rgba(212, 175, 55, 0.06);
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #fef08a;
+  display: flex;
+  align-items: start;
+  gap: 10px;
+}
+
+.live-build-btn {
+  background: rgba(212, 175, 55, 0.12);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  color: var(--gold-bright);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.live-build-btn:hover {
+  background: rgba(212, 175, 55, 0.25);
+  border-color: var(--gold-bright);
+  transform: translateY(-1px);
+}

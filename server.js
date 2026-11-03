@@ -98,6 +98,22 @@ function send(res, code, body, type = 'application/json') {
   res.end(typeof body === 'string' ? body : JSON.stringify(body));
 }
 
+async function findMatch(matchId) {
+  const root = path.join(DATA_DIR, 'matches');
+  const direct = path.join(root, `${matchId}.json`);
+  const directData = await fs.readFile(direct, 'utf8').then(JSON.parse).catch(() => null);
+  if (directData) return directData;
+  const entries = await fs.readdir(root, { withFileTypes: true }).catch(() => []);
+  for (const ent of entries) {
+    if (ent.isDirectory()) {
+      const sub = path.join(root, ent.name, `${matchId}.json`);
+      const subData = await fs.readFile(sub, 'utf8').then(JSON.parse).catch(() => null);
+      if (subData) return subData;
+    }
+  }
+  return null;
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
   try {
@@ -105,6 +121,28 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/leaderboard.json') return send(res, 200, (await readLeaderboard()) ?? { players: [] });
     if (url.pathname === '/whatsapp.txt') return send(res, 200, whatsappMessage(await readLeaderboard()), 'text/plain');
     if (url.pathname === '/api/leaderboard') return send(res, 200, (await readLeaderboard()) ?? { players: [] });
+    if (url.pathname.startsWith('/api/match/')) {
+      const matchId = url.pathname.slice('/api/match/'.length).replace(/[^a-zA-Z0-9_-]/g, '');
+      const matchData = await findMatch(matchId);
+      if (!matchData) return send(res, 404, { error: 'Partida no encontrada' });
+      return send(res, 200, matchData);
+    }
+    if (url.pathname.startsWith('/api/build/')) {
+      const champ = decodeURIComponent(url.pathname.slice('/api/build/'.length)).trim();
+      const { getChampionBuild } = await import('./src/builds.js');
+      const build = getChampionBuild(champ);
+      if (!build) return send(res, 404, { error: 'Build no encontrada' });
+      return send(res, 200, build);
+    }
+    if (url.pathname === '/api/live') {
+      config = loadConfig();
+      const { checkLiveGames, getDemoLiveMatch } = await import('./src/live.js');
+      if (url.searchParams.get('demo') === '1') {
+        return send(res, 200, getDemoLiveMatch());
+      }
+      const liveData = await checkLiveGames(config);
+      return send(res, 200, liveData);
+    }
     if (url.pathname === '/api/status') return send(res, 200, status);
     if (url.pathname === '/api/whatsapp') return send(res, 200, whatsappMessage(await readLeaderboard()), 'text/plain');
     if (url.pathname === '/api/card' && req.method === 'POST') {

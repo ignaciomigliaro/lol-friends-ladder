@@ -228,6 +228,10 @@ export class RiotClient {
     return this.#get(platform.toLowerCase(), `/lol/summoner/v4/summoners/by-puuid/${puuid}`);
   }
 
+  activeGame(puuid, platform = this.platform) {
+    return this.#get(platform.toLowerCase(), `/lol/spectator/v5/active-games/by-summoner/${puuid}`);
+  }
+
   async leagueEntries(puuid, platform = this.platform) {
     return (await this.#get(platform.toLowerCase(), `/lol/league/v4/entries/by-puuid/${puuid}`)) ?? [];
   }

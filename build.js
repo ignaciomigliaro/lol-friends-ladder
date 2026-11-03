@@ -28,6 +28,10 @@ const v = Date.now().toString(36);
 const html = await fs.readFile(indexFile, 'utf8');
 await fs.writeFile(indexFile, html.replace('href="style.css"', `href="style.css?v=${v}"`).replace('src="app.js"', `src="app.js?v=${v}"`));
 await fs.writeFile(path.join(SITE, 'leaderboard.json'), JSON.stringify(board));
+const matchesDir = path.join(ROOT, 'data', 'matches');
+if (await fs.stat(matchesDir).then(() => true).catch(() => false)) {
+  await fs.cp(matchesDir, path.join(SITE, 'matches'), { recursive: true });
+}
 await fs.writeFile(path.join(SITE, 'whatsapp.txt'), whatsappMessage(board));
 await fs.writeFile(path.join(SITE, '.nojekyll'), '');
 console.log(`Built site/ with ${board.players.length} players and ${board.groupGames?.length ?? 0} games together.`);
