@@ -2899,3 +2899,13 @@ dialog.gamer-card-modal-dialog {
   border-color: var(--gold-bright);
   transform: translateY(-1px);
 }
+
+/* Phone fixes (caught by the end-to-end test): let these wrap instead of widening the page. */
+.pill-group { flex-wrap: wrap; max-width: 100%; }
+.lp-history-header > div { min-width: 0; }
+.lp-history-header .sub { white-space: normal; }
+@media (max-width: 760px) {
+  /* The whole match row is clickable; the "Ver Detalle" hint doesn't fit next to the stats. */
+  .profile-match-card > span.muted.sub:last-child { display: none; }
+  .profile-match-card { min-width: 0; }
+}

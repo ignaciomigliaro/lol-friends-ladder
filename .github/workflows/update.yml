@@ -1,12 +1,14 @@
-# Refreshes the leaderboard from the Riot API and publishes it to GitHub Pages.
+# Tests every change, then refreshes the leaderboard from the Riot API and publishes it to GitHub Pages.
+# A push that breaks the tests is never published: the live site keeps the last good version.
 name: Update leaderboard
 
 on:
   schedule:
     - cron: '*/30 * * * *'   # every 30 min (GitHub may delay scheduled runs a bit)
-  workflow_dispatch:          # "Run workflow" button in the Actions tab
+  workflow_dispatch:          # "Run workflow" button in the Actions tab (also used by the site's Update button)
   push:
     branches: [main]
+  pull_request:               # test proposed changes before they are merged
 
 permissions:
   contents: write   # commit LP history / games-together back to the repo
@@ -14,11 +16,43 @@ permissions:
   id-token: write
 
 concurrency:
-  group: update-leaderboard
+  # Pull requests get their own lane so they never wait behind (or cancel) a deploy.
+  group: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.ref) || 'update-leaderboard' }}
   cancel-in-progress: false
 
 jobs:
+  test:
+    # Code only changes on pushes and pull requests; scheduled data refreshes skip the tests.
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/puppeteer
+          key: puppeteer-${{ hashFiles('package-lock.json') }}
+
+      - name: Install the test browser
+        run: npx puppeteer browsers install chrome
+
+      - name: Unit tests (scores, nicknames, roasts, LP, champion names, Riot client…)
+        run: npm test
+
+      - name: Site tests (every page, players, matchups, roasts, Update button, phone layout)
+        run: npm run test:e2e
+
   update:
+    needs: test
+    # Runs when the tests passed, or when they were skipped (scheduled refresh / manual run).
+    if: always() && github.event_name != 'pull_request' && (needs.test.result == 'success' || needs.test.result == 'skipped')
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -37,7 +71,7 @@ jobs:
           key: matches-${{ github.run_id }}
           restore-keys: matches-
 
-      # No npm install needed: the tracker has no dependencies.
+      # No npm install needed: building the site has no dependencies.
       - name: Refresh and build
         run: node build.js
         env:

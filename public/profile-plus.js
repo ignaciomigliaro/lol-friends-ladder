@@ -113,10 +113,12 @@ function installPlayersView() {
   if (location.hash === '#players') setTimeout(showPlayers, 0);
 }
 
-function showPlayers() {
+function showPlayers(attempt = 0) {
   const b = board();
   const section = $('#view-players');
-  if (!b || !section) return;
+  if (!section) return;
+  // Opened straight from a #players link: the data may still be loading.
+  if (!b) return attempt < 50 && setTimeout(() => showPlayers(attempt + 1), 200);
   ctx.switchView('players');
   const title = $('#page-title');
   if (title) title.textContent = 'Jugadores';

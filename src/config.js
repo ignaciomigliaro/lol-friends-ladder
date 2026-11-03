@@ -3,7 +3,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-export const DATA_DIR = path.join(ROOT, 'data');
+// LADDER_DATA_DIR lets tests (and demos) use a scratch folder instead of the real data/.
+export const DATA_DIR = process.env.LADDER_DATA_DIR ? path.resolve(process.env.LADDER_DATA_DIR) : path.join(ROOT, 'data');
 
 // config.json is safe to commit (it's public on GitHub). The API key lives in secrets.json
 // (git-ignored) locally, or in the RIOT_API_KEY environment variable / GitHub secret.

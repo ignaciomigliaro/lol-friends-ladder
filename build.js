@@ -7,7 +7,7 @@ import { ROOT, loadConfig } from './src/config.js';
 import { refreshAll, readLeaderboard } from './src/tracker.js';
 import { whatsappMessage } from './src/whatsapp.js';
 
-const SITE = path.join(ROOT, 'site');
+const SITE = process.env.LADDER_SITE_DIR ? path.resolve(process.env.LADDER_SITE_DIR) : path.join(ROOT, 'site');
 
 let board;
 if (process.argv.includes('--no-refresh')) {

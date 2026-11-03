@@ -14,7 +14,8 @@ function seedOf(text) {
   return h >>> 0;
 }
 // Starts at a seeded phrasing and skips any line another player's roast already used.
-function pick(list, seed, salt, used, norm = (x) => x) {
+// With strict, returns null once every phrasing is taken so the caller can move on.
+function pick(list, seed, salt, used, norm = (x) => x, strict = false) {
   const start = (seed + salt * 7919) % list.length;
   for (let i = 0; i < list.length; i++) {
     const line = list[(start + i) % list.length];
@@ -23,7 +24,7 @@ function pick(list, seed, salt, used, norm = (x) => x) {
       return line;
     }
   }
-  return list[start];
+  return strict ? null : list[start];
 }
 
 // Worst = lowest score in the last 30 days of ranked; ties go to whoever died more.
@@ -41,7 +42,7 @@ export function buildRoast(p, now = Date.now(), used = new Set()) {
   const role = ROLE_ES[g.position];
   const opp = g.opp;
   // Compare phrasings, not numbers or champion names, when avoiding repeats.
-  const norm = (line) => line.split(g.champion).join('@').split(opp?.champion || '@').join('@').replace(/[0-9]+([.,][0-9]+)?k?/g, '#');
+  const norm = (line) => line.split(g.champion).join('@').split(opp?.champion || '@').join('@').replace(/[0-9]+([.,][0-9]+)?k?/g, '#').replace(/ de (enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)/g, '');
 
   // Every fact that applies, with how much it hurts (higher = said first).
   const facts = [];
@@ -126,7 +127,13 @@ export function buildRoast(p, now = Date.now(), used = new Set()) {
   }
 
   facts.sort((a, b) => b.weight - a.weight);
-  const body = facts.slice(0, 3).map((f, i) => pick(f.lines, seed, i + 1, used, norm));
+  // The three worst facts; if a fact's phrasings are all taken by other roasts, use the next fact.
+  const body = [];
+  for (const [i, f] of facts.entries()) {
+    if (body.length === 3) break;
+    const line = pick(f.lines, seed, i + 1, used, norm, true);
+    if (line) body.push(line);
+  }
   if (!body.length) {
     body.push(`Score de ${fmt(g.score)}: ni para el highlight ni para el reporte. Una partida que no le importó a nadie.`);
   }

@@ -230,7 +230,7 @@ async function championNames(version) {
 }
 
 // Rewrites every champion field to its display name; returns name -> image id for the ones that differ.
-function renameChampions(players, groupGames, champions) {
+export function renameChampions(players, groupGames, champions) {
   if (!champions) return {};
   const byId = new Map(champions.map((c) => [c.id.toLowerCase(), c.name]));
   const name = (id) => byId.get(String(id).toLowerCase()) ?? id;

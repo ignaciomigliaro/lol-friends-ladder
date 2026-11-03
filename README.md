@@ -46,6 +46,25 @@ Runs smoothly as an automated site on **GitHub Pages** (refreshed every 30 minut
 
 ---
 
+## Tests
+
+Every push and pull request runs two test suites on GitHub **before** anything is published. If a
+test fails, the site is not updated: it keeps showing the last version that passed, and the failing
+check on GitHub says what broke.
+
+- `npm test`: unit tests for scoring, nicknames, roasts, weekly/season LP, champion names, lane
+  opponents, the Riot client, builds, meta, records and more.
+- `npm run test:e2e`: builds the site from demo data (no Riot key needed), serves it like GitHub
+  Pages and clicks through it in a real browser. It checks every menu page, the Jugadores grid and
+  profiles, champion matchups, the roasts on Apodos, that the Update button reaches the Worker, and
+  that player pages fit a phone screen.
+
+Run them locally before pushing: `npm install`, then `npm test` and `npm run test:e2e`.
+On Windows, point the browser test at Edge or Chrome first:
+`set PUPPETEER_EXECUTABLE_PATH=C:Program Files (x86)MicrosoftEdgeApplicationmsedge.exe`.
+
+When you add a feature, add a check for it, so the next change can't silently remove it.
+
 ## 🌐 The Website (GitHub Pages Deployment)
 
 The GitHub Actions workflow in [`.github/workflows/update.yml`](.github/workflows/update.yml) runs every 30 minutes:
