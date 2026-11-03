@@ -495,6 +495,8 @@ function renderSynergy() {
 
 // ---------- Apodos & Roasts ----------
 function renderApodos() {
+  // Full roasts (worst game of the month) come from profile-plus.js.
+  if (plus) return plus.renderRoasts();
   const container = $('#apodos-grid');
   if (!container) return;
   const ps = (board?.players ?? []).filter((p) => p.nickname);
@@ -1947,5 +1949,11 @@ async function load() {
     console.error('Failed to load leaderboard data:', err);
   }
 }
+
+// Player pages, champion matchups, roasts and the website's Update button live in profile-plus.js.
+// Loaded with the same ?v= as this file so a new deploy is never mixed with a cached copy.
+const plus = await import(new URL(`profile-plus.js${new URL(import.meta.url).search}`, import.meta.url).href)
+  .catch((err) => { console.error('profile-plus failed to load:', err); return null; });
+plus?.install({ getBoard: () => board, reload: load, switchView, openMatchModal, toast, esc, champImg, iconImg, tierColor, ROLE });
 
 load().then(pollStatus);

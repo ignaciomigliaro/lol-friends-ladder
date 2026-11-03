@@ -1,3 +1,5 @@
+import { buildRoast } from './roast.js';
+
 // Spanish nicknames that roast each player's most glaring weakness in their recent ranked games.
 // Every rule measures how far past a threshold the player is (its "severity"); each player gets the
 // nickname of their worst flaw, and no two players share one. Jokes stay about the gameplay.
@@ -253,4 +255,8 @@ export function assignNicknames(players, now = Date.now()) {
   clean.forEach((p, i) => (p.nickname = { ...FALLBACKS[i % FALLBACKS.length] }));
 
   for (const p of players) p.nickname ??= null;
+
+  // A full roast from each player's worst recent game, shown on the Apodos page.
+  const usedLines = new Set();
+  for (const p of players) p.roast = p.games?.length ? buildRoast(p, now, usedLines) : null;
 }
