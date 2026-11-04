@@ -1220,7 +1220,8 @@ function renderRecentMatchesFeed() {
                 <div class="overview-score-group">
                   <div class="overview-score-box">
                     <span class="overview-score-tag" title="Puntuación de desempeño OP Score (1 a 10)">
-                      OP SCORE ${f.score?.toFixed(1) || '—'}
+                      <span class="score-lbl">OP SCORE</span>
+                      <span class="score-val">${f.score?.toFixed(1) || '—'}</span>
                     </span>
                     <span class="overview-place-tag ${f.place === 1 ? 'top-1' : f.place <= 3 ? 'top-3' : 'mid'}" title="Posición ${f.place || 5} de 10 jugadores en la partida">
                       ${f.place ? `${f.place}/10` : '—'}
