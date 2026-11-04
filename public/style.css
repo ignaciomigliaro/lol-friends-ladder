@@ -267,8 +267,8 @@
 }
 
 :root[data-theme="light"] .overview-rival-box {
-  background: #F8FAFC;
-  border-color: #E2E8F0;
+  background: transparent;
+  border: none;
 }
 
 :root[data-theme="light"] .mvp-score-content {
@@ -4362,10 +4362,10 @@ dialog.opscore-modal-dialog {
 }
 
 .overview-rival-box {
-  background: rgba(8, 13, 25, 0.55);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
-  padding: 5px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
   min-width: 0;
   width: 100%;
   max-width: 100%;
@@ -4500,10 +4500,9 @@ dialog.opscore-modal-dialog {
     max-width: 100% !important;
     justify-self: stretch !important;
     box-sizing: border-box !important;
-    background: rgba(8, 13, 25, 0.7) !important;
-    padding: 5px 8px !important;
-    border-radius: 8px !important;
-    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    background: transparent !important;
+    padding: 0 !important;
+    border: none !important;
   }
   .overview-rival-status {
     font-size: 11px !important;
@@ -4518,7 +4517,7 @@ dialog.opscore-modal-dialog {
     gap: 8px 10px !important;
   }
   .overview-rival-box {
-    padding: 4px 8px !important;
+    padding: 0 !important;
   }
 }
 
@@ -4933,10 +4932,10 @@ dialog.opscore-modal-dialog {
     grid-area: rival;
     display: flex;
     align-items: center;
-    background: rgba(8, 13, 25, 0.72);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 8px;
-    padding: 7px 12px;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 2px 0;
     margin: 0;
     box-sizing: border-box;
     width: 100%;
