@@ -121,12 +121,12 @@ function showPlayers(attempt = 0) {
   if (!b) return attempt < 50 && setTimeout(() => showPlayers(attempt + 1), 200);
   ctx.switchView('players');
   const title = $('#page-title');
-  if (title) title.textContent = 'Jugadores';
+  if (title) title.textContent = 'Jugadores del Grupo';
   const players = [...b.players].sort((x, y) => (y.solo?.value ?? -1) - (x.solo?.value ?? -1));
   section.innerHTML = `
     <div class="px-intro">
-      <h2>👤 Jugadores</h2>
-      <p class="px-sub">Elegí un jugador para ver sus stats, carriles, campeones con matchups, qué tiene que mejorar y su roast.</p>
+      <h2>👤 Jugadores del Grupo</h2>
+      <p class="px-sub">Selecciona un jugador para ver sus estadísticas, líneas, campeones, enfrentamientos directos, aspectos por mejorar y su carrilla semanal.</p>
     </div>
     <div class="px-pgrid">${players.map((p) => {
       const focus = eloAnalysis(p.games ?? [])?.workOn[0];
@@ -136,7 +136,7 @@ function showPlayers(attempt = 0) {
           <strong>${ctx.esc(p.name)}</strong>
           ${p.nickname ? `<span class="px-nick">“${ctx.esc(p.nickname.title)}” ${p.nickname.emoji}</span>` : ''}
           <span style="color:${ctx.tierColor(p)}; font-weight:600;">${ctx.esc(p.solo?.label ?? 'Unranked')}</span>
-          ${focus ? `<span class="px-sub">🎯 A mejorar: ${focus.metric.short}</span>` : ''}
+          ${focus ? `<span class="px-sub">🎯 Por mejorar: ${focus.metric.short}</span>` : ''}
         </span>
         ${p.stats ? scorePill(p.stats.avgScore) : ''}
       </button>`;
@@ -262,7 +262,7 @@ export function roastCard(p, { compact = false } = {}) {
 }
 
 function roastHtml(p) {
-  return p.roast ? `<h3 class="px-h3">🎭 Roast</h3>${p.nickname ? `<p class="px-roast-nick"><span>${p.nickname.emoji}</span> <strong>“${ctx.esc(p.nickname.title)}”</strong> — ${ctx.esc(p.nickname.reason)}</p>` : ''}${roastCard(p, { compact: true })}` : '';
+  return p.roast ? `<h3 class="px-h3">🎭 Carrilla de la Semana</h3>${p.nickname ? `<p class="px-roast-nick"><span>${p.nickname.emoji}</span> <strong>“${ctx.esc(p.nickname.title)}”</strong> — ${ctx.esc(p.nickname.reason)}</p>` : ''}${roastCard(p, { compact: true })}` : '';
 }
 
 // Full roasts on the existing Apodos page.
@@ -303,7 +303,7 @@ const ELO_METRICS = [
   { key: 'vision', short: 'Visión', label: 'Puntaje de visión', fmt: (v) => v.toFixed(1),
     tip: (d) => `Tiene ${d.absDiff.toFixed(1)} menos de visión por partida. Comprar un ward de control en cada vuelta a base y usar el trinket apenas esté disponible.` },
   { key: 'objectives', short: 'Objetivos', label: 'Daño a objetivos', fmt: (v) => kNum(v),
-    tip: (d) => `Hace un ${d.relPct}% menos de daño a objetivos. Después de ganar una pelea, pegarle a torres, dragones y larvas en vez de volver a farmear.` },
+    tip: (d) => `Hace un ${d.relPct}% menos de daño a objetivos. Después de ganar una pelea o teamfight, pegarle a torres, dragones y larvas en vez de regresar a farmear.` },
   { key: 'gold', short: 'Oro', label: 'Oro', fmt: (v) => kNum(v),
     tip: (d) => `Gana ${kNum(d.absDiff)} menos de oro por partida. Casi todo viene del CS y las kills: seguir farmeando entre peleas.` },
 ];
@@ -487,7 +487,7 @@ function champDetailHtml(champ, list) {
   const diff = (v) => `<span class="${v > 0 ? 'px-up' : v < 0 ? 'px-down' : 'px-muted'}">${v > 0 ? '+' : ''}${Math.round(v)}</span>`;
 
   return `<div class="px-cstats">
-      ${stat('Win rate', `${Math.round(a.winrate)}%`, `${a.wins}V ${a.losses}D`)}
+      ${stat('% Victorias', `${Math.round(a.winrate)}%`, `${a.wins}V ${a.losses}D`)}
       ${stat('Score promedio', scorePill(a.score))}
       ${stat('Puesto promedio', `${a.place.toFixed(1)} / 10`, `${a.mvp} MVP · ${a.ace} ACE`)}
       ${stat('KDA', a.kda.toFixed(2), `${a.kills.toFixed(1)} / ${a.deaths.toFixed(1)} / ${a.assists.toFixed(1)}`)}
@@ -495,11 +495,11 @@ function champDetailHtml(champ, list) {
       ${stat('Daño / partida', kNum(a.damage), `${pct(a.dmgShare)} del equipo`)}
       ${laned.length ? stat('Le ganó al rival', `${Math.round((100 * outscored) / laned.length)}%`, `${outscored} de ${laned.length} por score`) : ''}
     </div>
-    <h4 class="px-h4">Matchups con ${ctx.esc(champ)}</h4>
+    <h4 class="px-h4">Enfrentamientos directos con ${ctx.esc(champ)}</h4>
     ${matchups.length ? `
-      ${best ? `<p class="px-callout">👍 Mejor matchup: <strong>${ctx.esc(best.opp)}</strong> (${best.wins}V ${best.n - best.wins}D) · 👎 Peor: <strong>${ctx.esc(worst.opp)}</strong> (${worst.wins}V ${worst.n - worst.wins}D)</p>` : ''}
+      ${best ? `<p class="px-callout">👍 Mejor enfrentamiento: <strong>${ctx.esc(best.opp)}</strong> (${best.wins}V ${best.n - best.wins}D) · 👎 Peor: <strong>${ctx.esc(worst.opp)}</strong> (${worst.wins}V ${worst.n - worst.wins}D)</p>` : ''}
       <div class="px-table-wrap"><table class="px-table">
-        <thead><tr><th>Contra</th><th>Partidas</th><th>Win rate</th><th>Su score</th><th>Score rival</th><th>Dif. oro</th><th>Dif. CS</th></tr></thead>
+        <thead><tr><th>Contra</th><th>Partidas</th><th>% Victorias</th><th>Su score</th><th>Score rival</th><th>Dif. oro</th><th>Dif. CS</th></tr></thead>
         <tbody>${matchups.map((m) => `<tr class="${m === best ? 'best' : m === worst ? 'worst' : ''}">
           <td class="px-champ-cell"><img src="${ctx.champImg(m.opp)}" alt="" onerror="this.style.visibility='hidden'"> ${ctx.esc(m.opp)}</td>
           <td>${m.n}</td>

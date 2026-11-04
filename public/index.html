@@ -3,22 +3,33 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>La Grieta de los Pibes — Tracker & Leaderboard</title>
-  <link rel="icon" type="image/jpeg" href="assets/logo.jpg">
+  <title>La Grieta de los Pibes — Tracker y Tabla de Posiciones</title>
+  <link rel="icon" type="image/jpeg" href="assets/logo.jpg?v=20261104b">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20261104">
+  <link rel="stylesheet" href="style.css?v=20261104s">
+  <script>
+    (function () {
+      try {
+        const t = localStorage.getItem('theme');
+        if (t === 'light') document.documentElement.setAttribute('data-theme', 'light');
+      } catch (e) {}
+    })();
+  </script>
 </head>
 <body>
   <div class="app-layout">
     <!-- Desktop Left Sidebar -->
     <aside id="sidebar" class="sidebar">
       <div class="sidebar-brand">
-        <img src="assets/logo.jpg" alt="Logo Oficial La Grieta de los Pibes" class="brand-logo-img">
+        <div class="brand-logo-wrap">
+          <img src="assets/logo.jpg?v=20261104b" alt="Logo Oficial La Grieta de los Pibes" class="brand-logo-img">
+        </div>
         <div class="brand-text">
           <span class="brand-title">La Grieta</span>
-          <span class="brand-subtitle">de los Pibes · Esports</span>
+          <span class="brand-title-sub">de los Pibes</span>
+          <span class="brand-esports-tag">• ESPORTS</span>
         </div>
       </div>
 
@@ -29,19 +40,19 @@
             <li>
               <a class="nav-link active" data-view="overview">
                 <span class="nav-icon">📊</span>
-                <span>Overview</span>
+                <span>Inicio</span>
               </a>
             </li>
             <li>
               <a class="nav-link" data-view="leaderboard">
                 <span class="nav-icon">🏆</span>
-                <span>Leaderboard</span>
+                <span>Tabla de Posiciones</span>
               </a>
             </li>
             <li>
               <a class="nav-link" data-view="duels">
                 <span class="nav-icon">⚔️</span>
-                <span>1v1 Duels</span>
+                <span>Duelos 1v1</span>
               </a>
             </li>
             <li>
@@ -59,19 +70,19 @@
             <li>
               <a class="nav-link" data-view="synergy">
                 <span class="nav-icon">👥</span>
-                <span>Synergy & Duos</span>
+                <span>Sinergia y Dúos</span>
               </a>
             </li>
             <li>
               <a class="nav-link" data-view="apodos">
                 <span class="nav-icon">🎭</span>
-                <span>Apodos & Roasts</span>
+                <span>Apodos y Carrilla</span>
               </a>
             </li>
             <li>
               <a class="nav-link" data-view="meta">
                 <span class="nav-icon">🛡️</span>
-                <span>Meta & Champion Pool</span>
+                <span>Meta y Campeones</span>
               </a>
             </li>
           </ul>
@@ -83,13 +94,13 @@
             <li>
               <a class="nav-link" id="nav-btn-friends">
                 <span class="nav-icon">👥</span>
-                <span>Gestionar Amigos</span>
+                <span>Administrar Amigos</span>
               </a>
             </li>
             <li>
               <a class="nav-link" id="nav-btn-discord">
                 <span class="nav-icon">💬</span>
-                <span>Discord Webhook</span>
+                <span>Webhook de Discord</span>
               </a>
             </li>
           </ul>
@@ -97,11 +108,14 @@
       </nav>
 
       <div class="sidebar-footer">
-        <div class="status-pill">
-          <span class="status-dot" id="sidebar-status-dot"></span>
-          <span id="sidebar-status-text">Servidor Activo</span>
+        <div class="sidebar-footer-content">
+          <div class="status-pill">
+            <span class="status-dot" id="sidebar-status-dot"></span>
+            <span id="sidebar-status-text">Servidor Activo</span>
+          </div>
+          <div class="region-tag" id="sidebar-region">Temporada 2026 · LAN</div>
         </div>
-        <div class="region-tag" id="sidebar-region">Temporada 2026 · LAN</div>
+        <img src="assets/lol-crest.png" alt="League of Legends Crest" class="sidebar-crest-ornament">
       </div>
     </aside>
 
@@ -112,13 +126,26 @@
         <div class="header-left">
           <button id="mobile-toggle" class="mobile-menu-toggle" aria-label="Abrir Menú">☰</button>
           <div class="breadcrumb-group">
-            <span class="section-title" id="page-title">Overview Dashboard</span>
+            <div class="breadcrumb-title-row">
+              <span class="section-title" id="page-title">Inicio • Resumen General</span>
+            </div>
             <span class="section-subtitle" id="group-subtitle">La Grieta de los Pibes</span>
           </div>
         </div>
 
         <div class="header-right">
-          <button id="header-refresh-btn" class="btn btn-primary" title="Buscar partidas nuevas de Riot Games">🔄 Actualizar</button>
+          <button id="theme-toggle-btn" class="header-pill-btn" title="Cambiar a Modo Claro / Oscuro" aria-label="Cambiar tema">
+            <span id="theme-toggle-icon">🌙</span>
+            <span class="header-btn-text" id="theme-toggle-label">Oscuro</span>
+          </button>
+          <button id="lang-toggle-btn" class="header-pill-btn" title="Cambiar a Inglés / Switch to English" aria-label="Cambiar idioma">
+            <span class="lang-globe-icon">🌐</span>
+            <span class="header-btn-text" id="lang-toggle-label">EN ▾</span>
+          </button>
+          <button id="header-refresh-btn" class="header-refresh-pill-btn" title="Buscar partidas nuevas de Riot Games">
+            <span class="refresh-icon">🔄</span>
+            <span>Actualizar</span>
+          </button>
         </div>
       </header>
 
@@ -141,30 +168,43 @@
           <!-- MVP Card -->
           <div id="mvp-container"></div>
 
-          <!-- Podium Top 3 -->
-          <div id="podium-container" class="podium-container" style="margin-bottom: 20px;"></div>
-
-          <!-- Feed: Últimas Partidas Ranked -->
-          <div class="filter-bar" style="margin-top: 16px;">
-            <div>
-              <h2 style="font-family: var(--font-heading); font-size: 20px; color: var(--gold);">
-                Últimas Partidas
-              </h2>
-              <p class="muted" style="margin-top: 4px; font-size: 13px;">
+          <!-- Feed: Últimas Partidas Ranked Header -->
+          <div class="section-heading-bar">
+            <div class="heading-left">
+              <div class="heading-title-row">
+                <h2 class="heading-title">Últimas Partidas</h2>
+              </div>
+              <p class="muted heading-subtitle">
                 Historial cronológico en tiempo real con todas las estadísticas de combate, farmeo y rivales.
               </p>
             </div>
-            <div class="pill-group" id="recent-matches-queue-filter">
-              <button class="pill-btn active" data-match-queue="all">Todas</button>
-              <button class="pill-btn" data-match-queue="solo">Solo/Duo</button>
-              <button class="pill-btn" data-match-queue="flex">Flex</button>
-              <button class="pill-btn" data-match-queue="win">Victorias</button>
-              <button class="pill-btn" data-match-queue="loss">Derrotas</button>
-            </div>
           </div>
 
-          <!-- Filtro por Invocador -->
-          <div id="recent-matches-player-filter" class="pill-group" style="margin-bottom: 14px; gap: 6px;"></div>
+          <!-- Barra Integrada en una Sola Fila (Filtros a la izquierda, Selector de Jugadores a la derecha) -->
+          <div class="matches-filter-toolbar">
+            <div class="filter-toolbar-left">
+              <div class="pill-group" id="recent-matches-queue-filter">
+                <button class="pill-btn active" data-match-queue="all">Todas</button>
+                <button class="pill-btn" data-match-queue="solo">Solo/Duo</button>
+                <button class="pill-btn" data-match-queue="flex">Flex</button>
+                <button class="pill-btn" data-match-queue="win">Victorias</button>
+                <button class="pill-btn" data-match-queue="loss">Derrotas</button>
+              </div>
+            </div>
+
+            <div class="filter-toolbar-right">
+              <div class="custom-player-select" id="player-select-container">
+                <button type="button" class="player-select-btn" id="player-select-btn" aria-haspopup="listbox" aria-expanded="false" title="Filtrar por jugador">
+                  <span class="player-select-btn-icon" id="player-select-current-icon" style="display:none;"></span>
+                  <span class="player-select-btn-name" id="player-select-current-name">Todos</span>
+                  <span class="player-select-caret">▾</span>
+                </button>
+                <div class="player-select-dropdown" id="player-select-dropdown" role="listbox" tabindex="-1">
+                  <!-- Inyectado dinámicamente con avatar, rango y partidas -->
+                </div>
+              </div>
+            </div>
+          </div>
 
           <!-- Feed List Container -->
           <div id="overview-matches-feed" class="recent-matches-feed"></div>
@@ -177,29 +217,29 @@
         <section id="view-leaderboard" class="view-section">
           <div class="filter-bar">
             <div>
-              <h2 style="font-family: var(--font-heading); font-size: 22px; color: var(--gold);">Tabla de Clasificación Oficial</h2>
-              <p class="muted">Clasificación en tiempo real basada en Solo/Duo, desempeño OP.GG y LP ganados.</p>
+              <h2 style="font-family: var(--font-heading); font-size: 22px; color: var(--gold);">Tabla de Posiciones Oficial</h2>
+              <p class="muted">Clasificación en tiempo real basada en Solo/Duo, desempeño OP Score y LP ganados.</p>
             </div>
             <div class="pill-group">
               <button class="pill-btn active" data-sort="rank">Rango</button>
               <button class="pill-btn" data-sort="score">Score</button>
-              <button class="pill-btn" data-sort="winrate">Win Rate</button>
+              <button class="pill-btn" data-sort="winrate">% Victorias</button>
               <button class="pill-btn" data-sort="week">Esta Semana</button>
               <button class="pill-btn" data-sort="season">Temporada</button>
             </div>
           </div>
 
           <!-- Top 3 Podium in Leaderboard View -->
-          <div id="leaderboard-podium-container" class="podium-container" style="margin-bottom: 24px;"></div>
+          <div id="podium-container" class="podium-container" style="margin-bottom: 24px;"></div>
 
           <!-- Table Header -->
           <div class="leaderboard-table-header">
             <span class="col-pos">POS</span>
             <span class="col-identity">INVOCADOR / RANGO</span>
-            <span class="col-winrate">WIN RATE</span>
+            <span class="col-winrate">% VICTORIAS</span>
             <span class="col-delta">LP SEMANAL</span>
             <span class="col-spark">TENDENCIA</span>
-            <span class="col-score">SCORE</span>
+            <span class="col-score">OP SCORE</span>
           </div>
 
           <div id="full-leaderboard" class="leaderboard-list"></div>
@@ -368,7 +408,7 @@
 
         <!-- ==================== VIEW 8: DETAILED PLAYER PROFILE ==================== -->
         <section id="view-player" class="view-section">
-          <button id="back-from-player-btn" class="btn btn-ghost" style="margin-bottom: 16px;">← Volver al Leaderboard</button>
+          <button id="back-from-player-btn" class="btn btn-ghost" style="margin-bottom: 16px;">← Volver a la Tabla de Posiciones</button>
           <div id="player-profile-content"></div>
         </section>
 
@@ -379,12 +419,12 @@
   <!-- Mobile Bottom Navigation Bar (Matching Mockup) -->
   <nav class="mobile-bottom-nav">
     <button class="mobile-nav-item active" data-view="overview">
-      <span class="nav-icon">🏆</span>
-      <span>Leaderboard</span>
+      <span class="nav-icon">📊</span>
+      <span>Inicio</span>
     </button>
     <button class="mobile-nav-item" data-view="duels">
       <span class="nav-icon">⚔️</span>
-      <span>Duels</span>
+      <span>Duelos</span>
     </button>
     <button class="mobile-nav-item" data-view="records">
       <span class="nav-icon">🎖️</span>
@@ -392,11 +432,11 @@
     </button>
     <button class="mobile-nav-item" data-view="synergy">
       <span class="nav-icon">👥</span>
-      <span>Synergy</span>
+      <span>Sinergia</span>
     </button>
     <button class="mobile-nav-item" id="mobile-manage-btn">
       <span class="nav-icon">⚙️</span>
-      <span>Config</span>
+      <span>Ajustes</span>
     </button>
   </nav>
 
@@ -545,10 +585,36 @@
     </div>
   </dialog>
 
+  <!-- Dialog 6: OP Score Explanation Modal -->
+  <dialog id="opscore-dialog" class="modal-dialog opscore-modal-dialog">
+    <div class="modal-card opscore-modal-card">
+      <div class="modal-head opscore-modal-head">
+        <div class="opscore-head-left">
+          <span class="score-tooltip-badge">OP SCORE</span>
+          <h3 id="opscore-modal-score" class="opscore-score-val">5.5 / 10.0</h3>
+        </div>
+        <button type="button" id="close-opscore-dialog-btn" class="icon-btn" aria-label="Cerrar">&times;</button>
+      </div>
+      <div class="opscore-modal-body">
+        <p id="opscore-modal-desc" class="opscore-modal-desc">
+          Calificación de rendimiento individual (escala 1 a 10). Evalúa KDA, daño relativo, farmeo (CS/min), visión y objetivos frente al rival directo.
+        </p>
+        <div class="score-tooltip-scale" style="margin-top: 12px;">
+          <span class="scale-item green">8.0+ Carry / MVP</span>
+          <span class="scale-item cyan">6.0+ Buen Impacto</span>
+          <span class="scale-item muted">5.0 Desempeño Sólido</span>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" id="cancel-opscore-dialog-btn" class="btn btn-primary" style="width:100%;">Entendido</button>
+      </div>
+    </div>
+  </dialog>
+
   <!-- Floating Toast Notification -->
   <div id="toast" class="toast" hidden></div>
 
   <!-- JavaScript Module -->
-  <script src="app.js?v=20261104" type="module"></script>
+  <script src="app.js?v=20261104s" type="module"></script>
 </body>
 </html>

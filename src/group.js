@@ -62,7 +62,7 @@ export function buildGroupGame(match, friendsByPuuid) {
         champion: p.championName,
         position: p.teamPosition,
         kills: p.kills, deaths: p.deaths, assists: p.assists,
-        score: s.score, place: s.place, mvp: s.mvp, ace: s.ace,
+        score: s.score, place: s.place, mvp: s.mvp, ace: s.ace, mochila: s.mochila,
         m: Object.fromEntries(Object.entries(m).map(([k, v]) => [k, round(v, 3)])),
       };
     })
