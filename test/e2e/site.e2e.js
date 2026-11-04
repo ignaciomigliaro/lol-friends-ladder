@@ -14,6 +14,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
+import { getDemoLiveMatch } from '../../src/live.js';
 
 const run = promisify(execFile);
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -73,6 +74,10 @@ async function openPage({ width = 1280, hash = '' } = {}) {
   await page.setRequestInterception(true);
   page.on('request', (r) => {
     const u = r.url();
+    if (u.startsWith(`${FAKE_WORKER}/live`)) {
+      // The Worker's live check: one friend in a ranked game right now.
+      return r.respond({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify(getDemoLiveMatch()) });
+    }
     if (u.startsWith(FAKE_WORKER)) {
       workerCalls.push(r.method());
       return r.respond({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ result: 'cooldown', retryInSec: 125 }) });
@@ -158,6 +163,18 @@ test('the Update button asks the Worker for an update on the website', async () 
   await page.click('#header-refresh-btn');
   await settle(1200);
   assert.ok(workerCalls.includes('POST'), 'Update button called the Worker');
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
+test('live games show up on the website (through the Worker)', async () => {
+  const { page, errors } = await openPage();
+  await page.waitForSelector('#live-tracker-banner .live-card-active', { timeout: 10000 });
+  const text = await page.$eval('#live-tracker-banner', (b) => b.innerText);
+  assert.match(text, /EN VIVO/);
+  assert.match(text, /Panda/);
+  await page.click('#live-tracker-banner .open-champ-build');
+  await page.waitForFunction(() => /objetos clave/i.test(document.querySelector('#build-modal-body')?.innerText ?? ''), { timeout: 10000 });
   assert.deepEqual(errors, []);
   await page.close();
 });

@@ -1155,6 +1155,12 @@ async function openBuildModal(championName, preloadedBuild = null) {
       const res = await fetch(`/api/build/${encodeURIComponent(championName)}`).catch(() => null);
       if (res?.ok) build = await res.json();
     }
+    if (!build) {
+      // GitHub Pages has no /api: builds are published as one file.
+      const all = await fetch('builds.json').then((r) => (r.ok ? r.json() : null)).catch(() => null);
+      const key = championName.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+      build = all?.[key] ?? null;
+    }
 
     if (!build) {
       body.innerHTML = '<div style="text-align:center; padding:30px; color:var(--danger);">No se pudo cargar la build para este campeón.</div>';
@@ -1732,8 +1738,12 @@ async function checkLiveTracker(manual = false) {
   }
 
   try {
-    const liveUrl = (location.search.includes('demo=1') || location.hash.includes('demo=1')) ? '/api/live?demo=1' : '/api/live';
-    const res = await fetch(liveUrl).catch(() => null);
+    const demo = location.search.includes('demo=1') || location.hash.includes('demo=1');
+    let res = await fetch(demo ? '/api/live?demo=1' : '/api/live').catch(() => null);
+    // GitHub Pages has no /api: ask the update Worker, which checks Riot for us.
+    if (!res?.ok && !demo && board?.updateUrl) {
+      res = await fetch(`${board.updateUrl.replace(/\/$/, '')}/live`).catch(() => null);
+    }
     if (!res?.ok) return;
     const data = await res.json();
 

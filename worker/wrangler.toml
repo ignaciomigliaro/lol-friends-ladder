@@ -5,5 +5,8 @@ compatibility_date = "2026-09-01"
 [vars]
 REPO = "ignaciomigliaro/lol-friends-ladder"
 ALLOWED_ORIGIN = "https://ignaciomigliaro.github.io"
+SITE_URL = "https://ignaciomigliaro.github.io/lol-friends-ladder"
 
-# The GitHub token is a secret, set with:  npx wrangler secret put GITHUB_TOKEN
+# Secrets (never in this file):
+#   npx wrangler secret put GITHUB_TOKEN   (starts the update workflow)
+#   npx wrangler secret put RIOT_API_KEY   (live games, /live)
