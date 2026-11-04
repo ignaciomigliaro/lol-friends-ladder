@@ -236,6 +236,11 @@ export class RiotClient {
     return (await this.#get(platform.toLowerCase(), `/lol/league/v4/entries/by-puuid/${puuid}`)) ?? [];
   }
 
+  async championMastery(puuid, championId, platform = this.platform) {
+    if (!puuid || !championId) return null;
+    return (await this.#get(platform.toLowerCase(), `/lol/champion-mastery/v4/champion-masteries/by-puuid/${puuid}/by-champion/${championId}`)) ?? null;
+  }
+
   async matchIds(puuid, count, filter = {}, region = this.region) {
     const query = { start: 0, count, ...filter };
     return (await this.#get(region, `/lol/match/v5/matches/by-puuid/${puuid}/ids`, query)) ?? [];

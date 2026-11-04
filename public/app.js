@@ -23,12 +23,36 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const signed = (n) => (n > 0 ? `+${n}` : `${n}`);
 const tierColor = (p) => TIER_COLORS[p?.solo?.tier] ?? '#8a94b0';
 
-function ddragon(kind, name) {
-  const v = board?.ddragonVersion ?? '14.24.1';
-  if (!name) return '';
-  return `https://ddragon.leagueoflegends.com/cdn/${v}/img/${kind}/${name}.png`;
+const CHAMP_NAME_MAP = {
+  805: 'Locke',
+  800: 'Mel',
+  804: 'Yunara',
+  893: 'Aurora',
+  901: 'Smolder',
+  'Champ #805': 'Locke',
+  'Champ #800': 'Mel',
+  'Champ #804': 'Yunara',
+  'Champ #893': 'Aurora',
+  'Champ #901': 'Smolder',
+};
+
+function resolveChampName(c) {
+  if (!c) return 'Unknown';
+  if (CHAMP_NAME_MAP[c]) return CHAMP_NAME_MAP[c];
+  if (typeof c === 'string' && c.startsWith('Champ #')) {
+    const id = c.replace('Champ #', '').trim();
+    if (CHAMP_NAME_MAP[id]) return CHAMP_NAME_MAP[id];
+  }
+  return board?.champIds?.[c] ?? (c === 'FiddleSticks' ? 'Fiddlesticks' : c);
 }
-const champImg = (c) => ddragon('champion', board?.champIds?.[c] ?? (c === 'FiddleSticks' ? 'Fiddlesticks' : c));
+
+function ddragon(kind, name) {
+  const v = window.latestDdragonVersion || board?.ddragonVersion || '16.22.1';
+  if (!name) return '';
+  const resolved = kind === 'champion' ? resolveChampName(name) : name;
+  return `https://ddragon.leagueoflegends.com/cdn/${v}/img/${kind}/${resolved}.png`;
+}
+const champImg = (c) => ddragon('champion', resolveChampName(c));
 const iconImg = (iconId) => ddragon('profileicon', iconId ?? 1);
 
 function toast(msg) {
@@ -167,44 +191,88 @@ function renderMvp() {
     return;
   }
 
-  // MVP is the highest average score among players with positive or solid stats
-  const eligible = ps.filter((p) => p.stats && p.stats.games >= 3);
-  const mvp = (eligible.length ? eligible : ps).slice().sort((a, b) => (b.stats?.avgScore ?? 0) - (a.stats?.avgScore ?? 0))[0] ?? ps[0];
+  const weekStart = board?.weekStart;
 
+  const getWeeklyStats = (p) => {
+    const games = (p.games || []).filter((g) => (weekStart ? g.endTs >= weekStart : true));
+    if (!games.length) return null;
+    const wins = games.filter((g) => g.win).length;
+    const avgScore = games.reduce((acc, g) => acc + g.score, 0) / games.length;
+    const kills = games.reduce((acc, g) => acc + g.kills, 0);
+    const deaths = games.reduce((acc, g) => acc + g.deaths, 0);
+    const assists = games.reduce((acc, g) => acc + g.assists, 0);
+    const kda = ((kills + assists) / Math.max(1, deaths)).toFixed(2);
+    const lpWeek = p.lpDelta?.week ?? 0;
+    const mvps = games.filter((g) => g.mvp).length;
+    // Composite Weekly Performance: Impact (Score), Victories (Winrate) and LP progression
+    const performanceIndex = (avgScore * 8) + (wins * 1.5) + (Math.max(0, lpWeek) * 0.1) + ((wins / games.length) * 20);
+    return {
+      games: games.length,
+      wins,
+      losses: games.length - wins,
+      winrate: Math.round((wins / games.length) * 100),
+      avgScore,
+      kda,
+      lpWeek,
+      mvps,
+      performanceIndex,
+    };
+  };
+
+  const candidates = ps
+    .map((p) => ({ player: p, wStats: getWeeklyStats(p) }))
+    .filter((x) => x.wStats && x.wStats.games >= 3);
+
+  // If nobody has >= 3 games this week, fall back to anyone with games, or overall stats
+  let selected = null;
+  if (candidates.length) {
+    candidates.sort((a, b) => {
+      const posA = a.wStats.lpWeek >= 0 ? 1 : 0;
+      const posB = b.wStats.lpWeek >= 0 ? 1 : 0;
+      if (posB !== posA) return posB - posA;
+      return (b.wStats.performanceIndex - a.wStats.performanceIndex);
+    });
+    selected = candidates[0];
+  }
+
+  const mvp = selected ? selected.player : ps[0];
+  const w = selected ? selected.wStats : null;
   const s = mvp.stats;
   const d = mvp.lpDelta?.week;
-  const mainChamp = mvp.topChampions?.[0]?.champion ?? 'Aatrox';
-  const champUrl = champImg(mainChamp);
-  const score = s ? s.avgScore.toFixed(1) : '8.8';
-  const wr = s ? `${s.winrate}%` : '65%';
-  const lpWeek = d ? (d > 0 ? `+${d} LP ▲` : `${d} LP ▼`) : '+0 LP';
-  const tierLabel = mvp.solo?.label ?? 'Emerald II';
+  const playerIconUrl = iconImg(mvp.profileIconId);
+  const score = w ? w.avgScore.toFixed(1) : (s ? s.avgScore.toFixed(1) : '—');
+  const wr = w ? `${w.winrate}% (${w.wins}V - ${w.losses}D)` : (s ? `${s.winrate}%` : '—');
+  const lpWeek = d != null ? (d > 0 ? `+${d} LP ▲` : d < 0 ? `${d} LP ▼` : '0 LP') : '+0 LP';
+  const tierLabel = mvp.solo?.label ?? 'Unranked';
+  const kda = w ? w.kda : (s ? s.kda : '—');
+  const gamesCount = w ? `${w.games} partidas esta semana` : (s ? `${s.games} partidas` : '');
 
   container.innerHTML = `
     <div class="mvp-banner-card">
-      <div class="mvp-tag-pill">👑 MVP OF THE WEEK</div>
+      <div class="mvp-tag-pill">MVP OF THE WEEK</div>
       <div class="mvp-inner">
         <div class="mvp-left">
           <div class="mvp-portrait-wrap">
-            <img class="mvp-portrait" src="${champUrl}" alt="${esc(mainChamp)}" onerror="this.src='${iconImg(mvp.profileIconId)}'">
+            <img class="mvp-portrait" src="${playerIconUrl}" alt="${esc(mvp.name)}" onerror="this.src='logo.jpg'">
           </div>
           <div class="mvp-details">
             <div class="mvp-rank-line">
               <span class="mvp-rank-badge" style="color:${tierColor(mvp)}">${esc(tierLabel)}</span>
-              <span class="row-nickname-badge">${mvp.nickname ? `"${mvp.nickname.title}" ${mvp.nickname.emoji}` : ''}</span>
+              <span class="row-nickname-badge">${mvp.nickname ? `"${esc(mvp.nickname.title)}"` : ''}</span>
+              ${gamesCount ? `<span class="muted sub" style="font-size:12px; margin-left:6px;">· ${gamesCount}</span>` : ''}
             </div>
             <div class="mvp-name">${esc(mvp.name)}</div>
             <div class="mvp-substats">
               <span>Win Rate: <strong style="color:var(--text-primary)">${wr}</strong></span>
-              <span style="color:${d >= 0 ? 'var(--success)' : 'var(--danger)'}; font-weight:700;">${lpWeek}</span>
-              ${s ? `<span>KDA: <strong>${s.kda}</strong></span>` : ''}
+              <span>LP Semanal: <strong style="color:${(d ?? 0) >= 0 ? 'var(--success)' : 'var(--danger)'}; font-weight:700;">${lpWeek}</strong></span>
+              <span>KDA: <strong>${kda}</strong></span>
             </div>
           </div>
         </div>
         <div class="mvp-right">
           <div class="mvp-score-emblem">
             <span class="mvp-score-num">${score}</span>
-            <span class="mvp-score-label">OP SCORE</span>
+            <span class="mvp-score-label">OP SCORE SEMANAL</span>
           </div>
         </div>
       </div>
@@ -214,23 +282,34 @@ function renderMvp() {
 
 // ---------- render competitive 4 stat cards ----------
 function renderStatGrid() {
+  const elFriends = $('#stat-total-friends');
+  if (!elFriends) return;
+
   const ps = board?.players ?? [];
-  $('#stat-total-friends').textContent = ps.length;
+  elFriends.textContent = ps.length;
 
   const withStats = ps.filter((p) => p.stats);
-  if (withStats.length) {
-    const avgWr = Math.round(withStats.reduce((acc, p) => acc + p.stats.winrate, 0) / withStats.length);
-    $('#stat-avg-winrate').textContent = `${avgWr}%`;
-  } else {
-    $('#stat-avg-winrate').textContent = '—';
+  const elAvgWr = $('#stat-avg-winrate');
+  if (elAvgWr) {
+    if (withStats.length) {
+      const avgWr = Math.round(withStats.reduce((acc, p) => acc + p.stats.winrate, 0) / withStats.length);
+      elAvgWr.textContent = `${avgWr}%`;
+    } else {
+      elAvgWr.textContent = '—';
+    }
   }
 
   const totalWeekLp = ps.reduce((acc, p) => acc + (p.lpDelta?.week ?? 0), 0);
   const lpEl = $('#stat-total-lp');
-  lpEl.textContent = signed(totalWeekLp) + ' LP';
-  lpEl.style.color = totalWeekLp >= 0 ? 'var(--success)' : 'var(--danger)';
+  if (lpEl) {
+    lpEl.textContent = signed(totalWeekLp) + ' LP';
+    lpEl.style.color = totalWeekLp >= 0 ? 'var(--success)' : 'var(--danger)';
+  }
 
-  $('#stat-total-games').textContent = board?.groupGames?.length ?? 0;
+  const elTotalGames = $('#stat-total-games');
+  if (elTotalGames) {
+    elTotalGames.textContent = board?.groupGames?.length ?? 0;
+  }
 }
 
 // ---------- render podium top 3 ----------
@@ -318,6 +397,344 @@ function renderPlayerRowCard(p, rank) {
       </div>
     </article>
   `;
+}
+
+// ---------- Recent Matches Feed (Overview) ----------
+let currentMatchQueueFilter = 'all';
+let currentMatchPlayerFilter = 'all';
+let currentMatchPage = 1;
+const MATCHES_PER_PAGE = 10;
+
+function timeAgo(ts) {
+  if (!ts) return '';
+  const now = Date.now();
+  const diffSec = Math.floor((now - ts) / 1000);
+  if (diffSec < 60) return 'Hace un momento';
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `Hace ${diffMin} min`;
+  const diffHours = Math.floor(diffMin / 60);
+  if (diffHours < 24) return `Hace ${diffHours} h`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays === 1) return 'Ayer';
+  if (diffDays < 7) return `Hace ${diffDays} días`;
+  return new Date(ts).toLocaleDateString('es-ES', { month: 'short', day: 'numeric' });
+}
+
+function getGroupMatchesList() {
+  const map = new Map();
+  for (const p of board?.players || []) {
+    for (const g of p.games || []) {
+      if (!map.has(g.matchId)) {
+        map.set(g.matchId, {
+          matchId: g.matchId,
+          queueId: g.queueId,
+          endTs: g.endTs,
+          minutes: g.minutes,
+          win: g.win,
+          friends: [],
+        });
+      }
+      map.get(g.matchId).friends.push({
+        puuid: p.puuid,
+        name: p.name,
+        profileIconId: p.profileIconId,
+        ...g,
+      });
+    }
+  }
+  const list = [...map.values()];
+  list.sort((a, b) => b.endTs - a.endTs);
+  return list;
+}
+
+function renderRecentMatchesPlayerFilters() {
+  const container = $('#recent-matches-player-filter');
+  if (!container) return;
+  const players = board?.players || [];
+  if (!players.length) {
+    container.innerHTML = '';
+    return;
+  }
+
+  container.innerHTML = `
+    <button class="pill-btn ${currentMatchPlayerFilter === 'all' ? 'active' : ''}" data-player="all">
+      Todos (${players.length})
+    </button>
+    ${players.map((p) => `
+      <button class="pill-btn ${currentMatchPlayerFilter === p.puuid ? 'active' : ''}" data-player="${esc(p.puuid)}">
+        ${esc(p.name)}
+      </button>
+    `).join('')}
+  `;
+
+  container.querySelectorAll('button[data-player]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      currentMatchPlayerFilter = btn.dataset.player;
+      currentMatchPage = 1;
+      renderRecentMatchesPlayerFilters();
+      renderRecentMatchesFeed();
+    });
+  });
+}
+
+function renderRecentMatchesFeed() {
+  const feed = $('#overview-matches-feed');
+  const paginationContainer = $('#overview-matches-pagination');
+  if (!feed) return;
+
+  renderRecentMatchesPlayerFilters();
+
+  let matches = getGroupMatchesList();
+
+  // Filter by player
+  if (currentMatchPlayerFilter !== 'all') {
+    matches = matches.filter((m) => m.friends.some((f) => f.puuid === currentMatchPlayerFilter));
+  }
+
+  // Filter by queue / outcome
+  if (currentMatchQueueFilter === 'solo') {
+    matches = matches.filter((m) => m.queueId === 420);
+  } else if (currentMatchQueueFilter === 'flex') {
+    matches = matches.filter((m) => m.queueId === 440);
+  } else if (currentMatchQueueFilter === 'win') {
+    matches = matches.filter((m) => m.win);
+  } else if (currentMatchQueueFilter === 'loss') {
+    matches = matches.filter((m) => !m.win);
+  }
+
+  const totalMatches = matches.length;
+  const totalPages = Math.max(1, Math.ceil(totalMatches / MATCHES_PER_PAGE));
+  if (currentMatchPage > totalPages) currentMatchPage = totalPages;
+  if (currentMatchPage < 1) currentMatchPage = 1;
+
+  if (!totalMatches) {
+    feed.innerHTML = `
+      <div style="text-align:center; padding:40px; background:rgba(255,255,255,0.02); border-radius:12px; border:1px solid var(--border-light);" class="muted">
+        No se encontraron partidas con los filtros seleccionados.
+      </div>
+    `;
+    if (paginationContainer) paginationContainer.innerHTML = '';
+    return;
+  }
+
+  const startIdx = (currentMatchPage - 1) * MATCHES_PER_PAGE;
+  const endIdx = startIdx + MATCHES_PER_PAGE;
+  const pagedMatches = matches.slice(startIdx, endIdx);
+
+  feed.innerHTML = pagedMatches.map((m) => {
+    const isWin = m.win;
+    const qName = m.queueId === 420 ? 'Solo/Duo' : m.queueId === 440 ? 'Ranked Flex' : 'Ranked';
+    const hasMultipleFriends = m.friends.length > 1;
+
+    return `
+      <article class="overview-match-card ${isWin ? 'win' : 'loss'}" data-match-id="${esc(m.matchId)}">
+        <div class="overview-match-header">
+          <div class="feed-header-left">
+            <span class="feed-badge-result ${isWin ? 'win' : 'loss'}">${isWin ? 'VICTORIA' : 'DERROTA'}</span>
+            <span class="feed-badge-queue">${qName}</span>
+            <span class="muted sub">${m.minutes}m</span>
+            <span class="muted sub">${timeAgo(m.endTs)}</span>
+            ${hasMultipleFriends ? `<span class="feed-badge-duo">${m.friends.length} Amigos juntos</span>` : ''}
+          </div>
+          <div class="feed-header-right">
+            <span>Ver 5v5 completo</span>
+          </div>
+        </div>
+
+        <div class="overview-match-participants">
+          ${m.friends.map((f) => {
+            const champName = resolveChampName(f.champion);
+            const kdaRatio = ((f.kills + f.assists) / Math.max(1, f.deaths)).toFixed(2);
+            const kpPct = Math.round((f.kp || 0) * 100);
+            const dmgSharePct = Math.round((f.dmgShare || 0) * 100);
+            const csPerMin = (f.cs / Math.max(1, m.minutes)).toFixed(1);
+
+            return `
+              <div class="overview-participant-row">
+                <!-- Identity -->
+                <div class="overview-p-left">
+                  <div class="overview-champ-wrap">
+                    <img class="overview-champ-img" src="${champImg(champName)}" alt="${esc(champName)}" onerror="this.src='logo.jpg'">
+                    <span class="overview-role-badge">${ROLE[f.position] ?? f.position ?? 'MID'}</span>
+                  </div>
+                  <div class="overview-identity-wrap">
+                    <div class="overview-player-name">
+                      <strong>${esc(f.name)}</strong>
+                    </div>
+                    <div class="overview-champ-name">${esc(champName)}</div>
+                  </div>
+                </div>
+
+                <!-- KDA -->
+                <div class="overview-kda-group">
+                  <div class="overview-kda-numbers">
+                    <strong>${f.kills}</strong> / <span class="deaths">${f.deaths}</span> / <strong>${f.assists}</strong>
+                  </div>
+                  <div class="overview-kda-sub">
+                    <strong style="color:var(--text-primary);">${kdaRatio}</strong> KDA · <span>${kpPct}% KP</span>
+                  </div>
+                </div>
+
+                <!-- Score OP.GG & Honors & Place -->
+                <div class="overview-score-group">
+                  <span class="overview-score-tag" title="Puntuación de desempeño estilo OP.GG (1 a 10)">
+                    OP.GG ${f.score?.toFixed(1) || '—'}
+                  </span>
+                  <span class="overview-place-tag ${f.place === 1 ? 'top-1' : f.place <= 3 ? 'top-3' : 'mid'}" title="Puesto de rendimiento entre los 10 jugadores de la partida">
+                    ${f.place === 1 ? 'Top 1' : f.place <= 3 ? `Top ${f.place}` : `Puesto #${f.place || '—'}`}
+                  </span>
+                  ${f.mvp ? '<span class="overview-honor-tag mvp">MVP</span>' : ''}
+                  ${f.ace ? '<span class="overview-honor-tag ace">ACE</span>' : ''}
+                </div>
+
+                <!-- Detailed Combat & Economy Stats -->
+                <div class="overview-combat-stats">
+                  <div class="overview-stat-item" title="Daño infligido a campeones">
+                    <span class="stat-lbl">Daño:</span>
+                    <strong>${(f.damage / 1000).toFixed(1)}k</strong>
+                    <span class="stat-sub">(${dmgSharePct}%)</span>
+                  </div>
+                  <div class="overview-stat-item" title="Súbditos y monstruos asesinados">
+                    <span class="stat-lbl">CS:</span>
+                    <strong>${f.cs}</strong>
+                    <span class="stat-sub">(${csPerMin}/m)</span>
+                  </div>
+                  <div class="overview-stat-item" title="Oro total acumulado">
+                    <span class="stat-lbl">Oro:</span>
+                    <strong>${(f.gold / 1000).toFixed(1)}k</strong>
+                  </div>
+                  <div class="overview-stat-item" title="Puntuación de visión">
+                    <span class="stat-lbl">Visión:</span>
+                    <strong>${f.vision || 0}</strong>
+                  </div>
+                </div>
+
+                <!-- Lane Opponent Matchup -->
+                <div class="overview-rival-box">
+                  ${f.opp ? `
+                    <div class="overview-rival-title">Rival en Línea:</div>
+                    <div class="overview-rival-content">
+                      <img class="overview-rival-champ-img" src="${champImg(f.opp.champion)}" alt="" onerror="this.src='logo.jpg'">
+                      <div class="overview-rival-info">
+                        <span class="overview-rival-name">${esc(resolveChampName(f.opp.champion))}</span>
+                        <span class="overview-rival-diff ${f.score >= (f.opp.score || 0) ? 'win' : 'loss'}">
+                          ${f.score >= (f.opp.score || 0) ? 'Ganó Línea' : 'Perdió Línea'} (${f.opp.score?.toFixed(1) || '—'})
+                        </span>
+                      </div>
+                    </div>
+                  ` : `
+                    <div class="overview-rival-empty muted sub" style="text-align:center; padding:4px 0;">—</div>
+                  `}
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </article>
+    `;
+  }).join('');
+
+  // Render pagination controls (10 por página)
+  renderRecentMatchesPagination(totalPages, totalMatches, startIdx, endIdx);
+
+  // Bind clicks to open full 5v5 match modal
+  feed.querySelectorAll('.overview-match-card').forEach((card) => {
+    card.addEventListener('click', () => {
+      openMatchModal(card.dataset.matchId);
+    });
+  });
+}
+
+function getPaginationPages(current, total) {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+  if (current <= 4) {
+    return [1, 2, 3, 4, 5, '...', total];
+  }
+  if (current >= total - 3) {
+    return [1, '...', total - 4, total - 3, total - 2, total - 1, total];
+  }
+  return [1, '...', current - 1, current, current + 1, '...', total];
+}
+
+function renderRecentMatchesPagination(totalPages, totalMatches, startIdx, endIdx) {
+  const container = $('#overview-matches-pagination');
+  if (!container) return;
+
+  if (totalPages <= 1) {
+    container.innerHTML = `
+      <div class="matches-pagination-info">
+        Mostrando todas las <strong>${totalMatches}</strong> partidas
+      </div>
+    `;
+    return;
+  }
+
+  const pages = getPaginationPages(currentMatchPage, totalPages);
+  const pageBtnsHtml = pages.map((p) => {
+    if (p === '...') {
+      return '<span style="color:var(--text-secondary); padding:0 4px; font-weight:700;">…</span>';
+    }
+    return `<button class="pagination-btn ${p === currentMatchPage ? 'active' : ''}" data-page="${p}">${p}</button>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="matches-pagination-info">
+      Página <strong>${currentMatchPage}</strong> de <strong>${totalPages}</strong> &middot; Mostrando <strong>${startIdx + 1}–${Math.min(endIdx, totalMatches)}</strong> de <strong>${totalMatches}</strong> partidas
+    </div>
+    <div class="matches-pagination-controls">
+      <button class="pagination-btn" id="prev-matches-page" ${currentMatchPage === 1 ? 'disabled' : ''}>
+        Anterior
+      </button>
+      ${pageBtnsHtml}
+      <button class="pagination-btn" id="next-matches-page" ${currentMatchPage === totalPages ? 'disabled' : ''}>
+        Siguiente
+      </button>
+    </div>
+  `;
+
+  container.querySelectorAll('button[data-page]').forEach((btn) => {
+    btn.onclick = () => {
+      currentMatchPage = Number(btn.dataset.page);
+      renderRecentMatchesFeed();
+      $('#overview-matches-feed')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+  });
+
+  const prevBtn = $('#prev-matches-page');
+  if (prevBtn) {
+    prevBtn.onclick = () => {
+      if (currentMatchPage > 1) {
+        currentMatchPage--;
+        renderRecentMatchesFeed();
+        $('#overview-matches-feed')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    };
+  }
+
+  const nextBtn = $('#next-matches-page');
+  if (nextBtn) {
+    nextBtn.onclick = () => {
+      if (currentMatchPage < totalPages) {
+        currentMatchPage++;
+        renderRecentMatchesFeed();
+        $('#overview-matches-feed')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    };
+  }
+}
+
+function bindRecentMatchesFilterEvents() {
+  $$('#recent-matches-queue-filter button[data-match-queue]').forEach((btn) => {
+    btn.onclick = () => {
+      $$('#recent-matches-queue-filter button').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentMatchQueueFilter = btn.dataset.matchQueue;
+      currentMatchPage = 1;
+      renderRecentMatchesFeed();
+    };
+  });
 }
 
 // ---------- render leaderboards ----------
@@ -1473,7 +1890,7 @@ window.viewPlayerProfile = function (puuid) {
     <!-- Recent Match History -->
     <h3 style="font-family:var(--font-heading); font-size:18px; margin:24px 0 12px; color:var(--gold);">Historial de Partidas Ranked</h3>
     <div class="profile-matches-list">
-      ${(p.games ?? []).slice(0, 15).map((g) => `
+      ${(p.games ?? []).slice(0, 40).map((g) => `
         <div class="profile-match-card ${g.win ? 'win' : 'loss'}" data-match-id="${esc(g.matchId)}">
           <img class="match-champ-icon" src="${champImg(g.champion)}" alt="">
           <div style="min-width:80px;">
@@ -1484,8 +1901,13 @@ window.viewPlayerProfile = function (puuid) {
             <strong style="font-size:15px;">${g.kills} / ${g.deaths} / ${g.assists}</strong>
             <div class="muted sub">KDA: ${((g.kills + g.assists) / Math.max(1, g.deaths)).toFixed(2)}</div>
           </div>
-          <div style="flex:1;">
-            <span class="muted sub">Score:</span> <strong style="color:var(--gold); font-size:15px;">${g.score.toFixed(1)}</strong>
+          <div style="flex:1; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <div>
+              <span class="muted sub">Score:</span> <strong style="color:var(--gold); font-size:15px;">${g.score.toFixed(1)}</strong>
+            </div>
+            <span class="overview-place-pill ${g.place === 1 ? 'top-1' : g.place <= 3 ? 'top-3' : g.place >= 9 ? 'bottom' : 'mid'}" title="Puesto entre los 10 jugadores">
+              ${g.place === 1 ? '🥇 #1 de 10' : g.place === 2 ? '🥈 #2 de 10' : g.place === 3 ? '🥉 #3 de 10' : `#${g.place || '—'} de 10`}
+            </span>
             ${g.mvp ? ' <span class="stat-icon-gold" style="padding:2px 6px;border-radius:4px;font-size:11px;font-weight:700;">MVP</span>' : ''}
             ${g.ace ? ' <span class="stat-icon-purple" style="padding:2px 6px;border-radius:4px;font-size:11px;font-weight:700;">ACE</span>' : ''}
           </div>
@@ -1534,8 +1956,10 @@ $('#friend-search')?.addEventListener('input', (e) => {
 });
 
 // ---------- Refresh and Status Polling ----------
+let refreshInFlight = false;
+
 async function pollStatus() {
-  const res = await fetch('api/status').catch(() => null);
+  const res = await fetch('/api/status').catch(() => null);
   if (!res?.ok) {
     staticMode = true;
     return;
@@ -1546,28 +1970,41 @@ async function pollStatus() {
   const text = $('#sync-text');
   const refreshBtn = $('#header-refresh-btn');
 
-  if (refreshBtn) refreshBtn.disabled = st.running;
+  if (refreshBtn) {
+    refreshBtn.disabled = st.running || refreshInFlight;
+  }
 
   if (st.running) {
-    banner.hidden = false;
+    pollStatus.wasRunning = true;
+    if (banner) banner.hidden = false;
     const { done = 0, total = 1, current } = st.progress ?? {};
     const pct = Math.round((100 * done) / Math.max(1, total));
     if (fill) fill.style.width = `${pct}%`;
     if (text) text.textContent = `Sincronizando con Riot Games: ${current ? esc(current) : ''} (${done}/${total})…`;
-    setTimeout(pollStatus, 1500);
+    setTimeout(pollStatus, 1000);
   } else {
-    banner.hidden = true;
+    if (banner) banner.hidden = true;
     if (st.error) toast('Error en sincronización: ' + st.error);
-    if (pollStatus.wasRunning) {
-      load();
+    const shouldReload = pollStatus.wasRunning || refreshInFlight;
+    pollStatus.wasRunning = false;
+    refreshInFlight = false;
+    if (shouldReload) {
+      await load();
+      toast('¡Historial de partidas actualizado con éxito!');
     }
   }
-  pollStatus.wasRunning = st.running;
 }
 
 $('#header-refresh-btn')?.addEventListener('click', async () => {
+  const btn = $('#header-refresh-btn');
+  if (btn) btn.disabled = true;
+  refreshInFlight = true;
   toast('Iniciando búsqueda de partidas en Riot Games...');
-  await fetch('api/refresh', { method: 'POST' }).catch(() => null);
+  const banner = $('#sync-banner');
+  const text = $('#sync-text');
+  if (banner) banner.hidden = false;
+  if (text) text.textContent = 'Contactando con Riot Games…';
+  await fetch('/api/refresh', { method: 'POST' }).catch(() => null);
   pollStatus();
 });
 
@@ -1708,8 +2145,28 @@ $('#test-discord-btn')?.addEventListener('click', async () => {
   }
 });
 
-// ---------- Live Game Tracker (Spectator v5) ----------
+// ---------- Live Game Tracker (Spectator v5 & Real-Time Telemetry) ----------
 let liveTeamsOpen = {};
+let liveTrackerTimer = null;
+
+function scheduleNextLiveCheck(data) {
+  clearTimeout(liveTrackerTimer);
+  // Fast polling if match is live (6s with telemetry, 15s without); 45s when idle
+  const hasTelemetry = data?.games?.some((g) => Boolean(g.telemetry));
+  const delay = data?.inGame ? (hasTelemetry ? 6_000 : 15_000) : 45_000;
+  liveTrackerTimer = setTimeout(() => checkLiveTracker(), delay);
+}
+
+function eloToTierName(val) {
+  if (!val) return 'Oro';
+  if (val < 600) return 'Hierro/Bronce';
+  if (val < 1000) return 'Plata';
+  if (val < 1400) return 'Oro';
+  if (val < 1800) return 'Platino';
+  if (val < 2200) return 'Esmeralda';
+  if (val < 2600) return 'Diamante';
+  return 'Master+';
+}
 
 function spellImg(id) {
   const map = {
@@ -1727,6 +2184,35 @@ function spellImg(id) {
   const name = map[id];
   return name ? `https://ddragon.leagueoflegends.com/cdn/14.24.1/img/spell/${name}.png` : '';
 }
+
+function formatMasteryPoints(points = 0) {
+  const n = Number(points) || 0;
+  if (n >= 1_000_000) {
+    const val = (n / 1_000_000).toFixed(1).replace(/\.0$/, '');
+    return `${val}M`;
+  }
+  if (n >= 1_000) {
+    return `${Math.round(n / 1_000)}k`;
+  }
+  return n > 0 ? `${n}` : '0';
+}
+
+function renderMasteryBadge(stats, champName) {
+  if (!stats?.mastery) return '';
+  const pts = stats.mastery.points || 0;
+  if (pts >= 1_000_000) {
+    return `<span class="live-stat-pill otp-god" title="Maestría Legendaria (+1 Millón de puntos)">+1M OTP</span>`;
+  }
+  if (pts >= 250_000) {
+    return `<span class="live-stat-pill otp" title="Jugador OTP (+250k pts con ${esc(champName)})">OTP</span>`;
+  }
+  if (pts >= 100_000) {
+    return `<span class="live-stat-pill main" title="Main (+100k pts con ${esc(champName)})">Main</span>`;
+  }
+  return '';
+}
+
+let lastLiveRenderKey = '';
 
 async function checkLiveTracker(manual = false) {
   const banner = $('#live-tracker-banner');
@@ -1747,11 +2233,78 @@ async function checkLiveTracker(manual = false) {
     if (!res?.ok) return;
     const data = await res.json();
 
+    if (data.ddragonVersion) {
+      window.latestDdragonVersion = data.ddragonVersion;
+    }
+
+    const renderKey = JSON.stringify({
+      inGame: data.inGame,
+      activeCount: data.activeCount,
+      games: (data.games || []).map((g) => ({
+        id: g.gameId,
+        min: g.minutes,
+        isOpen: liveTeamsOpen[g.gameId],
+        prob: g.prediction?.blue?.probability,
+        goldLead: g.telemetry?.goldLead,
+        kills: `${g.telemetry?.blue?.kills}-${g.telemetry?.red?.kills}`,
+        items: (g.teams?.blue || []).concat(g.teams?.red || []).map((p) => (p.inGame?.items || []).map((it) => it.id).join(',')).join(';'),
+      })),
+    });
+
+    if (renderKey === lastLiveRenderKey && !manual) {
+      scheduleNextLiveCheck(data);
+      return;
+    }
+    lastLiveRenderKey = renderKey;
+
+    window._activeLiveGames = data.games ?? [];
+
     if (data.inGame && data.games?.length > 0) {
       if (dot) dot.classList.add('live');
-      if (statusText) statusText.textContent = `🔴 ${data.activeCount} en partida`;
+      if (statusText) statusText.textContent = `${data.activeCount} en partida`;
 
       if (banner) {
+        // Mosaico de amigos en vivo
+        const friendMosaicCards = data.games.flatMap((g) => {
+          return g.friends.map((f) => {
+            const fChamp = resolveChampName(f.champion);
+            const teamColor = f.teamId === 100 ? '#5b9cf6' : '#f16c78';
+            const teamLabel = f.teamId === 100 ? 'Azul' : 'Rojo';
+            const bp = (board?.players ?? []).find((p) => p.name === f.name);
+            const rankLabel = bp?.solo?.label ?? bp?.flex?.label ?? 'Unranked';
+            const wr = bp?.stats?.winrate ? `${bp.stats.winrate}% WR` : '';
+            const lp = bp?.lpDelta?.week != null ? (bp.lpDelta.week >= 0 ? `+${bp.lpDelta.week} LP` : `${bp.lpDelta.week} LP`) : '';
+            const lpColor = bp?.lpDelta?.week >= 0 ? '#4ade80' : '#f87171';
+            const rankCol = bp ? tierColor(bp) : '#aaa';
+
+            return `
+              <div class="live-friend-mosaic-card" data-game-id="${g.gameId}" title="Ver partida en vivo de ${esc(f.name)}">
+                <div class="live-mosaic-portrait">
+                  <img src="${champImg(fChamp)}" alt="${esc(fChamp)}" onerror="this.src='logo.jpg'">
+                  <span class="live-mosaic-team-tag" style="background:${teamColor};">${teamLabel}</span>
+                </div>
+                <div class="live-mosaic-body">
+                  <div class="live-mosaic-top">
+                    <span class="live-mosaic-name">${esc(f.name)}</span>
+                    <span class="live-mosaic-badge">Min ${g.minutes}</span>
+                  </div>
+                  <span class="live-mosaic-champ">${esc(fChamp)} &middot; <span style="color:var(--text-secondary); font-size:11px;">${esc(g.queue)}</span></span>
+                  <div class="live-mosaic-stats">
+                    <span class="live-mosaic-rank" style="color:${rankCol}">${esc(rankLabel)}</span>
+                    ${wr ? `<span class="live-mosaic-pill">${wr}</span>` : ''}
+                    ${lp ? `<span class="live-mosaic-pill" style="color:${lpColor}">${lp}</span>` : ''}
+                  </div>
+                  <div class="live-mosaic-footer">
+                    <span class="live-mosaic-meta">${g.isDuo ? 'Dúo de Amigos' : g.isCivilWar ? 'Guerra Civil' : 'En Vivo'}</span>
+                    <button class="live-build-btn open-champ-build" data-champ="${esc(fChamp)}" style="padding:2px 8px; font-size:11px;" title="Ver Build de ${esc(fChamp)}">🎒 Build</button>
+                    <span class="live-mosaic-cta">Ver Partida &rarr;</span>
+                  </div>
+                </div>
+              </div>
+            `;
+          });
+        }).join('');
+
         banner.innerHTML = `
           <div class="live-card-active">
             <div class="live-header-bar">
@@ -1762,126 +2315,10 @@ async function checkLiveTracker(manual = false) {
                 </span>
                 <strong style="color:var(--text-primary); font-size:14px;">${data.activeCount} ${data.activeCount === 1 ? 'amigo jugando ahora' : 'amigos jugando ahora'}</strong>
               </div>
-              <div style="display:flex; align-items:center; gap:8px;">
-                <button id="manual-live-check-btn" class="live-refresh-btn" title="Comprobar estado en vivo">🔄 Actualizar</button>
-              </div>
+              <button id="manual-live-check-btn" class="live-refresh-btn" title="Comprobar estado en vivo">Actualizar</button>
             </div>
-            <div class="live-players-grid">
-              ${data.games.map((g) => {
-                if (liveTeamsOpen[g.gameId] === undefined) liveTeamsOpen[g.gameId] = true;
-                const isOpen = liveTeamsOpen[g.gameId];
-                return `
-                <div class="live-game-box" style="display:flex; flex-direction:column; gap:8px; flex:1;">
-                  <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-                    <div class="muted sub" style="font-size:11px; font-weight:700; color:var(--cyan);">
-                      🎮 ${esc(g.queue)} · Minuto ${g.minutes} ${g.isDuo ? '· ⭐ Dúo de amigos' : g.isCivilWar ? '· ⚔️ ¡Guerra Civil!' : ''}
-                    </div>
-                    ${g.teams ? `
-                      <button class="live-toggle-teams-btn" data-game-id="${g.gameId}">
-                        👥 ${isOpen ? 'Ocultar Equipos' : 'Ver Equipos (Azul vs Rojo)'}
-                      </button>
-                    ` : ''}
-                  </div>
-                  <div style="display:flex; flex-wrap:wrap; gap:8px;">
-                    ${g.friends.map((f) => `
-                      <div class="live-player-chip">
-                        <img class="live-champ-img" src="${champImg(f.champion)}" alt="" onerror="this.src='logo.jpg'">
-                        <div>
-                          <strong style="font-size:14px; color:var(--text-primary);">${esc(f.name)}</strong>
-                          <div class="muted sub" style="color:var(--gold); font-size:11px;">${esc(f.champion)} · ${f.teamId === 100 ? 'Azul' : 'Rojo'}</div>
-                        </div>
-                        <button class="live-build-btn open-champ-build" data-champ="${esc(f.champion)}" style="margin-left:8px;" title="Ver Build y Objetos">🎒 Build</button>
-                      </div>
-                    `).join('')}
-                  </div>
-
-                  ${g.teams && isOpen ? `
-                    <div class="live-teams-container">
-                      <div class="live-teams-header">
-                        <div style="display:flex; align-items:center; gap:8px;">
-                          <strong style="color:var(--text-primary); font-size:13px;">🛡️ Alineación 5v5 de la Partida</strong>
-                          <span class="muted sub" style="font-size:11px;">Riot Spectator v5</span>
-                        </div>
-                        <span class="muted sub" style="font-size:11px; color:var(--gold); font-weight:700;">🎮 ${esc(g.queue)} · Minuto ${g.minutes}</span>
-                      </div>
-                      <div class="live-teams-grid">
-                        <!-- Blue Team -->
-                        <div class="live-team-col">
-                          <div class="live-team-badge blue">
-                            <span>🛡️ Equipo Azul</span>
-                            <span style="font-size:10px; opacity:0.8;">Lado Azul</span>
-                          </div>
-                          ${(g.teams?.blue ?? []).map((p) => `
-                            <div class="live-participant-row ${p.isFriend ? 'friend' : ''}">
-                              <div class="live-participant-left">
-                                <img class="live-champ-thumb" src="${champImg(p.champion)}" alt="" onerror="this.src='logo.jpg'">
-                                <div class="live-spells-col">
-                                  ${spellImg(p.spell1Id) ? `<img class="live-spell-thumb" src="${spellImg(p.spell1Id)}" title="Hechizo 1" alt="">` : ''}
-                                  ${spellImg(p.spell2Id) ? `<img class="live-spell-thumb" src="${spellImg(p.spell2Id)}" title="Hechizo 2" alt="">` : ''}
-                                </div>
-                                <div class="live-participant-names">
-                                  <span class="live-participant-player">
-                                    ${esc(p.summonerName)}
-                                    ${p.isFriend ? `<span class="live-friend-tag">★ Amigo</span>` : ''}
-                                  </span>
-                                  <span class="live-participant-champ">${esc(p.champion)}</span>
-                                </div>
-                              </div>
-                              <button class="live-build-btn open-champ-build" data-champ="${esc(p.champion)}" style="padding:2px 7px; font-size:10px;" title="Ver Build de ${esc(p.champion)}">🎒 Build</button>
-                            </div>
-                          `).join('')}
-                          ${(g.bans?.blue?.length ?? 0) > 0 ? `
-                            <div class="live-bans-row">
-                              <span style="font-size:10px;">Banes:</span>
-                              ${g.bans.blue.map((b) => `<img class="live-ban-thumb" src="${champImg(b.champion)}" title="${esc(b.champion)}" alt="" onerror="this.style.display='none'">`).join('')}
-                            </div>
-                          ` : ''}
-                        </div>
-
-                        <!-- Center VS Divider -->
-                        <div class="live-vs-divider">
-                          <div class="live-vs-circle">VS</div>
-                          <span class="muted sub" style="font-size:10px; font-weight:700; color:var(--gold);">Min ${g.minutes}</span>
-                        </div>
-
-                        <!-- Red Team -->
-                        <div class="live-team-col">
-                          <div class="live-team-badge red">
-                            <span>🛡️ Equipo Rojo</span>
-                            <span style="font-size:10px; opacity:0.8;">Lado Rojo</span>
-                          </div>
-                          ${(g.teams?.red ?? []).map((p) => `
-                            <div class="live-participant-row ${p.isFriend ? 'friend' : ''}">
-                              <div class="live-participant-left">
-                                <img class="live-champ-thumb" src="${champImg(p.champion)}" alt="" onerror="this.src='logo.jpg'">
-                                <div class="live-spells-col">
-                                  ${spellImg(p.spell1Id) ? `<img class="live-spell-thumb" src="${spellImg(p.spell1Id)}" title="Hechizo 1" alt="">` : ''}
-                                  ${spellImg(p.spell2Id) ? `<img class="live-spell-thumb" src="${spellImg(p.spell2Id)}" title="Hechizo 2" alt="">` : ''}
-                                </div>
-                                <div class="live-participant-names">
-                                  <span class="live-participant-player">
-                                    ${esc(p.summonerName)}
-                                    ${p.isFriend ? `<span class="live-friend-tag">★ Amigo</span>` : ''}
-                                  </span>
-                                  <span class="live-participant-champ">${esc(p.champion)}</span>
-                                </div>
-                              </div>
-                              <button class="live-build-btn open-champ-build" data-champ="${esc(p.champion)}" style="padding:2px 7px; font-size:10px;" title="Ver Build de ${esc(p.champion)}">🎒 Build</button>
-                            </div>
-                          `).join('')}
-                          ${(g.bans?.red?.length ?? 0) > 0 ? `
-                            <div class="live-bans-row">
-                              <span style="font-size:10px;">Banes:</span>
-                              ${g.bans.red.map((b) => `<img class="live-ban-thumb" src="${champImg(b.champion)}" title="${esc(b.champion)}" alt="" onerror="this.style.display='none'">`).join('')}
-                            </div>
-                          ` : ''}
-                        </div>
-                      </div>
-                    </div>
-                  ` : ''}
-                </div>
-              `;
-              }).join('')}
+            <div class="live-friends-mosaic">
+              ${friendMosaicCards}
             </div>
           </div>
         `;
@@ -1893,34 +2330,217 @@ async function checkLiveTracker(manual = false) {
       if (banner) {
         banner.innerHTML = `
           <div class="live-card-idle">
-            <div style="display:flex; align-items:center; gap:8px;">
-              <span>🎮</span>
+            <div>
               <span>Ningún amigo está en partida en este momento.</span>
             </div>
-            <button id="manual-live-check-btn" class="live-refresh-btn" title="Comprobar con Riot Games">🔄 Comprobar en vivo</button>
+            <button id="manual-live-check-btn" class="live-refresh-btn" title="Comprobar con Riot Games">Comprobar en vivo</button>
           </div>
         `;
       }
     }
 
     $('#manual-live-check-btn')?.addEventListener('click', () => checkLiveTracker(true));
-    $$('.live-toggle-teams-btn').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const gid = btn.dataset.gameId;
-        liveTeamsOpen[gid] = !liveTeamsOpen[gid];
-        checkLiveTracker();
+
+    // Mosaico: click en amigo abre popup con info de partida
+    $$('.live-friend-mosaic-card').forEach((card) => {
+      card.addEventListener('click', () => {
+        openLiveMatchModal(card.dataset.gameId);
       });
     });
-    $$('.open-champ-build').forEach((btn) => {
+
+    banner?.querySelectorAll('.open-champ-build').forEach((btn) => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         openBuildModal(btn.dataset.champ);
       });
     });
+
+    scheduleNextLiveCheck(data);
   } catch (err) {
     console.warn('Error checking live tracker:', err);
+    scheduleNextLiveCheck(null);
   }
 }
+
+// ---------- Live Game Details Modal (Popup) ----------
+function openLiveMatchModal(gameId) {
+  const g = (window._activeLiveGames || []).find((x) => String(x.gameId) === String(gameId)) || window._activeLiveGames?.[0];
+  if (!g) return;
+
+  const dialog = $('#live-match-dialog');
+  if (!dialog) return;
+
+  const title = $('#live-match-modal-title');
+  const subtitle = $('#live-match-modal-subtitle');
+  const body = $('#live-match-modal-body');
+
+  title.textContent = `${g.queue || 'Partida en Vivo'} · Minuto ${g.minutes || 0}`;
+  const friendNames = g.friends.map((f) => f.name).join(', ');
+  subtitle.textContent = `${friendNames} ${g.isDuo ? '· Dúo de Amigos' : g.isCivilWar ? '· Guerra Civil entre Amigos' : '· Partida en curso'}`;
+
+  const renderPlayer = (p) => {
+    const champDisplayName = resolveChampName(p.champion);
+    return `<div class="live-participant-row ${p.isFriend ? 'friend' : ''}">
+      <div class="live-participant-left">
+        <img class="live-champ-thumb" src="${champImg(champDisplayName)}" alt="" onerror="this.src='logo.jpg'">
+        <div class="live-spells-col">
+          ${spellImg(p.spell1Id) ? `<img class="live-spell-thumb" src="${spellImg(p.spell1Id)}" alt="">` : ''}
+          ${spellImg(p.spell2Id) ? `<img class="live-spell-thumb" src="${spellImg(p.spell2Id)}" alt="">` : ''}
+        </div>
+        <div class="live-participant-names">
+          <div class="live-participant-player">
+            <span class="live-player-name">${esc(p.summonerName)}</span>
+            ${p.isFriend ? '<span class="live-friend-tag">Amigo</span>' : ''}
+            ${p.inGame?.isDead ? `<span class="live-stat-pill dead">${p.inGame.respawnTimer}s</span>` : ''}
+          </div>
+          <div class="live-participant-meta">
+            <span class="live-participant-champ">${esc(champDisplayName)}</span>
+            ${p.curve ? `<span class="live-stat-pill curve ${p.curve}">${p.curve === 'early' ? 'Early' : p.curve === 'late' ? 'Late' : p.curve === 'steady' ? 'Tank' : 'Mid'}</span>` : ''}
+            ${p.inGame ? `<span class="live-stat-pill kda"><strong>${p.inGame.kills}</strong>/<span class="deaths">${p.inGame.deaths}</span>/<strong>${p.inGame.assists}</strong> (${p.inGame.cs} CS)</span>` : ''}
+            ${p.stats ? `
+              <span class="live-stat-pill rank">${esc(p.stats.rankLabel || 'Unranked')}</span>
+              ${p.stats.winrate ? `<span class="live-stat-pill wr ${p.stats.winrate >= 54 ? 'high' : p.stats.winrate <= 46 ? 'low' : ''}">${p.stats.winrate}% WR</span>` : ''}
+              ${p.stats.mastery?.points ? `<span class="live-stat-pill mastery">${formatMasteryPoints(p.stats.mastery.points)}</span>` : ''}
+              ${p.stats.hotStreak ? '<span class="live-stat-pill streak">Racha</span>' : ''}
+              ${renderMasteryBadge(p.stats, champDisplayName)}
+            ` : ''}
+          </div>
+          ${(p.inGame?.items || []).filter((it) => it.id > 0).length > 0 ? `
+            <div class="live-items-inventory">
+              ${p.inGame.items.filter((it) => it.id > 0).map((it) => `<img class="live-item-icon" src="https://ddragon.leagueoflegends.com/cdn/14.24.1/img/item/${it.id}.png" title="${esc(it.name || 'Objeto')}" alt="" onerror="this.style.display='none'">`).join('')}
+            </div>
+          ` : ''}
+        </div>
+      </div>
+      <button class="live-build-btn open-champ-build" data-champ="${esc(champDisplayName)}">Build</button>
+    </div>`;
+  };
+
+  body.innerHTML = `
+    <div class="live-teams-detail" style="display:block; padding:0; background:transparent; border-top:none;">
+      ${g.telemetry ? `
+        <div class="live-telemetry-scoreboard">
+          <div class="live-telemetry-header">
+            <span class="live-telemetry-pill">TELEMETRÍA EN VIVO</span>
+            <span class="live-telemetry-timer">${Math.floor((g.telemetry.gameTime || 0) / 60)}:${String((g.telemetry.gameTime || 0) % 60).padStart(2, '0')}</span>
+            <span class="live-telemetry-lead ${g.telemetry.goldLead >= 0 ? 'blue' : 'red'}">
+              ${(Math.abs(g.telemetry.goldLead || 0) / 1000).toFixed(1)}k oro ${g.telemetry.goldLead >= 0 ? 'Azul' : 'Rojo'}
+            </span>
+          </div>
+          <div class="live-telemetry-scores">
+            <div class="live-telemetry-team blue">
+              <div class="live-telemetry-kills">${g.telemetry.blue?.kills ?? 0}</div>
+              <div class="live-telemetry-objs">
+                <span>Torres: ${g.telemetry.blue?.towers ?? 0}</span>
+                <span>Dragones: ${g.telemetry.blue?.dragons ?? 0}</span>
+                ${(g.telemetry.blue?.barons ?? 0) > 0 ? `<span>Barón: ${g.telemetry.blue.barons}</span>` : ''}
+              </div>
+            </div>
+            <div class="live-telemetry-vs">VS</div>
+            <div class="live-telemetry-team red">
+              <div class="live-telemetry-kills">${g.telemetry.red?.kills ?? 0}</div>
+              <div class="live-telemetry-objs">
+                <span>Torres: ${g.telemetry.red?.towers ?? 0}</span>
+                <span>Dragones: ${g.telemetry.red?.dragons ?? 0}</span>
+                ${(g.telemetry.red?.barons ?? 0) > 0 ? `<span>Barón: ${g.telemetry.red.barons}</span>` : ''}
+              </div>
+            </div>
+          </div>
+        </div>
+      ` : ''}
+
+      ${g.prediction ? `
+        <div class="live-prediction-card">
+          <div class="live-prediction-header">
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <strong style="font-size:13px; color:var(--text-primary);">Probabilidad de Victoria</strong>
+              ${g.prediction.phase ? `<span class="live-phase-badge ${g.prediction.phase.name}">${esc(g.prediction.phase.label)}</span>` : ''}
+              ${g.prediction.isDynamic ? '<span class="live-dynamic-badge">En vivo</span>' : ''}
+            </div>
+            <div class="live-favored-badge ${g.prediction.favored}">
+              ${g.prediction.favored === 'blue' ? 'Favorito: Equipo Azul' : 'Favorito: Equipo Rojo'}
+            </div>
+          </div>
+          <div class="live-prob-bar-container">
+            <div class="live-prob-bar-side blue" style="width:${g.prediction.blue.probability}%;">
+              <span class="live-prob-label">${g.prediction.blue.probability}% Azul</span>
+            </div>
+            <div class="live-prob-bar-side red" style="width:${g.prediction.red.probability}%;">
+              <span class="live-prob-label">${g.prediction.red.probability}% Rojo</span>
+            </div>
+          </div>
+          <div class="live-prediction-metrics">
+            <div class="live-metric-box blue">
+              <span>Elo: <strong>${eloToTierName(g.prediction.blue.avgRankValue)}</strong></span>
+              <span>Maestría: <strong>${Math.round((g.prediction.blue.totalMastery || 0) / 1000)}k</strong></span>
+              <span>WR: <strong>${g.prediction.blue.avgWinrate || 50}%</strong></span>
+            </div>
+            <div class="live-metric-vs">VS</div>
+            <div class="live-metric-box red">
+              <span>Elo: <strong>${eloToTierName(g.prediction.red.avgRankValue)}</strong></span>
+              <span>Maestría: <strong>${Math.round((g.prediction.red.totalMastery || 0) / 1000)}k</strong></span>
+              <span>WR: <strong>${g.prediction.red.avgWinrate || 50}%</strong></span>
+            </div>
+          </div>
+          ${(g.prediction.reasons || []).length > 0 ? `<div class="live-prediction-reasons">${g.prediction.reasons.map((r) => `<div class="live-reason-pill">${esc(r)}</div>`).join('')}</div>` : ''}
+          ${(g.prediction.alerts || []).length > 0 ? `<div class="live-prediction-alerts">${g.prediction.alerts.map((a) => `<div class="live-alert-pill">${esc(a)}</div>`).join('')}</div>` : ''}
+        </div>
+      ` : ''}
+
+      <div class="live-teams-grid">
+        <div class="live-team-col">
+          <div class="live-team-badge blue">
+            <span>Equipo Azul</span>
+            <span style="font-size:10px; opacity:0.8;">${g.prediction?.blue?.probability ?? 50}% de ganar</span>
+          </div>
+          ${(g.teams?.blue ?? []).map(renderPlayer).join('')}
+          ${(g.bans?.blue?.length ?? 0) > 0 ? `
+            <div class="live-bans-row">
+              <span class="live-bans-title">Banes</span>
+              <div class="live-bans-list">
+                ${g.bans.blue.map((b) => { const bn = resolveChampName(b.champion); return `<img class="live-ban-thumb" src="${champImg(bn)}" title="${esc(bn)}" alt="" onerror="this.style.display='none'">`; }).join('')}
+              </div>
+            </div>
+          ` : ''}
+        </div>
+        <div class="live-vs-divider">
+          <div class="live-vs-circle">VS</div>
+          <span class="muted sub" style="font-size:10px; font-weight:700; color:var(--gold);">Min ${g.minutes}</span>
+        </div>
+        <div class="live-team-col">
+          <div class="live-team-badge red">
+            <span>Equipo Rojo</span>
+            <span style="font-size:10px; opacity:0.8;">${g.prediction?.red?.probability ?? 50}% de ganar</span>
+          </div>
+          ${(g.teams?.red ?? []).map(renderPlayer).join('')}
+          ${(g.bans?.red?.length ?? 0) > 0 ? `
+            <div class="live-bans-row">
+              <span class="live-bans-title">Banes</span>
+              <div class="live-bans-list">
+                ${g.bans.red.map((b) => { const bn = resolveChampName(b.champion); return `<img class="live-ban-thumb" src="${champImg(bn)}" title="${esc(bn)}" alt="" onerror="this.style.display='none'">`; }).join('')}
+              </div>
+            </div>
+          ` : ''}
+        </div>
+      </div>
+    </div>
+  `;
+
+  body.querySelectorAll('.open-champ-build').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openBuildModal(btn.dataset.champ);
+    });
+  });
+
+  dialog.showModal();
+}
+
+$('#close-live-match-btn')?.addEventListener('click', () => $('#live-match-dialog')?.close());
+$('#cancel-live-match-btn')?.addEventListener('click', () => $('#live-match-dialog')?.close());
+$('#live-match-dialog')?.addEventListener('click', (e) => {
+  if (e.target === $('#live-match-dialog')) $('#live-match-dialog').close();
+});
 
 // WhatsApp Share buttons (Sidebar and legacy)
 const shareWhatsApp = async () => {
@@ -1947,14 +2567,18 @@ async function load() {
     renderStatGrid();
     renderPodium();
     renderLeaderboards();
+    renderRecentMatchesFeed();
+    bindRecentMatchesFilterEvents();
     populateDuelSelectors();
     renderSynergy();
     renderApodos();
     renderRecords();
     renderMeta();
     handleHash();
+    if (window.location.hash === '#players') {
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    }
     checkLiveTracker();
-    setInterval(checkLiveTracker, 60_000);
   } catch (err) {
     console.error('Failed to load leaderboard data:', err);
   }

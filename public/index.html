@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=20261104">
 </head>
 <body>
   <div class="app-layout">
@@ -141,62 +141,36 @@
           <!-- MVP Card -->
           <div id="mvp-container"></div>
 
-          <!-- 4 Stats Cards -->
-          <div class="stat-grid-4">
-            <div class="stat-card">
-              <div class="stat-icon-wrap stat-icon-gold">👥</div>
-              <div class="stat-info">
-                <span class="stat-val" id="stat-total-friends">0</span>
-                <span class="stat-lbl">Invocadores en Lista</span>
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-icon-wrap stat-icon-cyan">🎯</div>
-              <div class="stat-info">
-                <span class="stat-val" id="stat-avg-winrate">0%</span>
-                <span class="stat-lbl">Win Rate Promedio</span>
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-icon-wrap stat-icon-green">📈</div>
-              <div class="stat-info">
-                <span class="stat-val" id="stat-total-lp">+0 LP</span>
-                <span class="stat-lbl">LP Ganados esta Semana</span>
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-icon-wrap stat-icon-purple">⚔️</div>
-              <div class="stat-info">
-                <span class="stat-val" id="stat-total-games">0</span>
-                <span class="stat-lbl">Partidas Jugadas Juntos</span>
-              </div>
-            </div>
-          </div>
-
           <!-- Podium Top 3 -->
-          <div class="filter-bar">
-            <h2 style="font-family: var(--font-heading); font-size: 20px;">🏆 Top Competidores</h2>
-            <div class="pill-group">
-              <button class="pill-btn active" data-sort="rank">Rango Solo/Duo</button>
-              <button class="pill-btn" data-sort="score">Score OP.GG</button>
-              <button class="pill-btn" data-sort="winrate">Win Rate</button>
-              <button class="pill-btn" data-sort="week">LP Semanal</button>
+          <div id="podium-container" class="podium-container" style="margin-bottom: 20px;"></div>
+
+          <!-- Feed: Últimas Partidas Ranked -->
+          <div class="filter-bar" style="margin-top: 16px;">
+            <div>
+              <h2 style="font-family: var(--font-heading); font-size: 20px; color: var(--gold);">
+                Últimas Partidas
+              </h2>
+              <p class="muted" style="margin-top: 4px; font-size: 13px;">
+                Historial cronológico en tiempo real con todas las estadísticas de combate, farmeo y rivales.
+              </p>
+            </div>
+            <div class="pill-group" id="recent-matches-queue-filter">
+              <button class="pill-btn active" data-match-queue="all">Todas</button>
+              <button class="pill-btn" data-match-queue="solo">Solo/Duo</button>
+              <button class="pill-btn" data-match-queue="flex">Flex</button>
+              <button class="pill-btn" data-match-queue="win">Victorias</button>
+              <button class="pill-btn" data-match-queue="loss">Derrotas</button>
             </div>
           </div>
-          <div id="podium-container" class="podium-container"></div>
 
-          <!-- Table Header -->
-          <div class="leaderboard-table-header">
-            <span class="col-pos">POS</span>
-            <span class="col-identity">INVOCADOR / RANGO</span>
-            <span class="col-winrate">WIN RATE</span>
-            <span class="col-delta">LP SEMANAL</span>
-            <span class="col-spark">TENDENCIA</span>
-            <span class="col-score">SCORE</span>
-          </div>
+          <!-- Filtro por Invocador -->
+          <div id="recent-matches-player-filter" class="pill-group" style="margin-bottom: 14px; gap: 6px;"></div>
 
-          <!-- Quick Leaderboard List Preview -->
-          <div id="overview-leaderboard" class="leaderboard-list"></div>
+          <!-- Feed List Container -->
+          <div id="overview-matches-feed" class="recent-matches-feed"></div>
+
+          <!-- Paginación -->
+          <div id="overview-matches-pagination" class="matches-pagination-bar"></div>
         </section>
 
         <!-- ==================== VIEW 2: LEADERBOARD ==================== -->
@@ -509,6 +483,25 @@
     </div>
   </dialog>
 
+  <!-- Dialog 3b: Live Match Breakdown Modal -->
+  <dialog id="live-match-dialog" class="modal-dialog match-modal-dialog">
+    <div class="modal-card match-modal-card">
+      <div class="modal-head">
+        <div>
+          <h2 id="live-match-modal-title">Partida en Vivo</h2>
+          <div id="live-match-modal-subtitle" class="muted sub">Detalles 5v5 en tiempo real</div>
+        </div>
+        <button type="button" id="close-live-match-btn" class="icon-btn">&times;</button>
+      </div>
+      <div id="live-match-modal-body" class="match-modal-body">
+        <div style="text-align:center; padding: 40px;" class="muted">Cargando partida en vivo...</div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" id="cancel-live-match-btn" class="btn">Cerrar</button>
+      </div>
+    </div>
+  </dialog>
+
   <!-- Dialog 4: Gamer Card Generator Modal -->
   <dialog id="gamer-card-dialog" class="modal-dialog gamer-card-modal-dialog">
     <div class="modal-card gamer-card-modal-card">
@@ -556,6 +549,6 @@
   <div id="toast" class="toast" hidden></div>
 
   <!-- JavaScript Module -->
-  <script src="app.js" type="module"></script>
+  <script src="app.js?v=20261104" type="module"></script>
 </body>
 </html>
