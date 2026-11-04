@@ -4122,42 +4122,33 @@ dialog.opscore-modal-dialog {
   display: none;
 }
 
-/* Medium Screens & Laptops (769px to 1259px): 2 balanced rows */
+/* Contracted Desktop & Medium Screens (769px to 1259px): Single clean row with Identity, KDA, Score, and Rival. Combat stats hidden. */
 @media (max-width: 1259px) and (min-width: 769px) {
   .overview-participant-row {
     display: grid !important;
-    grid-template-columns: 1fr auto auto !important;
-    grid-template-areas:
-      "identity kda score"
-      "combat   combat rival" !important;
+    grid-template-columns: minmax(140px, 1.2fr) minmax(115px, 0.9fr) auto minmax(150px, 1.2fr) !important;
+    grid-template-areas: none !important;
     gap: 10px 14px !important;
     align-items: center !important;
     padding: 8px 0 !important;
   }
   .overview-p-left {
-    grid-area: identity !important;
+    grid-area: auto !important;
   }
   .overview-kda-group {
-    grid-area: kda !important;
-    min-width: 130px !important;
+    grid-area: auto !important;
+    min-width: 115px !important;
   }
   .overview-score-group {
-    grid-area: score !important;
+    grid-area: auto !important;
   }
   .overview-combat-stats {
-    grid-area: combat !important;
-    display: grid !important;
-    grid-template-columns: repeat(4, 1fr) !important;
-    gap: 8px !important;
-    background: rgba(0, 0, 0, 0.25) !important;
-    padding: 8px 12px !important;
-    border-radius: 8px !important;
-    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+    display: none !important;
   }
   .overview-rival-box {
-    grid-area: rival !important;
+    grid-area: auto !important;
     display: block !important;
-    min-width: 165px !important;
+    min-width: 150px !important;
     background: rgba(8, 13, 25, 0.7) !important;
     padding: 6px 12px !important;
     border-radius: 8px !important;
