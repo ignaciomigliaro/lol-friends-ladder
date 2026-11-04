@@ -2551,7 +2551,7 @@ $('#nav-btn-whatsapp')?.addEventListener('click', shareWhatsApp);
 // ---------- Initial Load ----------
 async function load() {
   try {
-    board = await (await fetch(`/leaderboard.json?t=${Date.now()}`, { cache: 'no-store' })).json();
+    board = await (await fetch(`leaderboard.json?t=${Date.now()}`, { cache: 'no-store' })).json();
     $('#group-subtitle').textContent = board.groupName ?? 'La Grieta de los Pibes';
     $('#sidebar-region').textContent = `Temporada 2026 · ${(board.platform ?? 'LAN').toUpperCase()}`;
 
