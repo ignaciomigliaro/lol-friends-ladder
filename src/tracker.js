@@ -181,10 +181,27 @@ export function weekStart(now, { day = 'monday', timeZone = 'America/New_York' }
 
 // "This week" resets every week: compare with the last snapshot from before the week started.
 // Someone added mid-week is compared with their first snapshot instead.
-function weekChange(arr = [], value, start) {
-  if (value < 0 || arr.length === 0) return null;
-  const base = arr.filter((s) => s.t <= start).at(-1) ?? arr[0];
-  return value - base.value;
+export function weekChange(arr = [], value, start, playerGames = []) {
+  if (value < 0) return null;
+  const before = arr.filter((s) => s.t <= start).at(-1);
+  if (before) {
+    return value - before.value;
+  }
+  // Fallback: If no snapshot exists from before weekStart, calculate LP delta from matches
+  // played this week before the earliest snapshot
+  const firstSnap = arr[0];
+  const firstSnapTs = firstSnap?.t ?? Date.now();
+  const olderWeekRanked = (playerGames || []).filter(
+    (g) => g.endTs >= start && g.endTs < firstSnapTs && g.queueId === 420,
+  );
+  if (olderWeekRanked.length > 0) {
+    const wins = olderWeekRanked.filter((g) => g.win).length;
+    const losses = olderWeekRanked.length - wins;
+    const baseDelta = firstSnap ? value - firstSnap.value : 0;
+    return baseDelta + (wins - losses) * 22;
+  }
+  if (arr.length > 0) return value - arr[0].value;
+  return 0;
 }
 
 // "This season" counts from the first snapshot after the latest rank reset (season games dropped),
@@ -204,7 +221,7 @@ export function attachDeltas(players, history, now, week, seasonStart) {
     const base = v < 0 ? null : seasonBase(history[p.puuid], seasonStart);
     p.lpDelta = {
       day: lpChange(history[p.puuid], now, v, DAY),
-      week: weekChange(history[p.puuid], v, week),
+      week: weekChange(history[p.puuid], v, week, p.games),
       season: base ? v - base.value : null,
       seasonSince: base?.t ?? null,
     };

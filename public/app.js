@@ -261,7 +261,7 @@ function renderMvp() {
             <div class="mvp-name">${esc(mvp.name)}</div>
             <div class="mvp-substats">
               <span>Win Rate: <strong style="color:var(--text-primary)">${wr}</strong></span>
-              <span style="color:${(d ?? 0) >= 0 ? 'var(--success)' : 'var(--danger)'}; font-weight:700;">${lpWeek}</span>
+              <span>LP Semanal: <strong style="color:${(d ?? 0) >= 0 ? 'var(--success)' : 'var(--danger)'}; font-weight:700;">${lpWeek}</strong></span>
               <span>KDA: <strong>${kda}</strong></span>
             </div>
           </div>
