@@ -1515,6 +1515,12 @@
       "value": 1666,
       "label": "Platinum IV 66 LP",
       "g": 110
+    },
+    {
+      "t": 1793806307532,
+      "value": 1666,
+      "label": "Platinum IV 66 LP",
+      "g": 110
     }
   ],
   "o0WdHi0_-B6f3XGQffY8d7XReGCwmT0q-kpnOlJjD5J_WoCacKC2EH_UiBFPJjiJXustTfbnIPusKQ": [
@@ -2124,6 +2130,12 @@
     },
     {
       "t": 1793766514574,
+      "value": 635,
+      "label": "Bronze II 35 LP",
+      "g": 22
+    },
+    {
+      "t": 1793806307532,
       "value": 635,
       "label": "Bronze II 35 LP",
       "g": 22
