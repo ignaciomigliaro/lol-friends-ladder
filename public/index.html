@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20261104af">
+  <link rel="stylesheet" href="style.css?v=20261104ag">
   <script>
     (function () {
       try {
@@ -217,10 +217,11 @@
           <div class="filter-bar">
             <div>
               <h2 style="font-family: var(--font-heading); font-size: 22px; color: var(--gold);">Tabla de Posiciones Oficial</h2>
-              <p class="muted">Clasificación en tiempo real basada en Solo/Duo, desempeño OP Score y LP ganados.</p>
+              <p class="muted">Clasificación en tiempo real basada en Solo/Duo, Flex, MMR y OP Score.</p>
             </div>
             <div class="pill-group">
               <button class="pill-btn active" data-sort="rank">Rango</button>
+              <button class="pill-btn" data-sort="mmr">MMR</button>
               <button class="pill-btn" data-sort="score">Score</button>
               <button class="pill-btn" data-sort="winrate">% Victorias</button>
               <button class="pill-btn" data-sort="week">Esta Semana</button>
@@ -234,9 +235,13 @@
           <!-- Table Header -->
           <div class="leaderboard-table-header">
             <span class="col-pos">POS</span>
-            <span class="col-identity">INVOCADOR / RANGO</span>
+            <span class="col-avatar"></span>
+            <span class="col-identity">INVOCADOR / DIVISIONES</span>
+            <span class="col-mmr">MMR</span>
+            <span class="col-kda">KDA</span>
             <span class="col-winrate">% VICTORIAS</span>
             <span class="col-delta">LP SEMANAL</span>
+            <span class="col-streak">RACHA</span>
             <span class="col-spark">TENDENCIA</span>
             <span class="col-score">OP SCORE</span>
           </div>
@@ -614,6 +619,6 @@
   <div id="toast" class="toast" hidden></div>
 
   <!-- JavaScript Module -->
-  <script src="app.js?v=20261104af" type="module"></script>
+  <script src="app.js?v=20261104ag" type="module"></script>
 </body>
 </html>

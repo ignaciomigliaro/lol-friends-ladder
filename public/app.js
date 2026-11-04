@@ -159,6 +159,7 @@ const I18N = {
       lbTitle: 'Tabla de Posiciones Oficial',
       lbDesc: 'Clasificación en tiempo real basada en Solo/Duo, desempeño OP Score y LP ganados.',
       sortRank: 'Rango',
+      sortMmr: 'MMR',
       sortScore: 'Score',
       sortWinrate: '% Victorias',
       sortWeek: 'Esta Semana',
@@ -223,6 +224,7 @@ const I18N = {
       lbTitle: 'Official Leaderboard',
       lbDesc: 'Real-time rankings based on Solo/Duo rank, OP Score performance, and weekly LP.',
       sortRank: 'Rank',
+      sortMmr: 'MMR',
       sortScore: 'Score',
       sortWinrate: 'Win Rate',
       sortWeek: 'This Week',
@@ -338,6 +340,8 @@ function applyLanguage(lang) {
 
   const sortRank = $('[data-sort="rank"]');
   if (sortRank) sortRank.textContent = t.sortRank;
+  const sortMmr = $('[data-sort="mmr"]');
+  if (sortMmr) sortMmr.textContent = t.sortMmr;
   const sortScore = $('[data-sort="score"]');
   if (sortScore) sortScore.textContent = t.sortScore;
   const sortWr = $('[data-sort="winrate"]');
@@ -449,6 +453,44 @@ document.addEventListener('click', (e) => {
   }
 });
 
+// ---------- Weekly Stats calculation helper ----------
+function getWeeklyStats(p) {
+  const weekStart = board?.weekStart;
+  const games = (p.games || []).filter((g) => !g.isRemake && (weekStart ? g.endTs >= weekStart : true));
+  if (!games.length) return null;
+  const wins = games.filter((g) => g.win).length;
+  const avgScore = games.reduce((acc, g) => acc + g.score, 0) / games.length;
+  const kills = games.reduce((acc, g) => acc + g.kills, 0);
+  const deaths = games.reduce((acc, g) => acc + g.deaths, 0);
+  const assists = games.reduce((acc, g) => acc + g.assists, 0);
+  const kda = ((kills + assists) / Math.max(1, deaths)).toFixed(2);
+  const avgKills = (kills / games.length).toFixed(1);
+  const avgDeaths = (deaths / games.length).toFixed(1);
+  const avgAssists = (assists / games.length).toFixed(1);
+  const lpWeek = p.lpDelta?.week ?? 0;
+  const mvps = games.filter((g) => g.mvp).length;
+  // Composite Weekly Performance: Impact (Score), Victories (Winrate) and LP progression
+  const performanceIndex = (avgScore * 8) + (wins * 1.5) + (Math.max(0, lpWeek) * 0.1) + ((wins / games.length) * 20);
+  return {
+    games: games.length,
+    wins,
+    losses: games.length - wins,
+    winrate: Math.round((wins / games.length) * 100),
+    avgScore,
+    kills,
+    deaths,
+    assists,
+    avgKills,
+    avgDeaths,
+    avgAssists,
+    kda,
+    lpWeek,
+    mvps,
+    performanceIndex,
+  };
+}
+window.getWeeklyStats = getWeeklyStats;
+
 // ---------- sorted players ----------
 function getFilteredPlayers() {
   let ps = [...(board?.players ?? [])];
@@ -458,6 +500,7 @@ function getFilteredPlayers() {
   }
   const by = {
     rank: (p) => p.solo?.value ?? -1,
+    mmr: (p) => estimateMmr(p, getWeeklyStats(p)).mmr,
     score: (p) => p.stats?.avgScore ?? -1,
     winrate: (p) => p.stats?.winrate ?? -1,
     week: (p) => p.lpDelta?.week ?? -9999,
@@ -583,43 +626,6 @@ function renderMvp() {
     container.innerHTML = '';
     return;
   }
-
-  const weekStart = board?.weekStart;
-
-  const getWeeklyStats = (p) => {
-    const games = (p.games || []).filter((g) => (weekStart ? g.endTs >= weekStart : true));
-    if (!games.length) return null;
-    const wins = games.filter((g) => g.win).length;
-    const avgScore = games.reduce((acc, g) => acc + g.score, 0) / games.length;
-    const kills = games.reduce((acc, g) => acc + g.kills, 0);
-    const deaths = games.reduce((acc, g) => acc + g.deaths, 0);
-    const assists = games.reduce((acc, g) => acc + g.assists, 0);
-    const kda = ((kills + assists) / Math.max(1, deaths)).toFixed(2);
-    const avgKills = (kills / games.length).toFixed(1);
-    const avgDeaths = (deaths / games.length).toFixed(1);
-    const avgAssists = (assists / games.length).toFixed(1);
-    const lpWeek = p.lpDelta?.week ?? 0;
-    const mvps = games.filter((g) => g.mvp).length;
-    // Composite Weekly Performance: Impact (Score), Victories (Winrate) and LP progression
-    const performanceIndex = (avgScore * 8) + (wins * 1.5) + (Math.max(0, lpWeek) * 0.1) + ((wins / games.length) * 20);
-    return {
-      games: games.length,
-      wins,
-      losses: games.length - wins,
-      winrate: Math.round((wins / games.length) * 100),
-      avgScore,
-      kills,
-      deaths,
-      assists,
-      avgKills,
-      avgDeaths,
-      avgAssists,
-      kda,
-      lpWeek,
-      mvps,
-      performanceIndex,
-    };
-  };
 
   const candidates = ps
     .map((p) => ({ player: p, wStats: getWeeklyStats(p) }))
@@ -877,19 +883,99 @@ function renderPodium() {
   const [p1, p2, p3] = players;
 
   const podiumCard = (p, pos, placeClass, crown = '') => {
-    const champ = p.topChampions?.[0]?.champion;
-    const avatarUrl = champ ? champImg(champ) : iconImg(p.profileIconId);
+    const s = p.stats;
+    const w = getWeeklyStats(p);
+    const mmrData = estimateMmr(p, w, currentLang);
+    const dWeek = p.lpDelta?.week;
+    const wr = s ? s.winrate : 50;
+    const wins = s?.wins ?? 0;
+    const games = s?.games ?? 0;
+    const losses = games - wins;
+    const kda = s?.kda ?? '—';
+    const streak = s?.streak ?? 0;
+    const streakText = streak > 0 ? `${streak}W 🔥` : streak < 0 ? `${Math.abs(streak)}L ❄️` : '—';
+    const lpWeek = dWeek != null ? (dWeek > 0 ? `+${dWeek} LP ▲` : dWeek < 0 ? `${dWeek} LP ▼` : '0 LP') : '+0 LP';
+    const soloTierLabel = p.solo?.label ?? 'Unranked';
+    const flexTierLabel = p.flex?.label ?? 'Unranked';
+    const score = s ? s.avgScore.toFixed(1) : '—';
+
+    const topChamp = p.topChampions?.[0]?.champion || (p.games?.[0] ? resolveChampName(p.games[0].champion) : 'Kai\'Sa');
+    const cleanChamp = resolveChampName(topChamp).replace(/[^a-zA-Z0-9]/g, '');
+    const champSplashUrl = `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${cleanChamp}_0.jpg`;
+    const playerIconUrl = iconImg(p.profileIconId);
+
+    const placeTitle = pos === '1' ? '1° LUGAR · LÍDER' : pos === '2' ? '2° LUGAR · SUBCAMPEÓN' : '3° LUGAR · TERCER LUGAR';
+
     return `
       <div class="podium-card ${placeClass}" onclick="window.viewPlayerProfile('${esc(p.puuid)}')">
-        ${crown ? `<div class="podium-crown">${crown}</div>` : ''}
-        <div class="podium-avatar-wrap">
-          <img class="podium-avatar" src="${avatarUrl}" alt="${esc(p.name)}" onerror="this.src='${iconImg(p.profileIconId)}'">
-          <div class="podium-rank-pill">${pos}</div>
+        <div class="podium-champ-bg" style="background-image: linear-gradient(180deg, rgba(11, 19, 34, 0.42) 0%, rgba(11, 19, 34, 0.88) 50%, #0B1322 100%), url('${champSplashUrl}'), url('assets/mvp-champion.jpg');"></div>
+
+        <div class="podium-top-bar">
+          <div class="podium-tag-pill ${placeClass}">
+            <span>${placeTitle}</span>
+          </div>
+          <div class="podium-champ-chip" title="Campeón insignia">
+            <span>${esc(topChamp)}</span>
+          </div>
         </div>
-        <div class="podium-name">${esc(p.name)}</div>
-        <div class="podium-tier" style="color:${tierColor(p)}">${esc(p.solo?.label ?? 'Unranked')}</div>
-        <div class="podium-score-pill">
-          Score <strong style="color:var(--gold)">${p.stats?.avgScore.toFixed(1) ?? '—'}</strong>
+
+        <div class="podium-avatar-area">
+          ${crown ? `<div class="podium-crown" title="Líder de la Grieta">👑</div>` : ''}
+          <div class="podium-avatar-wrap">
+            <img class="podium-avatar" src="${playerIconUrl}" alt="${esc(p.name)}" onerror="this.src='logo.jpg'">
+            ${p.level ? `<span class="podium-level-pill">${p.level}</span>` : ''}
+          </div>
+          <div class="podium-rank-badge ${placeClass}">${pos}</div>
+        </div>
+
+        <div class="podium-identity">
+          <div class="podium-name-line">
+            <span class="podium-name">${esc(p.name)}</span>
+            ${p.nickname ? `
+              <span class="podium-nickname" title="${esc(p.nickname.reason || '')}">
+                "${esc(p.nickname.title)}"
+              </span>
+            ` : ''}
+          </div>
+        </div>
+
+        <!-- Rangos Solo/Duo y Flex -->
+        <div class="podium-ranks-line">
+          <span class="podium-rank-chip solo ${p.solo?.tier ? p.solo.tier.toLowerCase() : 'unranked'}" title="Clasificatoria Solo/Duo">
+            <strong class="q-label">Solo:</strong> ${esc(soloTierLabel)}
+          </span>
+          <span class="podium-rank-chip flex ${p.flex?.tier ? p.flex.tier.toLowerCase() : 'unranked'}" title="Clasificatoria Flex">
+            <strong class="q-label">Flex:</strong> ${esc(flexTierLabel)}
+          </span>
+        </div>
+
+        <!-- Chips de estadísticas clave al estilo MVP de la semana -->
+        <div class="podium-substats">
+          <span class="podium-stat-chip winrate" title="Porcentaje de Victorias">
+            WR: <strong style="color:var(--text-primary)">${wr}%</strong>
+            <span class="podium-chip-sub">(${wins}V - ${losses}D)</span>
+          </span>
+          <span class="podium-stat-chip lp" title="Balance de LP esta semana">
+            Semana: <strong class="${(dWeek ?? 0) >= 0 ? 'pos' : 'neg'}">${lpWeek}</strong>
+          </span>
+          <span class="podium-stat-chip kda" title="Ratio KDA">
+            KDA: <strong style="color:var(--text-primary)">${kda}</strong>
+          </span>
+          <span class="podium-stat-chip mmr" title="MMR Estimado: ~${mmrData.mmr} (${mmrData.healthLabel})">
+            MMR: <strong style="color:var(--text-primary)">~${mmrData.mmr}</strong>
+            <span class="mmr-health-dot" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${mmrData.healthColor};box-shadow:0 0 6px ${mmrData.healthColor};margin-left:2px;" aria-hidden="true"></span>
+          </span>
+          <span class="podium-stat-chip streak" title="Racha actual">
+            Racha: <strong style="color:var(--text-primary)">${streakText}</strong>
+          </span>
+        </div>
+
+        <!-- OP Score Badge -->
+        <div class="podium-score-wrap">
+          <div class="podium-score-emblem" title="OP Score Promedio">
+            <span class="podium-score-num">${score}</span>
+            <span class="podium-score-title">OP SCORE</span>
+          </div>
         </div>
       </div>
     `;
@@ -906,47 +992,93 @@ function renderPodium() {
 // ---------- render row card (exact match of mockup) ----------
 function renderPlayerRowCard(p, rank) {
   const isLeader = rank === 1;
-  const champ = p.topChampions?.[0]?.champion;
-  const avatarUrl = champ ? champImg(champ) : iconImg(p.profileIconId);
-  const tier = p.solo?.label ?? 'Unranked';
-  const wr = p.stats ? `${p.stats.winrate}%` : '—';
-  const deltaWeek = p.lpDelta?.week;
-  const deltaText = deltaWeek != null ? `${signed(deltaWeek)} LP ${deltaWeek >= 0 ? '▲' : '▼'}` : '—';
-  const deltaClass = deltaWeek >= 0 ? 'positive' : 'negative';
-  const score = p.stats ? p.stats.avgScore.toFixed(1) : '—';
-  const nick = p.nickname ? `<span class="row-nickname-badge">"${p.nickname.title}" ${p.nickname.emoji}</span>` : '';
+  const placeClass = rank === 1 ? 'first' : rank === 2 ? 'second' : rank === 3 ? 'third' : 'standard';
+
+  const s = p.stats;
+  const w = getWeeklyStats(p);
+  const mmrData = estimateMmr(p, w, currentLang);
+  const dWeek = p.lpDelta?.week;
+  const deltaText = dWeek != null ? `${signed(dWeek)} LP ${dWeek >= 0 ? '▲' : '▼'}` : '—';
+  const deltaClass = (dWeek ?? 0) >= 0 ? 'positive' : 'negative';
+
+  const wr = s ? `${s.winrate}%` : '—';
+  const wins = s?.wins ?? 0;
+  const games = s?.games ?? 0;
+  const losses = games - wins;
+  const kda = s?.kda ?? '—';
+  const streak = s?.streak ?? 0;
+  const streakText = streak > 0 ? `${streak}W 🔥` : streak < 0 ? `${Math.abs(streak)}L ❄️` : '—';
+
+  const soloTierLabel = p.solo?.label ?? 'Unranked';
+  const flexTierLabel = p.flex?.label ?? 'Unranked';
+  const score = s ? s.avgScore.toFixed(1) : '—';
+
+  const avatarUrl = iconImg(p.profileIconId);
+  const nick = p.nickname ? `<span class="row-nickname-badge">"${esc(p.nickname.title)}"</span>` : '';
 
   return `
-    <article class="player-row-card ${isLeader ? 'gold-leader' : ''}" onclick="window.viewPlayerProfile('${esc(p.puuid)}')">
-      <div class="row-pos">${rank}</div>
-      <div class="row-avatar-wrap">
-        <img class="row-avatar" src="${avatarUrl}" alt="${esc(p.name)}" onerror="this.src='${iconImg(p.profileIconId)}'">
+    <article class="player-row-card ${isLeader ? 'gold-leader' : ''} ${placeClass}" onclick="window.viewPlayerProfile('${esc(p.puuid)}')">
+      <div class="row-pos-col">
+        <span class="row-pos-badge ${placeClass}">${rank}</span>
       </div>
-      <div class="row-identity">
+
+      <div class="row-avatar-col">
+        <div class="row-avatar-wrap">
+          <img class="row-avatar" src="${avatarUrl}" alt="${esc(p.name)}" onerror="this.src='logo.jpg'">
+          ${p.level ? `<span class="row-level-pill">${p.level}</span>` : ''}
+        </div>
+      </div>
+
+      <div class="row-identity-col">
         <div class="row-name-line">
-          ${isLeader ? '<span style="color:var(--gold)">👑</span>' : ''}
+          ${isLeader ? '<span class="crown-icon" title="Líder de la Grieta">👑</span>' : ''}
           <span class="row-name">${esc(p.name)}</span>
           ${nick}
         </div>
-        <div class="row-tier-line">
-          <span style="color:${tierColor(p)}">🛡️ ${esc(tier)}</span>
-          ${p.platform ? `<span class="region-tag">(${esc(p.platform)})</span>` : ''}
+        <div class="row-ranks-line">
+          <span class="row-rank-badge solo ${p.solo?.tier ? p.solo.tier.toLowerCase() : 'unranked'}" title="Clasificatoria Solo/Duo">
+            <strong class="q-label">Solo:</strong> ${esc(soloTierLabel)}
+          </span>
+          <span class="row-rank-badge flex ${p.flex?.tier ? p.flex.tier.toLowerCase() : 'unranked'}" title="Clasificatoria Flex">
+            <strong class="q-label">Flex:</strong> ${esc(flexTierLabel)}
+          </span>
         </div>
       </div>
-      <div class="row-stats-group">
-        <div class="row-winrate">
-          <span class="row-wr-val">${wr}</span>
-          <span class="row-wr-sub">W / R</span>
+
+      <div class="row-stats-wrapper">
+        <div class="row-stat-col row-mmr" title="MMR Estimado: ~${mmrData.mmr} (${mmrData.healthLabel})">
+          <span class="row-stat-val">~${mmrData.mmr} <span class="mmr-health-dot" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${mmrData.healthColor};vertical-align:middle;margin-left:2px;"></span></span>
+          <span class="row-stat-sub">${mmrData.healthLabel.split(' · ')[0]}</span>
         </div>
-        <div class="row-delta ${deltaClass}">
-          ${deltaText}
+
+        <div class="row-stat-col row-kda" title="Ratio KDA = (Kills + Asistencias) ÷ Muertes">
+          <span class="row-stat-val">${kda}</span>
+          <span class="row-stat-sub">KDA</span>
         </div>
-        <div class="row-sparkline">
+
+        <div class="row-stat-col row-winrate" title="Porcentaje de Victorias (${wins}W - ${losses}D)">
+          <span class="row-stat-val">${wr}</span>
+          <span class="row-stat-sub">${wins}V - ${losses}D</span>
+        </div>
+
+        <div class="row-stat-col row-delta ${deltaClass}" title="Puntos de Liga ganados/perdidos esta semana">
+          <span class="row-stat-val">${deltaText}</span>
+          <span class="row-stat-sub">Semana</span>
+        </div>
+
+        <div class="row-stat-col row-streak" title="Racha consecutiva actual">
+          <span class="row-streak-val ${streak > 0 ? 'win' : 'loss'}">${streakText}</span>
+          <span class="row-stat-sub">Racha</span>
+        </div>
+
+        <div class="row-stat-col row-sparkline" title="Tendencia de las últimas partidas">
           ${createSparkline(p.games, isLeader)}
         </div>
       </div>
-      <div class="row-score">
-        ${score}
+
+      <div class="row-stat-col row-score" title="OP Score Promedio">
+        <span class="row-score-val">${score}</span>
+        <span class="row-score-sub">SCORE</span>
       </div>
     </article>
   `;
