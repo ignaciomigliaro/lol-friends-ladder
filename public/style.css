@@ -4129,7 +4129,7 @@ dialog.opscore-modal-dialog {
 @media (max-width: 1259px) and (min-width: 769px) {
   .overview-participant-row {
     display: grid !important;
-    grid-template-columns: 1fr auto auto max-content !important;
+    grid-template-columns: minmax(170px, 1.3fr) minmax(115px, 1fr) minmax(80px, 0.8fr) max-content !important;
     grid-template-areas: none !important;
     gap: 10px 14px !important;
     align-items: center !important;
@@ -4137,13 +4137,19 @@ dialog.opscore-modal-dialog {
   }
   .overview-p-left {
     grid-area: auto !important;
+    justify-self: start !important;
+    min-width: 0 !important;
   }
   .overview-kda-group {
     grid-area: auto !important;
-    min-width: 115px !important;
+    justify-self: center !important;
+    text-align: center !important;
+    min-width: 0 !important;
   }
   .overview-score-group {
     grid-area: auto !important;
+    justify-self: center !important;
+    min-width: 0 !important;
   }
   .overview-combat-stats {
     display: none !important;
@@ -4154,7 +4160,7 @@ dialog.opscore-modal-dialog {
     min-width: 0 !important;
     width: max-content !important;
     max-width: 100% !important;
-    justify-self: start !important;
+    justify-self: end !important;
     background: rgba(8, 13, 25, 0.7) !important;
     padding: 5px 10px !important;
     border-radius: 8px !important;
@@ -4162,6 +4168,15 @@ dialog.opscore-modal-dialog {
   }
   .overview-mobile-toggle-btn {
     display: none !important;
+  }
+}
+
+@media (max-width: 900px) and (min-width: 769px) {
+  .overview-participant-row {
+    gap: 8px 10px !important;
+  }
+  .overview-rival-box {
+    padding: 4px 8px !important;
   }
 }
 
