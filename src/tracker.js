@@ -49,7 +49,7 @@ function laneStats(p, m) {
 
 // games keeps up to profileMatches games for the personal tab; stats/topChampions use the most
 // recent statsGames of them so the leaderboard reflects current form.
-export function summarizePlayer({ friend, account, summoner, entries, matches, statsGames = Infinity }) {
+export function summarizePlayer({ friend, account, summoner, entries, matches, statsGames = Infinity, profileMatches = Infinity }) {
   const puuid = account.puuid;
   const games = [];
   for (const m of matches) {
@@ -87,7 +87,9 @@ export function summarizePlayer({ friend, account, summoner, entries, matches, s
   }
   games.sort((a, b) => b.endTs - a.endTs);
 
-  const recent = games.slice(0, statsGames);
+  const maxHistory = Number.isFinite(profileMatches) ? profileMatches : Infinity;
+  const historyGames = Number.isFinite(maxHistory) ? games.slice(0, maxHistory) : games;
+  const recent = historyGames.slice(0, statsGames);
   const n = recent.length;
   const sum = (fn) => recent.reduce((acc, g) => acc + fn(g), 0);
   const wins = sum((g) => g.win);
@@ -104,7 +106,7 @@ export function summarizePlayer({ friend, account, summoner, entries, matches, s
 
   // Current win/loss streak from the most recent game backwards.
   let streak = 0;
-  for (const g of games) {
+  for (const g of historyGames) {
     if (streak === 0) streak = g.win ? 1 : -1;
     else if (g.win === streak > 0) streak += streak > 0 ? 1 : -1;
     else break;
@@ -132,7 +134,7 @@ export function summarizePlayer({ friend, account, summoner, entries, matches, s
       streak,
     },
     topChampions,
-    games,
+    games: historyGames,
   };
 }
 
@@ -352,7 +354,7 @@ export async function refreshAll(config, onProgress = () => {}) {
       if (!account) throw new Error('Riot ID not found (check spelling and tag)');
       // Solo/Duo and Flex are fetched separately so a player who grinds one queue still
       // has their other queue's history on the profile.
-      const perQueue = Math.max(config.matchesPerPlayer, config.profileMatches ?? 40);
+      const perQueue = Math.max(config.matchesPerPlayer + 10, config.profileMatches ?? 50);
       const [summoner, entries, soloIds, flexIds, recentIds] = await Promise.all([
         client.summoner(account.puuid, platform),
         client.leagueEntries(account.puuid, platform),
@@ -362,7 +364,16 @@ export async function refreshAll(config, onProgress = () => {}) {
       ]);
       const ids = [...soloIds, ...flexIds];
       const matches = await Promise.all(ids.map((id) => client.match(id, region)));
-      const player = summarizePlayer({ friend, account, summoner, entries, matches, statsGames: config.matchesPerPlayer });
+      const maxHistory = config.profileMatches ?? config.matchesPerPlayer ?? 40;
+      const player = summarizePlayer({
+        friend,
+        account,
+        summoner,
+        entries,
+        matches,
+        statsGames: config.matchesPerPlayer,
+        profileMatches: maxHistory,
+      });
       player.platform = platform;
       players.push(player);
       recentByPlayer.set(account.puuid, { ids: new Set([...ids, ...recentIds]), region });

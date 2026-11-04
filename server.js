@@ -143,6 +143,23 @@ const server = http.createServer(async (req, res) => {
       const liveData = await checkLiveGames(config);
       return send(res, 200, liveData);
     }
+    if (url.pathname === '/api/live/telemetry') {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+      if (req.method === 'OPTIONS') {
+        res.writeHead(204);
+        return res.end();
+      }
+      const { recordTelemetry, getLatestTelemetry } = await import('./src/telemetry.js');
+      if (req.method === 'POST') {
+        const body = await parseJson(req);
+        const recorded = recordTelemetry(body);
+        return send(res, 200, { ok: true, active: Boolean(recorded), recordedAt: recorded?.receivedAt });
+      }
+      const active = getLatestTelemetry();
+      return send(res, 200, active ? { active: true, telemetry: active } : { active: false });
+    }
     if (url.pathname === '/api/status') return send(res, 200, status);
     if (url.pathname === '/api/whatsapp') return send(res, 200, whatsappMessage(await readLeaderboard()), 'text/plain');
     if (url.pathname === '/api/card' && req.method === 'POST') {
