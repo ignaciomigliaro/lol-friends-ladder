@@ -977,6 +977,8 @@ function getGroupMatchesList() {
   const map = new Map();
   for (const p of board?.players || []) {
     for (const g of p.games || []) {
+      const isRemake = Boolean(g.isRemake || (g.minutes && g.minutes < 5));
+      const isSurrender = Boolean(!isRemake && (g.isSurrender || (g.minutes && g.minutes >= 5 && g.minutes <= 21)));
       if (!map.has(g.matchId)) {
         map.set(g.matchId, {
           matchId: g.matchId,
@@ -984,6 +986,8 @@ function getGroupMatchesList() {
           endTs: g.endTs,
           minutes: g.minutes,
           win: g.win,
+          isRemake,
+          isSurrender,
           friends: [],
         });
       }
@@ -1094,9 +1098,13 @@ function renderRecentMatchesFeed() {
   } else if (currentMatchQueueFilter === 'flex') {
     matches = matches.filter((m) => m.queueId === 440);
   } else if (currentMatchQueueFilter === 'win') {
-    matches = matches.filter((m) => m.win);
+    matches = matches.filter((m) => m.win && !m.isRemake);
   } else if (currentMatchQueueFilter === 'loss') {
-    matches = matches.filter((m) => !m.win);
+    matches = matches.filter((m) => !m.win && !m.isRemake);
+  } else if (currentMatchQueueFilter === 'surrender') {
+    matches = matches.filter((m) => m.isSurrender && !m.isRemake);
+  } else if (currentMatchQueueFilter === 'remake') {
+    matches = matches.filter((m) => m.isRemake);
   }
 
   const totalMatches = matches.length;
@@ -1139,8 +1147,8 @@ function renderRecentMatchesFeed() {
   const pagedMatches = matches.slice(startIdx, endIdx);
 
   feed.innerHTML = pagedMatches.map((m) => {
-    const isRemake = m.minutes < 5 || m.isRemake === true;
-    const isSurrender = !isRemake && (m.isSurrender === true || (m.minutes >= 14 && m.minutes <= 21));
+    const isRemake = Boolean(m.isRemake || (m.minutes && m.minutes < 5));
+    const isSurrender = Boolean(!isRemake && (m.isSurrender || (m.minutes && m.minutes >= 5 && m.minutes <= 21)));
     const isWin = m.win;
     const qName = m.queueId === 420 ? 'Solo/Duo' : m.queueId === 440 ? 'Ranked Flex' : (m.queue || 'Ranked');
     const hasMultipleFriends = m.friends.length > 1;
@@ -2843,11 +2851,20 @@ window.viewPlayerProfile = function (puuid) {
     <!-- Recent Match History -->
     <h3 style="font-family:var(--font-heading); font-size:18px; margin:24px 0 12px; color:var(--gold);">Historial de Partidas Ranked</h3>
     <div class="profile-matches-list">
-      ${(p.games ?? []).slice(0, 40).map((g) => `
-        <div class="profile-match-card ${g.win ? 'win' : 'loss'}" data-match-id="${esc(g.matchId)}">
+      ${(p.games ?? []).slice(0, 40).map((g) => {
+        const isRemake = Boolean(g.isRemake || (g.minutes && g.minutes < 5));
+        const isSurrender = Boolean(!isRemake && (g.isSurrender || (g.minutes && g.minutes >= 5 && g.minutes <= 21)));
+        const resText = isRemake ? 'REMAKE' : g.win ? 'VICTORIA' : 'DERROTA';
+        const resColor = isRemake ? '#A0B0C0' : g.win ? 'var(--cyan)' : 'var(--danger)';
+        const cardClass = isRemake ? 'remake' : g.win ? 'win' : 'loss';
+        return `
+        <div class="profile-match-card ${cardClass}" data-match-id="${esc(g.matchId)}">
           <img class="match-champ-icon" src="${champImg(g.champion)}" alt="">
-          <div style="min-width:80px;">
-            <strong style="color:${g.win ? 'var(--cyan)' : 'var(--danger)'}">${g.win ? 'VICTORIA' : 'DERROTA'}</strong>
+          <div style="min-width:95px;">
+            <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+              <strong style="color:${resColor};">${resText}</strong>
+              ${isSurrender ? `<span class="feed-badge-surrender ${g.win ? 'enemy' : 'team'}" style="font-size:9.5px; padding:1px 5px; line-height:1.2;">Rendición</span>` : ''}
+            </div>
             <div class="muted sub">${ROLE[g.position] ?? g.position ?? 'Solo'} · ${g.minutes}m</div>
           </div>
           <div style="min-width:110px;">
@@ -2856,18 +2873,21 @@ window.viewPlayerProfile = function (puuid) {
           </div>
           <div style="flex:1; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
             <div>
-              <span class="muted sub">Score:</span> <strong style="color:var(--gold); font-size:15px;">${g.score.toFixed(1)}</strong>
+              <span class="muted sub">Score:</span> <strong style="color:var(--gold); font-size:15px;">${(g.score ?? 0).toFixed(1)}</strong>
             </div>
-            <span class="overview-place-tag ${g.place === 1 ? 'top-1' : g.place <= 3 ? 'top-3' : 'mid'}" title="Posición ${g.place || 5} de 10 jugadores en la partida">
-              ${g.place ? `${g.place}/10` : '—'}
-            </span>
-            ${g.mvp ? ` <span class="stat-icon-gold" style="padding:2px 6px;border-radius:4px;font-size:11px;font-weight:700;cursor:help;" title="${esc((I18N[currentLang] || I18N.es).ui.tooltipMvp)}">MVP</span>` : ''}
-            ${g.ace ? ` <span class="stat-icon-purple" style="padding:2px 6px;border-radius:4px;font-size:11px;font-weight:700;cursor:help;" title="${esc((I18N[currentLang] || I18N.es).ui.tooltipAce)}">ACE</span>` : ''}
-            ${g.mochila ? ` <span class="stat-icon-mochila" style="padding:2px 6px;border-radius:4px;font-size:11px;font-weight:700;background:rgba(230,126,34,0.22);color:#F39C12;border:1px solid rgba(230,126,34,0.45);cursor:help;" title="${esc((I18N[currentLang] || I18N.es).ui.tooltipMochila)}">🎒 MOCHILA</span>` : ''}
+            ${!isRemake ? `
+              <span class="overview-place-tag ${g.place === 1 ? 'top-1' : g.place <= 3 ? 'top-3' : 'mid'}" title="Posición ${g.place || 5} de 10 jugadores en la partida">
+                ${g.place ? `${g.place}/10` : '—'}
+              </span>
+              ${g.mvp ? ` <span class="stat-icon-gold" style="padding:2px 6px;border-radius:4px;font-size:11px;font-weight:700;cursor:help;" title="${esc((I18N[currentLang] || I18N.es).ui.tooltipMvp)}">MVP</span>` : ''}
+              ${g.ace ? ` <span class="stat-icon-purple" style="padding:2px 6px;border-radius:4px;font-size:11px;font-weight:700;cursor:help;" title="${esc((I18N[currentLang] || I18N.es).ui.tooltipAce)}">ACE</span>` : ''}
+              ${g.mochila ? ` <span class="stat-icon-mochila" style="padding:2px 6px;border-radius:4px;font-size:11px;font-weight:700;background:rgba(230,126,34,0.22);color:#F39C12;border:1px solid rgba(230,126,34,0.45);cursor:help;" title="${esc((I18N[currentLang] || I18N.es).ui.tooltipMochila)}">🎒 MOCHILA</span>` : ''}
+            ` : ''}
           </div>
           <span class="muted sub" style="font-size:11px; align-self:center;">🔍 Ver Detalle</span>
         </div>
-      `).join('') || '<div class="muted">No hay partidas registradas.</div>'}
+      `;
+      }).join('') || '<div class="muted">No hay partidas registradas.</div>'}
     </div>
   `;
 

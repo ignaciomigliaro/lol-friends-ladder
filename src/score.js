@@ -171,15 +171,17 @@ export function scoreMatch(match) {
     return a - b;
   });
 
-  // MVP: mejor desempeño del equipo ganador
+  const remake = isRemake(match);
+
+  // MVP: mejor desempeño del equipo ganador (no aplica en remakes)
   const bestOf = (win) => order.find((i) => ps[i].win === win);
-  const mvp = bestOf(true);
+  const mvp = remake ? null : bestOf(true);
 
-  // ACE: mejor desempeño del equipo perdedor
-  const ace = bestOf(false);
+  // ACE: mejor desempeño del equipo perdedor (no aplica en remakes)
+  const ace = remake ? null : bestOf(false);
 
-  // Identificación de la Mochila de cada equipo (jugador con menor aporte/rendimiento)
-  const isEligibleMochila = (idx) => idx !== mvp && idx !== ace;
+  // Identificación de la Mochila de cada equipo (jugador con menor aporte/rendimiento; nunca aplica en remakes)
+  const isEligibleMochila = (idx) => !remake && idx !== mvp && idx !== ace;
 
   const team100 = ps.map((p, i) => ({ i, teamId: p.teamId, score: scores[i], raw: rawScores[i] })).filter((x) => x.teamId === 100);
   const team200 = ps.map((p, i) => ({ i, teamId: p.teamId, score: scores[i], raw: rawScores[i] })).filter((x) => x.teamId === 200);
@@ -220,17 +222,17 @@ export function scoreMatch(match) {
     return worst.i;
   };
 
-  const mochila100 = pickMochila(team100);
-  const mochila200 = pickMochila(team200);
+  const mochila100 = remake ? null : pickMochila(team100);
+  const mochila200 = remake ? null : pickMochila(team200);
 
   const result = new Map();
   order.forEach((i, place) => {
     result.set(ps[i].puuid, {
       score: scores[i],
       place: place + 1,
-      mvp: i === mvp,
-      ace: i === ace,
-      mochila: i === mochila100 || i === mochila200,
+      mvp: !remake && i === mvp,
+      ace: !remake && i === ace,
+      mochila: !remake && (i === mochila100 || i === mochila200),
     });
   });
   return result;

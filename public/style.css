@@ -225,6 +225,21 @@
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
 }
 
+:root[data-theme="light"] .overview-match-card.win {
+  border-color: rgba(18, 191, 255, 0.45);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05), inset 3px 0 0 #009BD6;
+}
+
+:root[data-theme="light"] .overview-match-card.loss {
+  border-color: rgba(255, 82, 104, 0.45);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05), inset 3px 0 0 #E03E52;
+}
+
+:root[data-theme="light"] .overview-match-card.remake {
+  border-color: rgba(145, 162, 191, 0.45);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05), inset 3px 0 0 #8899A6;
+}
+
 :root[data-theme="light"] .overview-player-name strong,
 :root[data-theme="light"] .overview-kda-numbers,
 :root[data-theme="light"] .overview-stat-item strong,
@@ -2399,6 +2414,10 @@ body {
   border-left: 4px solid var(--danger);
 }
 
+.profile-match-card.remake {
+  border-left: 4px solid #A0B0C0;
+}
+
 .match-champ-icon {
   width: 44px;
   height: 44px;
@@ -3671,6 +3690,11 @@ dialog.opscore-modal-dialog {
 .overview-match-card.loss {
   border: 1px solid rgba(255, 82, 104, 0.35);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35), inset 3px 0 0 #FF5268, 0 0 15px rgba(255, 82, 104, 0.08);
+}
+
+.overview-match-card.remake {
+  border: 1px solid rgba(145, 162, 191, 0.35);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35), inset 3px 0 0 #A0B0C0, 0 0 15px rgba(145, 162, 191, 0.08);
 }
 
 .overview-match-header {

@@ -154,3 +154,13 @@ test('scoreMatch avoids assigning false Mochila to clean top-half winners in a d
   }
   assert.equal(blueMochilas.length, 0, 'No winning team player should be tagged Mochila when all 5 dominated cleanly');
 });
+
+test('scoreMatch on remake match never awards MVP, ACE, or Mochila', () => {
+  const match = createMockMatch({ duration: 180, earlySurrender: true });
+  const scores = scoreMatch(match);
+  for (const [puuid, s] of scores.entries()) {
+    assert.equal(s.mvp, false, `puuid ${puuid} should not have MVP in a remake`);
+    assert.equal(s.ace, false, `puuid ${puuid} should not have ACE in a remake`);
+    assert.equal(s.mochila, false, `puuid ${puuid} should not have Mochila in a remake`);
+  }
+});

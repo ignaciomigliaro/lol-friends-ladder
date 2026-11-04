@@ -27,10 +27,10 @@ function pick(list, seed, salt, used, norm = (x) => x, strict = false) {
   return strict ? null : list[start];
 }
 
-// Worst = lowest score in the last 30 days of ranked; ties go to whoever died more.
+// Worst = lowest score in the last 30 days of ranked; ties go to whoever died more (remakes ignored).
 export function worstGame(p, now = Date.now()) {
-  const pool = (p.games ?? []).filter((g) => now - g.endTs < 30 * DAY);
-  const games = pool.length >= 3 ? pool : p.games ?? [];
+  const pool = (p.games ?? []).filter((g) => !g.isRemake && now - g.endTs < 30 * DAY);
+  const games = pool.length >= 3 ? pool : (p.games ?? []).filter((g) => !g.isRemake);
   return [...games].sort((a, b) => a.score - b.score || b.deaths - a.deaths)[0] ?? null;
 }
 

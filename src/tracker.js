@@ -53,7 +53,7 @@ export function summarizePlayer({ friend, account, summoner, entries, matches, s
   const puuid = account.puuid;
   const games = [];
   for (const m of matches) {
-    if (!m || isRemake(m) || !RANKED_QUEUES.has(m.info.queueId)) continue;
+    if (!m || !RANKED_QUEUES.has(m.info.queueId)) continue;
     const p = m.info.participants.find((x) => x.puuid === puuid);
     if (!p) continue;
     const scores = scoreMatch(m);
@@ -63,6 +63,12 @@ export function summarizePlayer({ friend, account, summoner, entries, matches, s
     const opp = p.teamPosition && m.info.participants.find((x) => x.teamId !== p.teamId && x.teamPosition === p.teamPosition);
     const teamKills = Math.max(1, team.reduce((acc, x) => acc + x.kills, 0));
     const teamDmg = Math.max(1, team.reduce((acc, x) => acc + x.totalDamageDealtToChampions, 0));
+    const remake = isRemake(m);
+    const surrender = !remake && (
+      Boolean(p.gameEndedInSurrender) ||
+      m.info.participants.some((x) => x.gameEndedInSurrender) ||
+      (m.info.gameDuration >= 300 && m.info.gameDuration <= 1260)
+    );
     games.push({
       matchId: m.metadata.matchId,
       queueId: m.info.queueId,
@@ -71,6 +77,8 @@ export function summarizePlayer({ friend, account, summoner, entries, matches, s
       champion: p.championName,
       position: p.teamPosition,
       win: p.win,
+      isRemake: remake,
+      isSurrender: surrender,
       kills: p.kills, deaths: p.deaths, assists: p.assists,
       cs: p.totalMinionsKilled + p.neutralMinionsKilled,
       vision: p.visionScore,
@@ -89,7 +97,8 @@ export function summarizePlayer({ friend, account, summoner, entries, matches, s
 
   const maxHistory = Number.isFinite(profileMatches) ? profileMatches : Infinity;
   const historyGames = Number.isFinite(maxHistory) ? games.slice(0, maxHistory) : games;
-  const recent = historyGames.slice(0, statsGames);
+  const validGames = historyGames.filter((g) => !g.isRemake);
+  const recent = validGames.slice(0, statsGames);
   const n = recent.length;
   const sum = (fn) => recent.reduce((acc, g) => acc + fn(g), 0);
   const wins = sum((g) => g.win);
@@ -104,9 +113,10 @@ export function summarizePlayer({ friend, account, summoner, entries, matches, s
     .slice(0, 3)
     .map((c) => ({ ...c, score: round(c.score / c.games) }));
 
-  // Current win/loss streak from the most recent game backwards.
+  // Current win/loss streak from the most recent game backwards (remakes are neutral and skipped)
   let streak = 0;
   for (const g of historyGames) {
+    if (g.isRemake) continue;
     if (streak === 0) streak = g.win ? 1 : -1;
     else if (g.win === streak > 0) streak += streak > 0 ? 1 : -1;
     else break;
