@@ -204,6 +204,8 @@ function renderMvp() {
     const kda = ((kills + assists) / Math.max(1, deaths)).toFixed(2);
     const lpWeek = p.lpDelta?.week ?? 0;
     const mvps = games.filter((g) => g.mvp).length;
+    // Composite Weekly Performance: Impact (Score), Victories (Winrate) and LP progression
+    const performanceIndex = (avgScore * 8) + (wins * 1.5) + (Math.max(0, lpWeek) * 0.1) + ((wins / games.length) * 20);
     return {
       games: games.length,
       wins,
@@ -213,6 +215,7 @@ function renderMvp() {
       kda,
       lpWeek,
       mvps,
+      performanceIndex,
     };
   };
 
@@ -227,7 +230,7 @@ function renderMvp() {
       const posA = a.wStats.lpWeek >= 0 ? 1 : 0;
       const posB = b.wStats.lpWeek >= 0 ? 1 : 0;
       if (posB !== posA) return posB - posA;
-      return (b.wStats.avgScore - a.wStats.avgScore) || (b.wStats.lpWeek - a.wStats.lpWeek);
+      return (b.wStats.performanceIndex - a.wStats.performanceIndex);
     });
     selected = candidates[0];
   }
