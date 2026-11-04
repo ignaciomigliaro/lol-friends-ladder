@@ -1238,8 +1238,8 @@ function renderRecentMatchesFeed() {
                       <div class="overview-rival-info">
                         <span class="overview-rival-status ${f.score >= (f.opp.score || 0) ? 'win' : 'loss'}">
                           ${f.score >= (f.opp.score || 0)
-                            ? `Le ganó a <strong>${esc(resolveChampName(f.opp.champion))}</strong>`
-                            : `Perdió en contra de <strong>${esc(resolveChampName(f.opp.champion))}</strong>`}
+                            ? `Victoria vs <strong>${esc(resolveChampName(f.opp.champion))}</strong>`
+                            : `Derrota vs <strong>${esc(resolveChampName(f.opp.champion))}</strong>`}
                         </span>
                         <span class="overview-rival-scores">
                           Score: ${f.score?.toFixed(1) || '—'} vs ${f.opp.score?.toFixed(1) || '—'}
