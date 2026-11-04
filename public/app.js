@@ -2296,6 +2296,7 @@ async function checkLiveTracker(manual = false) {
                   </div>
                   <div class="live-mosaic-footer">
                     <span class="live-mosaic-meta">${g.isDuo ? 'Dúo de Amigos' : g.isCivilWar ? 'Guerra Civil' : 'En Vivo'}</span>
+                    <button class="live-build-btn open-champ-build" data-champ="${esc(fChamp)}" style="padding:2px 8px; font-size:11px;" title="Ver Build de ${esc(fChamp)}">🎒 Build</button>
                     <span class="live-mosaic-cta">Ver Partida &rarr;</span>
                   </div>
                 </div>
@@ -2344,6 +2345,13 @@ async function checkLiveTracker(manual = false) {
     $$('.live-friend-mosaic-card').forEach((card) => {
       card.addEventListener('click', () => {
         openLiveMatchModal(card.dataset.gameId);
+      });
+    });
+
+    banner?.querySelectorAll('.open-champ-build').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openBuildModal(btn.dataset.champ);
       });
     });
 
