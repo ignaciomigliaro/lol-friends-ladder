@@ -3397,6 +3397,7 @@ dialog.match-modal-dialog {
   align-items: center;
   letter-spacing: 0.5px;
   line-height: 1.2;
+  cursor: help;
 }
 
 .match-honor-tag.mvp {
@@ -3985,6 +3986,7 @@ dialog.opscore-modal-dialog {
   letter-spacing: 0.5px;
   line-height: 1.2;
   margin: 0;
+  cursor: help;
 }
 
 .overview-honor-tag.ace {
@@ -3998,6 +4000,7 @@ dialog.opscore-modal-dialog {
   letter-spacing: 0.5px;
   line-height: 1.2;
   margin: 0;
+  cursor: help;
 }
 
 .overview-honor-tag.mochila {
@@ -4012,6 +4015,7 @@ dialog.opscore-modal-dialog {
   letter-spacing: 0.5px;
   line-height: 1.2;
   margin: 0;
+  cursor: help;
 }
 
 .overview-combat-stats {

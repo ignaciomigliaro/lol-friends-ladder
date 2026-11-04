@@ -174,6 +174,9 @@ const I18N = {
       duoWr: '% Victorias Dúo',
       heroBadge: 'TEMPORADA 2026 · LAN',
       heroDesc: 'Estadísticas competitivas, análisis de partidas y seguimiento en vivo de tu grupo',
+      tooltipMvp: 'MVP (Jugador Más Valioso): Mejor rendimiento del equipo ganador. Se calcula mediante el OP Score ponderando KDA, participación en asesinatos (KP%), daño contra rival directo, visión, objetivos y CS según el rol.',
+      tooltipAce: 'ACE: Mejor rendimiento del equipo perdedor. Se otorga al jugador con el OP Score más alto de su equipo a pesar de la derrota, evaluando KDA, daño, visión y objetivos según el rol.',
+      tooltipMochila: '🎒 MOCHILA: Jugador con menor rendimiento y aporte del equipo. Se calcula por el OP Score más bajo del equipo, penalizando exceso de muertes repetidas, baja participación en peleas (KP%) y menor daño.',
     }
   },
   en: {
@@ -235,6 +238,9 @@ const I18N = {
       duoWr: 'Duo Win Rate',
       heroBadge: 'SEASON 2026 · LAN',
       heroDesc: 'Competitive stats, match analytics, and live spectator for your squad',
+      tooltipMvp: 'MVP (Most Valuable Player): Best performance on the winning team. Calculated via OP Score weighting KDA, kill participation (KP%), damage vs lane opponent, vision, objectives, and CS by role.',
+      tooltipAce: 'ACE: Best performance on the losing team. Awarded to the player with the highest OP Score on their team despite defeat, evaluating KDA, damage, objectives, and vision.',
+      tooltipMochila: '🎒 MOCHILA: Player with the lowest performance and contribution on the team. Calculated by lowest OP Score, penalizing excessive deaths, low fight participation (KP%), and low damage.',
     }
   }
 };
@@ -1193,9 +1199,9 @@ function renderRecentMatchesFeed() {
                     </div>
                     <div class="overview-champ-line">
                       <span class="overview-champ-name">${esc(champName)}</span>
-                      ${f.mvp ? '<span class="overview-honor-tag mvp">MVP</span>' : ''}
-                      ${f.ace ? '<span class="overview-honor-tag ace">ACE</span>' : ''}
-                      ${f.mochila ? '<span class="overview-honor-tag mochila" title="La Mochila: Jugador con menor rendimiento del equipo">🎒 MOCHILA</span>' : ''}
+                      ${f.mvp ? `<span class="overview-honor-tag mvp" title="${esc((I18N[currentLang] || I18N.es).ui.tooltipMvp)}">MVP</span>` : ''}
+                      ${f.ace ? `<span class="overview-honor-tag ace" title="${esc((I18N[currentLang] || I18N.es).ui.tooltipAce)}">ACE</span>` : ''}
+                      ${f.mochila ? `<span class="overview-honor-tag mochila" title="${esc((I18N[currentLang] || I18N.es).ui.tooltipMochila)}">🎒 MOCHILA</span>` : ''}
                     </div>
                   </div>
                 </div>
@@ -2283,15 +2289,16 @@ async function openMatchModal(matchId) {
 
                   const placeClass = sData.place === 1 ? 'rank-1' : sData.place <= 3 ? 'top-3' : sData.place >= 9 ? 'low' : 'mid';
 
+                  const uiT = (I18N[currentLang] || I18N.es).ui;
                   let honorBadge = '';
                   if (sData.mvp) {
-                    honorBadge = '<span class="match-honor-tag mvp" title="MVP: Jugador Más Valioso de la partida">MVP</span>';
+                    honorBadge = `<span class="match-honor-tag mvp" title="${esc(uiT.tooltipMvp)}">MVP</span>`;
                   } else if (sData.ace) {
-                    honorBadge = '<span class="match-honor-tag ace" title="ACE: Mejor jugador del equipo perdedor">ACE</span>';
+                    honorBadge = `<span class="match-honor-tag ace" title="${esc(uiT.tooltipAce)}">ACE</span>`;
                   }
                   let mochilaBadge = '';
                   if (sData.mochila) {
-                    mochilaBadge = '<span class="match-honor-tag mochila" title="La Mochila: Jugador con menor rendimiento del equipo">🎒 MOCHILA</span>';
+                    mochilaBadge = `<span class="match-honor-tag mochila" title="${esc(uiT.tooltipMochila)}">🎒 MOCHILA</span>`;
                   }
 
                   return `
@@ -2853,9 +2860,9 @@ window.viewPlayerProfile = function (puuid) {
             <span class="overview-place-tag ${g.place === 1 ? 'top-1' : g.place <= 3 ? 'top-3' : 'mid'}" title="Posición ${g.place || 5} de 10 jugadores en la partida">
               ${g.place ? `${g.place}/10` : '—'}
             </span>
-            ${g.mvp ? ' <span class="stat-icon-gold" style="padding:2px 6px;border-radius:4px;font-size:11px;font-weight:700;">MVP</span>' : ''}
-            ${g.ace ? ' <span class="stat-icon-purple" style="padding:2px 6px;border-radius:4px;font-size:11px;font-weight:700;">ACE</span>' : ''}
-            ${g.mochila ? ' <span class="stat-icon-mochila" style="padding:2px 6px;border-radius:4px;font-size:11px;font-weight:700;background:rgba(230,126,34,0.22);color:#F39C12;border:1px solid rgba(230,126,34,0.45);" title="La Mochila del equipo">🎒 MOCHILA</span>' : ''}
+            ${g.mvp ? ` <span class="stat-icon-gold" style="padding:2px 6px;border-radius:4px;font-size:11px;font-weight:700;cursor:help;" title="${esc((I18N[currentLang] || I18N.es).ui.tooltipMvp)}">MVP</span>` : ''}
+            ${g.ace ? ` <span class="stat-icon-purple" style="padding:2px 6px;border-radius:4px;font-size:11px;font-weight:700;cursor:help;" title="${esc((I18N[currentLang] || I18N.es).ui.tooltipAce)}">ACE</span>` : ''}
+            ${g.mochila ? ` <span class="stat-icon-mochila" style="padding:2px 6px;border-radius:4px;font-size:11px;font-weight:700;background:rgba(230,126,34,0.22);color:#F39C12;border:1px solid rgba(230,126,34,0.45);cursor:help;" title="${esc((I18N[currentLang] || I18N.es).ui.tooltipMochila)}">🎒 MOCHILA</span>` : ''}
           </div>
           <span class="muted sub" style="font-size:11px; align-self:center;">🔍 Ver Detalle</span>
         </div>
