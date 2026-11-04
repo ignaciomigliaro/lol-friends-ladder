@@ -6783,5 +6783,13 @@ dialog.opscore-modal-dialog {
 @media (max-width: 760px) {
   /* The whole match row is clickable; the "Ver Detalle" hint doesn't fit next to the stats. */
   .profile-match-card > span.muted.sub:last-child { display: none; }
-  .profile-match-card { min-width: 0; }
+  .profile-match-card {
+    min-width: 0;
+    padding: 10px 12px;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .profile-match-card > div[style*="min-width"] {
+    min-width: 0 !important;
+  }
 }
