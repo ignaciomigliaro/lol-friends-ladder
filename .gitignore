@@ -8,3 +8,18 @@ data/
 worker/.github-token
 .wrangler/
 *.tar.gz
+
+# Testing captures & agent artifacts
+AGENT_ACTIVITY.md
+CONTEXT_MANIFEST.md
+PROJECT_PROFILE.md
+public/assets/test-*.jpg
+public/assets/verified-*.jpg
+public/assets/*-spec.json
+public/assets/screenshot-*.jpg
+public/assets/mvp-card-*.jpg
+public/assets/*-mockup.jpg
+public/assets/*-raw.jpg
+public/assets/current-mvp-mobile.jpg
+public/banner.jpg
+public/logo.jpg

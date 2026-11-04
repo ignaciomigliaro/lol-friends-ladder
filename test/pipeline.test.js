@@ -29,14 +29,18 @@ test('summarizePlayer records the lane opponent of every game', () => {
   assert.ok(g.place >= 1 && g.place <= 10);
 });
 
-test('only Solo/Duo and Flex count; ARAM and remakes are ignored', () => {
+test('only Solo/Duo and Flex count; ARAM is ignored and remakes are tagged', () => {
   const p = player('me', 'Tester', [
-    match({ id: 'solo', queueId: 420 }),
-    match({ id: 'flex', queueId: 440, endTs: base - day }),
-    match({ id: 'aram', queueId: 450, endTs: base - 2 * day }),
-    match({ id: 'remake', queueId: 420, minutes: 3, endTs: base - 3 * day }),
+    match({ id: 'solo', queueId: 420, win: true, endTs: base }),
+    match({ id: 'remake', queueId: 420, minutes: 3, win: false, endTs: base - day }),
+    match({ id: 'flex', queueId: 440, win: true, endTs: base - 2 * day }),
+    match({ id: 'aram', queueId: 450, endTs: base - 3 * day }),
   ]);
-  assert.deepEqual(p.games.map((g) => g.matchId), ['solo', 'flex']);
+  assert.deepEqual(p.games.map((g) => g.matchId), ['solo', 'remake', 'flex']);
+  assert.equal(p.games.find((g) => g.matchId === 'remake').isRemake, true);
+  assert.equal(p.stats.games, 2);
+  assert.equal(p.stats.wins, 2);
+  assert.equal(p.stats.streak, 2);
 });
 
 test('leaderboard stats use the recent games, profiles keep the full history', () => {

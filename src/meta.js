@@ -15,7 +15,7 @@ export function computeGroupMeta(players = []) {
   for (const p of players) {
     for (const g of p.games ?? []) {
       const c = g.champion;
-      if (!c) continue;
+      if (!c || g.isRemake) continue;
 
       if (!champStats[c]) {
         champStats[c] = {
@@ -96,6 +96,7 @@ export function computeGroupMeta(players = []) {
     const playerRoleCounts = {};
     for (const p of players) {
       for (const g of p.games ?? []) {
+        if (g.isRemake) continue;
         if ((g.position || 'MIDDLE') === r) {
           playerRoleCounts[p.name] = (playerRoleCounts[p.name] ?? 0) + 1;
         }

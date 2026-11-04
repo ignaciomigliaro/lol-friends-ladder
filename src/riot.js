@@ -51,6 +51,7 @@ export function pruneMatch(m) {
         championName: p.championName,
         win: p.win,
         gameEndedInEarlySurrender: p.gameEndedInEarlySurrender,
+        gameEndedInSurrender: p.gameEndedInSurrender,
         kills: p.kills ?? 0,
         deaths: p.deaths ?? 0,
         assists: p.assists ?? 0,

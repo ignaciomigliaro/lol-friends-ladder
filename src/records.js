@@ -68,6 +68,7 @@ export function computeGroupRecords(players = []) {
 
     // Per-game records
     for (const g of p.games ?? []) {
+      if (g.isRemake) continue;
       records.totals.totalGames++;
       if (g.win) records.totals.totalWins++;
       records.totals.totalKills += (g.kills ?? 0);
