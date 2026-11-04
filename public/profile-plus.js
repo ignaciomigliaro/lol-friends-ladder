@@ -92,7 +92,7 @@ function installPlayersView() {
   const lb = $('.sidebar-nav [data-view="leaderboard"]')?.closest('li');
   if (lb) {
     const li = document.createElement('li');
-    li.innerHTML = '<a class="nav-link" data-view="players" href="#players"><span class="nav-icon">👤</span><span>Jugadores</span></a>';
+    li.innerHTML = '<a class="nav-link" data-view="players" href="#players"><span class="nav-icon"><svg class="nav-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span><span>Jugadores</span></a>';
     lb.after(li);
   }
   // Mobile bottom bar: before "Gestionar".
@@ -101,7 +101,7 @@ function installPlayersView() {
     const btn = document.createElement('button');
     btn.className = 'mobile-nav-item';
     btn.dataset.view = 'players';
-    btn.innerHTML = '<span class="mobile-nav-icon">👤</span><span>Jugadores</span>';
+    btn.innerHTML = '<span class="mobile-nav-icon"><svg class="nav-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span><span>Jugadores</span>';
     mobileManage.before(btn);
   }
   document.querySelectorAll('[data-view="players"]').forEach((el) => el.addEventListener('click', (e) => {
