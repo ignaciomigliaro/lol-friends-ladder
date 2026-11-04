@@ -117,7 +117,7 @@ let currentLang = localStorage.getItem('lang') || 'es';
 const I18N = {
   es: {
     titles: {
-      overview: 'Inicio · Resumen General',
+      overview: 'Resumen General de la Semana',
       leaderboard: 'Tabla de Posiciones',
       players: 'Jugadores del Grupo',
       duels: 'Arena de Duelos 1v1',
@@ -178,7 +178,7 @@ const I18N = {
   },
   en: {
     titles: {
-      overview: 'Overview Dashboard',
+      overview: 'Weekly General Overview',
       leaderboard: 'Official Leaderboard',
       players: 'Group Players',
       duels: '1v1 Duels Arena',
