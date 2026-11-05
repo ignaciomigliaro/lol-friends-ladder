@@ -420,6 +420,8 @@ export async function refreshAll(config, onProgress = () => {}) {
     }
   }
   const shared = [...seen].filter(([, n]) => n >= 2).map(([id]) => id);
+  // Re-score saved games together too, so every game uses the current OP Score model.
+  for (const g of await readJson(GROUP_FILE, [])) if (!shared.includes(g.matchId)) shared.push(g.matchId);
   const friendsByPuuid = new Map(players.map((p) => [p.puuid, p.name]));
   const groupGames = (await Promise.all(shared.map((id) => client.match(id, matchRegion.get(id) ?? client.region))))
     .filter(Boolean)

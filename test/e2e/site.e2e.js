@@ -2,7 +2,7 @@
 // serves it like GitHub Pages and clicks through every page a friend would use.
 //
 //   npm run test:e2e
-// Locally on Windows, point Puppeteer at Edge or Chrome:
+// Uses Puppeteer's own Chrome (npx puppeteer browsers install chrome), like GitHub. To use Edge instead:
 //   PUPPETEER_EXECUTABLE_PATH="C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe"
 import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
