@@ -14,8 +14,9 @@ export function scoreMatch(match) {
   const ps = match.info.participants;
 
   // OP Score from the model fitted to OP.GG's own scores (src/opscore.js).
-  const fitted = opScores(match);
-  const rawScores = ps.map((p) => fitted.get(p.puuid));
+  // OP.GG doesn't rate remakes: every player gets 0, and so do we.
+  const fitted = isRemake(match) ? new Map() : opScores(match);
+  const rawScores = ps.map((p) => fitted.get(p.puuid) ?? 0);
 
   const scores = rawScores.map((s) => Math.round(s * 10) / 10);
 

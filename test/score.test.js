@@ -162,5 +162,6 @@ test('scoreMatch on remake match never awards MVP, ACE, or Mochila', () => {
     assert.equal(s.mvp, false, `puuid ${puuid} should not have MVP in a remake`);
     assert.equal(s.ace, false, `puuid ${puuid} should not have ACE in a remake`);
     assert.equal(s.mochila, false, `puuid ${puuid} should not have Mochila in a remake`);
+    assert.equal(s.score, 0, 'OP.GG gives every player 0 in a remake');
   }
 });
