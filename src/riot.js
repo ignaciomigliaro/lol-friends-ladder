@@ -35,15 +35,29 @@ async function atomicWriteFile(file, content) {
   }
 }
 
+// Bump when pruneMatch keeps new fields: saved games without them are downloaded again once.
+export const MATCH_FORMAT = 2;
+
 export function pruneMatch(m) {
   if (!m?.info?.participants) return m;
   return {
+    format: MATCH_FORMAT,
     metadata: { matchId: m.metadata?.matchId },
     info: {
       queueId: m.info.queueId,
       gameDuration: m.info.gameDuration,
       gameEndTimestamp: m.info.gameEndTimestamp,
       gameCreation: m.info.gameCreation,
+      // Team objectives, used by the OP Score model.
+      teams: (m.info.teams ?? []).map((t) => ({
+        teamId: t.teamId,
+        objectives: {
+          tower: { kills: t.objectives?.tower?.kills ?? 0 },
+          dragon: { kills: t.objectives?.dragon?.kills ?? 0 },
+          baron: { kills: t.objectives?.baron?.kills ?? 0 },
+          riftHerald: { kills: t.objectives?.riftHerald?.kills ?? 0 },
+        },
+      })),
       participants: m.info.participants.map((p) => ({
         puuid: p.puuid,
         teamId: p.teamId,
@@ -67,6 +81,10 @@ export function pruneMatch(m) {
         turretTakedowns: p.turretTakedowns ?? p.turretKills ?? 0,
         turretKills: p.turretKills ?? 0,
         goldEarned: p.goldEarned ?? 0,
+        champExperience: p.champExperience ?? 0,
+        champLevel: p.champLevel ?? 1,
+        wardsPlaced: p.wardsPlaced ?? 0,
+        wardsKilled: p.wardsKilled ?? 0,
         totalTimeSpentDead: p.totalTimeSpentDead ?? 0,
         totalHealsOnTeammates: p.totalHealsOnTeammates ?? 0,
         totalDamageShieldedOnTeammates: p.totalDamageShieldedOnTeammates ?? 0,
@@ -78,6 +96,7 @@ export function pruneMatch(m) {
           baronTakedowns: p.challenges?.baronTakedowns ?? 0,
           riftHeraldTakedowns: p.challenges?.riftHeraldTakedowns ?? 0,
           voidMonsterKill: p.challenges?.voidMonsterKill ?? 0,
+          turretPlatesTaken: p.challenges?.turretPlatesTaken ?? 0,
         },
       })),
     },
@@ -250,8 +269,8 @@ export class RiotClient {
   // Finished matches never change, so they are pruned and cached on disk forever.
   async match(matchId, region = this.region) {
     const file = path.join(this.matchDir, `${matchId}.json`);
-    const cached = await fs.readFile(file, 'utf8').catch(() => null);
-    if (cached) return JSON.parse(cached);
+    const cached = await fs.readFile(file, 'utf8').then(JSON.parse).catch(() => null);
+    if (cached?.format >= MATCH_FORMAT) return cached;
 
     const raw = await this.#get(region, `/lol/match/v5/matches/${matchId}`);
     if (raw) {

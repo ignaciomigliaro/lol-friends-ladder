@@ -23,3 +23,7 @@ public/assets/*-raw.jpg
 public/assets/current-mvp-mobile.jpg
 public/banner.jpg
 public/logo.jpg
+
+# OP.GG data saved from the browser for score calibration (may contain personal data)
+opgg/
+calibration/data/

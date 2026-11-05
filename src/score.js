@@ -1,152 +1,21 @@
-// OP.GG-calibrated per-game performance score (0-10) with role-adaptive weighting.
-//
-// Evaluates performance dynamically based on position:
-// - UTILITY (Support): High weight on Vision, Kill Participation, KDA; low penalty for CS.
-// - JUNGLE: High weight on Objectives, KP, and DPM.
-// - BOTTOM (ADC): Heavy emphasis on DPM, CS/min, and KDA.
-// - MIDDLE: Roam presence (KP), DPM, CS/min, and lane differential.
-// - TOP: Splitpush/Objectives, lane differential vs opponent, CS/min, and survivability.
-//
-// Features:
-// - Lane Opponent Delta (dmgVsOpp): Rewards outperforming your direct counterpart.
-// - MVP awarded to the best performer on the winning team.
-// - ACE awarded to the best performer on the losing team.
+// Per-game performance score (0-10), as close as possible to OP.GG's OP Score.
+// The score comes from a model fitted to OP.GG's real scores (src/opscore.js, calibration/).
+// Places rank all 10 players; MVP = best on the winning team, ACE = best on the losing team,
+// Mochila = the weakest player of each team.
+import { opScores } from './opscore.js';
 
 export function isRemake(match) {
   const info = match.info;
   return info.gameDuration < 300 || info.participants.some((p) => p.gameEndedInEarlySurrender);
 }
 
-function sumBy(list, fn) {
-  return list.reduce((acc, x) => acc + fn(x), 0);
-}
-
 // Returns Map<puuid, { score, place, mvp, ace }>
 export function scoreMatch(match) {
   const ps = match.info.participants;
-  const minutes = Math.max(1, match.info.gameDuration / 60);
 
-  const team = {};
-  for (const teamId of new Set(ps.map((p) => p.teamId))) {
-    const mates = ps.filter((p) => p.teamId === teamId);
-    team[teamId] = {
-      kills: Math.max(1, sumBy(mates, (p) => p.kills)),
-      dmg: Math.max(1, sumBy(mates, (p) => p.totalDamageDealtToChampions)),
-      tank: Math.max(1, sumBy(mates, (p) => p.totalDamageTaken + p.damageSelfMitigated)),
-      obj: Math.max(1, sumBy(mates, (p) => p.damageDealtToObjectives)),
-    };
-  }
-
-  const oppMap = new Map();
-  for (const p of ps) {
-    if (p.teamPosition) {
-      const opp = ps.find((o) => o.teamId !== p.teamId && o.teamPosition === p.teamPosition);
-      if (opp) oppMap.set(p.puuid, opp);
-    }
-  }
-
-  const rawScores = ps.map((p) => {
-    const t = team[p.teamId];
-    const role = p.teamPosition || 'MIDDLE';
-
-    // 1. KDA Score (0-10)
-    const kdaRatio = (p.kills + p.assists) / Math.max(1, p.deaths);
-    const kdaScore = Math.min(10.0, kdaRatio * 1.8);
-
-    // 2. Kill Participation Score (0-10)
-    const kp = (p.kills + p.assists) / t.kills;
-    const kpScore = Math.min(10.0, (kp / 0.70) * 10.0);
-
-    // 3. Daño al equipo y ventaja contra el rival directo de línea (dmgVsOpp)
-    const dmgShare = p.totalDamageDealtToChampions / t.dmg;
-    const opp = oppMap.get(p.puuid);
-    const dmgVsOpp = opp ? (p.totalDamageDealtToChampions - opp.totalDamageDealtToChampions) / t.dmg : 0;
-
-    let expectedDmgShare = 0.25;
-    if (role === 'UTILITY') expectedDmgShare = 0.10;
-    else if (role === 'JUNGLE') expectedDmgShare = 0.20;
-    else if (role === 'BOTTOM') expectedDmgShare = 0.28;
-
-    const baseDmgScore = (dmgShare / expectedDmgShare) * 6.5;
-    const dmgScore = Math.max(0.0, Math.min(10.0, baseDmgScore + (dmgVsOpp * 5.0)));
-
-    // 4. Farmeo (CS por minuto)
-    const csTotal = p.totalMinionsKilled + p.neutralMinionsKilled;
-    const csMin = csTotal / minutes;
-    let csScore = 5.0;
-    if (role === 'UTILITY') {
-      csScore = 5.0; // Los soportes no son penalizados por no farmear
-    } else if (role === 'JUNGLE') {
-      csScore = Math.min(10.0, (csMin / 6.5) * 8.5);
-    } else {
-      csScore = Math.min(10.0, (csMin / 8.5) * 8.5);
-    }
-
-    // 5. Visión por minuto
-    const visMin = p.visionScore / minutes;
-    let visionScore = 5.0;
-    if (role === 'UTILITY') {
-      visionScore = Math.min(10.0, (visMin / 2.0) * 8.5);
-    } else {
-      visionScore = Math.min(10.0, (visMin / 0.8) * 8.0);
-    }
-
-    // 6. Daño a objetivos
-    const objShare = t.obj > 0 ? p.damageDealtToObjectives / t.obj : 0;
-    const objScore = Math.min(10.0, objShare * 15.0);
-
-    // Ponderación dinámica según el rol
-    let score = 0;
-    if (role === 'UTILITY') {
-      score =
-        (visionScore * 0.30) +
-        (kpScore * 0.30) +
-        (kdaScore * 0.20) +
-        (dmgScore * 0.10) +
-        (objScore * 0.10);
-    } else if (role === 'JUNGLE') {
-      score =
-        (objScore * 0.25) +
-        (kpScore * 0.25) +
-        (dmgScore * 0.20) +
-        (kdaScore * 0.15) +
-        (csScore * 0.10) +
-        (visionScore * 0.05);
-    } else if (role === 'BOTTOM') {
-      score =
-        (dmgScore * 0.35) +
-        (csScore * 0.25) +
-        (kdaScore * 0.20) +
-        (kpScore * 0.10) +
-        (objScore * 0.10);
-    } else if (role === 'MIDDLE') {
-      score =
-        (dmgScore * 0.30) +
-        (csScore * 0.25) +
-        (kdaScore * 0.20) +
-        (kpScore * 0.15) +
-        (objScore * 0.10);
-    } else {
-      // TOP (o default)
-      score =
-        (dmgScore * 0.25) +
-        (csScore * 0.25) +
-        (kdaScore * 0.20) +
-        (objScore * 0.20) +
-        (kpScore * 0.10);
-    }
-
-    // Penalización por muertes excesivas (feeding / muertes repetitivas)
-    const deaths = p.deaths ?? 0;
-    const deathThreshold = role === 'UTILITY' ? 8 : 6;
-    const deathPenalty = deaths > deathThreshold ? Math.min(1.5, (deaths - deathThreshold) * 0.15) : 0;
-    score -= deathPenalty;
-
-    // Modificador de victoria / derrota
-    score += p.win ? 0.5 : -0.5;
-
-    return Math.max(0.5, Math.min(10.0, score));
-  });
+  // OP Score from the model fitted to OP.GG's own scores (src/opscore.js).
+  const fitted = opScores(match);
+  const rawScores = ps.map((p) => fitted.get(p.puuid));
 
   const scores = rawScores.map((s) => Math.round(s * 10) / 10);
 

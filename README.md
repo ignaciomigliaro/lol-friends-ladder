@@ -137,13 +137,12 @@ The GitHub Actions workflow in [`.github/workflows/update.yml`](.github/workflow
 
 ## 🧮 How the Performance Score Works
 
-Rather than relying purely on win/loss, every player is rated from **0.0 to 10.0 against all 9 other players in that specific match**:
-- **Combat:** KDA, kill participation, share of total team champion damage.
-- **Economy:** Gold per minute, CS per minute.
-- **Vision:** Vision score per minute, wards cleared/placed.
-- **Objectives & Durability:** Damage to dragons, barons, and turrets; damage mitigated and taken.
-- **Role Weights:** Supports emphasize vision and kill participation; junglers receive objective credit; tanks are credited for damage mitigation.
-- **Accolades:** **MVP** is awarded to the highest score on the winning team; **ACE** is awarded to the top performer on the losing team.
+The score (0.0–10.0) is fitted to **OP.GG's own OP Score**. OP.GG doesn't publish its formula, so a small neural network was trained on 185 ranked games where OP.GG's real score is known for all 10 players, minute by minute ([calibration/](calibration/README.md)).
+
+- **Inputs:** each player's K/D/A, kill participation, gold, experience, CS, damage dealt and taken, wards, turrets, plates and objectives, measured against their team, their lane opponent and the lobby, plus how far ahead their team is and who won.
+- **Accuracy on games it never saw:** off by 0.34 on average; 60% of players within 0.3 and 80% within 0.5 of OP.GG. A 0.1 match on every game isn't reachable: OP.GG's score comes from its own model and depends on how the game unfolded minute by minute.
+- **Accolades:** **MVP** is the highest score on the winning team; **ACE** the highest on the losing team; **Mochila** the weakest player of each team.
+- **Recalibrating:** save more OP.GG match history and rerun the steps in [calibration/README.md](calibration/README.md). `npm test` checks the model against 10 games it was never trained on.
 
 ---
 
@@ -163,7 +162,8 @@ Rather than relying purely on win/loss, every player is rated from **0.0 to 10.0
 │   ├── meta.js            # Champion pool analyzer (God Tier, Cursed, Specialists)
 │   ├── records.js         # Hall of Fame and historical group totals
 │   ├── riot.js            # Rate-limited Riot API client with persistent disk caching
-│   ├── score.js           # Relative 0-10 match performance evaluator (MVP / ACE)
+│   ├── score.js           # 0-10 match score, places, MVP / ACE / Mochila
+│   ├── opscore.js         # OP Score model fitted to OP.GG (weights in opscore-model.json)
 │   ├── tracker.js         # Leaderboard computation and atomic data writes
 │   ├── ranks.js           # LP normalizer across tiers and divisions
 │   ├── nicknames.js       # Spanish roasting nicknames based on match habits
