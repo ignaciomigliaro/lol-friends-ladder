@@ -45,7 +45,7 @@
   "updateUrl": "https://lol-ladder-update.ignaciomigliaro.workers.dev",
   "weekStart": {
     "day": "monday",
-    "timeZone": "America/New_York"
+    "timeZone": "America/Mexico_City"
   },
   "seasonStart": null
 }

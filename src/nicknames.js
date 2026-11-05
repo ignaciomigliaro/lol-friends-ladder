@@ -27,35 +27,35 @@ const RULES = [
   {
     title: 'El Feeder Oficial', emoji: '💀', worse: 'high', threshold: 6.5, scale: 2,
     value: (p) => p.stats.avgDeaths,
-    reason: (v) => `${fmt(v)} muertes por partida. El equipo rival ya lo tiene agendado como cajero automático`,
+    reason: (v) => `${fmt(v)} muertes por partida. El equipo rival ya lo tiene agendado como cajero automático de oro sin comisión`,
   },
   {
     title: 'Fan de la Pantalla Gris', emoji: '🪦', worse: 'high', threshold: 12, scale: 5,
     value: (p) => 100 * avg(recent(p), (g) => g.deadPct ?? 0),
-    reason: (v) => `pasa el ${fmt(v, 0)}% de la partida muerto. Ve más gris que la tele de la abuela`,
+    reason: (v) => `pasa el ${fmt(v, 0)}% de la partida muerto. Ve más gris que documental de la guerra fría`,
   },
   {
     title: 'El Kamikaze', emoji: '💣', worse: 'high', scale: 0.8,
     threshold: (role) => (role === 'UTILITY' ? null : 1.6),
     value: (p) => sum(recent(p), (g) => g.deaths) / Math.max(1, sum(recent(p), (g) => g.kills)),
-    reason: (v) => `muere ${fmt(v)} veces por cada kill que hace. Se tira de cabeza sin mirar el minimapa`,
+    reason: (v) => `muere ${fmt(v)} veces por cada kill que hace. Se inmola de cabeza sin mirar el minimapa`,
   },
 
   // --- laning against their direct rival ---
   {
     title: 'Sparring del Rival', emoji: '🥊', worse: 'high', threshold: 60, scale: 15,
     value: (p) => (laned(p).length < 5 ? null : (100 * laned(p).filter((g) => g.opp.score > g.score).length) / laned(p).length),
-    reason: (v) => `su rival de línea le gana en el ${fmt(v, 0)}% de las partidas. Le deberían cobrar la clase`,
+    reason: (v) => `su rival de línea le gana en el ${fmt(v, 0)}% de las partidas. Le deberían cobrar la clase particular`,
   },
   {
     title: 'Donador de Oro', emoji: '🎁', worse: 'high', threshold: 700, scale: 700,
     value: (p) => (laned(p).length < 5 ? null : avg(laned(p), (g) => g.opp.gold - g.gold)),
-    reason: (v) => `le regala ${Math.round(v)} de oro por partida a su rival de línea. Un alma caritativa`,
+    reason: (v) => `le regala ${Math.round(v)} de oro por partida a su rival de línea. Patrocinador oficial del rival`,
   },
   {
     title: 'Alérgico a las Torres', emoji: '🗼', worse: 'low', threshold: 0.7, scale: 0.2,
     value: (p) => (laned(p).length < 5 ? null : avg(laned(p), (g) => g.objectives) / Math.max(1, avg(laned(p), (g) => g.opp.objectives))),
-    reason: (v) => `hace un ${fmt(100 * (1 - v), 0)}% menos de daño a objetivos que su rival. Las torres no muerden`,
+    reason: (v) => `hace un ${fmt(100 * (1 - v), 0)}% menos de daño a objetivos que su rival. Cree que las torres muerden`,
   },
 
   // --- farming, vision, fighting ---
@@ -63,18 +63,18 @@ const RULES = [
     title: 'El Ciego de la Grieta', emoji: '🦯', worse: 'low', scale: 0.3,
     threshold: (role) => ({ UTILITY: 1.6, JUNGLE: 0.9 })[role] ?? 0.6,
     value: (p) => avg(recent(p), (g) => (g.vision ?? 0) / Math.max(1, g.minutes)),
-    reason: (v) => `${fmt(v, 2)} de visión por minuto. Los wards no se ponen solos, maestro`,
+    reason: (v) => `${fmt(v, 2)} de visión por minuto. Los wards no se ponen solos ni cuestan dólares, maestro`,
   },
   {
     title: 'El Vegano', emoji: '🥗', worse: 'low', scale: 1.5,
     threshold: (role) => (role === 'UTILITY' ? null : role === 'JUNGLE' ? 5 : 6),
     value: (p) => avg(recent(p), (g) => g.cs / Math.max(1, g.minutes)),
-    reason: (v) => `${fmt(v)} CS/min. Los súbditos le dan pena y los deja vivir`,
+    reason: (v) => `${fmt(v)} CS/min. Los súbditos le dan ternura y los deja vivir como animales protegidos`,
   },
   {
     title: 'El Turista', emoji: '🧳', worse: 'low', threshold: 42, scale: 10,
     value: (p) => 100 * avg(recent(p), (g) => g.kp ?? 0.5),
-    reason: (v) => `aparece en el ${fmt(v, 0)}% de las kills del equipo. Vino a la Grieta a sacar fotos`,
+    reason: (v) => `aparece en el ${fmt(v, 0)}% de las kills del equipo. Vino a la Grieta con binoculares a sacar fotos`,
   },
   {
     title: 'El Granjero', emoji: '🌾', worse: 'high', threshold: 0, scale: 10,
@@ -83,36 +83,36 @@ const RULES = [
       const kp = 100 * avg(recent(p), (g) => g.kp ?? 0.5);
       return cs >= 7 ? 45 - kp : null;
     },
-    reason: (v, p) => `${fmt(avg(recent(p), (g) => g.cs / Math.max(1, g.minutes)))} CS/min mientras su equipo pelea 4 contra 5. Farmea hasta el apocalipsis`,
+    reason: (v, p) => `${fmt(avg(recent(p), (g) => g.cs / Math.max(1, g.minutes)))} CS/min mientras su equipo pelea 4 contra 5. Cosecha pacífica en pleno apocalipsis`,
   },
   {
     title: 'Daño de Algodón', emoji: '☁️', worse: 'low', scale: 5,
     threshold: (role) => (role === 'UTILITY' ? null : 18),
     value: (p) => 100 * avg(recent(p), (g) => g.dmgShare ?? 0.2),
-    reason: (v) => `hace el ${fmt(v, 0)}% del daño del equipo. Pega con almohada`,
+    reason: (v) => `hace el ${fmt(v, 0)}% del daño del equipo. Pega con almohada de plumas mojada`,
   },
   {
     title: 'Robakills', emoji: '🦹', worse: 'high', scale: 0.15,
     threshold: (role) => (role === 'UTILITY' ? null : 0.55),
     value: (p) => sum(recent(p), (g) => g.kills) / Math.max(1, sum(recent(p), (g) => g.kills + g.assists)),
-    reason: (v) => `el ${fmt(100 * v, 0)}% de lo que hace son kills y casi nunca asiste. El último golpe es suyo y punto`,
+    reason: (v) => `el ${fmt(100 * v, 0)}% de lo que hace son kills y casi nunca asiste. El último golpe es suyo y el resto que aplauda`,
   },
 
   // --- results ---
   {
     title: 'El Ancla', emoji: '⚓', worse: 'low', threshold: 45, scale: 10,
     value: (p) => p.stats.winrate,
-    reason: (v) => `${fmt(v, 0)}% de victorias. Hunde cualquier equipo que lo lleve`,
+    reason: (v) => `${fmt(v, 0)}% de victorias. Hunde cualquier equipo que cometa la imprudencia de llevarlo`,
   },
   {
     title: 'La Mochila', emoji: '🎒', worse: 'low', threshold: 5, scale: 1,
     value: (p) => p.stats.avgScore,
-    reason: (v) => `score promedio ${fmt(v)}. Lo cargan más que a un celular viejo`,
+    reason: (v) => `score promedio ${fmt(v)}. Lo cargan más que a mochila escolar en marzo`,
   },
   {
     title: 'Manco Certificado', emoji: '🖐️', worse: 'high', threshold: 6.8, scale: 1,
     value: (p) => avg(recent(p), (g) => g.place ?? 5.5),
-    reason: (v) => `termina ${fmt(v)}° de 10 en promedio. Hay bots con mejor ranking`,
+    reason: (v) => `termina ${fmt(v)}° de 10 en promedio. Hay bots de tutorial con mejor posicionamiento`,
   },
   {
     title: 'Pecho Frío', emoji: '🥶', worse: 'low', threshold: 3.8, scale: 1,
@@ -120,24 +120,24 @@ const RULES = [
       const losses = recent(p).filter((g) => !g.win);
       return losses.length < 4 ? null : avg(losses, (g) => g.score);
     },
-    reason: (v) => `cuando el equipo va perdiendo desaparece: ${fmt(v)} de score en las derrotas`,
+    reason: (v) => `cuando el equipo va perdiendo se borra del servidor: ${fmt(v)} de score en derrotas`,
   },
   {
     title: 'Héroe de las Derrotas', emoji: '🫠', worse: 'high', threshold: 2, scale: 2,
     value: (p) => (p.stats.ace >= 3 && p.stats.ace >= 2 * p.stats.mvp ? p.stats.ace : 0),
-    reason: (v, p) => `${p.stats.ace} ACE y ${p.stats.mvp} MVP. Brilla solo cuando ya perdieron`,
+    reason: (v, p) => `${p.stats.ace} ACE y ${p.stats.mvp} MVP. Brilla únicamente en los funerales de equipo`,
   },
   {
     title: 'El Incomprendido', emoji: '😭', worse: 'high', threshold: 0, scale: 1,
     value: (p) => (p.stats.avgScore >= 6.3 && p.stats.winrate < 48 ? 0.5 : 0),
-    reason: (v, p) => `juega bien (${fmt(p.stats.avgScore)}) y pierde igual. El matchmaking lo tiene de punto`,
+    reason: (v, p) => `juega bien (${fmt(p.stats.avgScore)}) y pierde igual. El algoritmo de emparejamiento lo odia en secreto`,
   },
 
   // --- habits ---
   {
     title: 'El Tilteado', emoji: '🤬', worse: 'high', threshold: 2, scale: 2,
     value: (p) => -p.stats.streak,
-    reason: (v) => `${v} derrotas seguidas y sigue dándole a "Buscar partida". Que alguien le desenchufe la compu`,
+    reason: (v) => `${v} derrotas seguidas y sigue dándole a "Buscar partida". Alguien llame a contención psiquiátrica`,
   },
   {
     title: 'Ludópata del Ranked', emoji: '🎰', worse: 'high', threshold: 19, scale: 10,
@@ -147,7 +147,7 @@ const RULES = [
     },
     reason: (v, p, now) => {
       const week = p.games.filter((g) => now - g.endTs < 7 * DAY);
-      return `${v} rankeds en 7 días con ${fmt((100 * sum(week, (g) => g.win)) / week.length, 0)}% de victorias. El problema no es la cantidad`;
+      return `${v} rankeds en 7 días con ${fmt((100 * sum(week, (g) => g.win)) / week.length, 0)}% de victorias. No es persistencia, es ludopatía pura`;
     },
   },
   {
@@ -158,13 +158,13 @@ const RULES = [
     },
     reason: (v, p) => {
       const c = mainChampion(p);
-      return `${c.games} partidas con ${c.champion} y ${fmt(c.wr, 0)}% de victorias. Lo mainea, pero el campeón no lo quiere`;
+      return `${c.games} partidas con ${c.champion} y ${fmt(c.wr, 0)}% de victorias. Insiste en jugarlo aunque el campeón le ruegue piedad`;
     },
   },
   {
     title: 'Casado con', emoji: '💍', worse: 'high', threshold: 0.5, scale: 1,
     value: (p) => (recent(p).length >= 6 ? (p.topChampions[0]?.games ?? 0) / recent(p).length : 0),
-    reason: (v, p) => `${p.topChampions[0].games} de ${recent(p).length} partidas con el mismo campeón. Ni el divorcio los separa`,
+    reason: (v, p) => `${p.topChampions[0].games} de ${recent(p).length} partidas con el mismo campeón. Monogamia tóxica de pool champion`,
     titleFor: (p) => `Casado con ${p.topChampions[0].champion}`,
   },
   {
@@ -174,17 +174,17 @@ const RULES = [
       const solo = p.solo ? p.solo.wins + p.solo.losses : 0;
       return flex >= 20 ? flex / (flex + solo) : null;
     },
-    reason: (v) => `el ${fmt(100 * v, 0)}% de sus rankeds de la season son Flex. A la Solo/Duo no se anima`,
+    reason: (v) => `el ${fmt(100 * v, 0)}% de sus rankeds son Flex. A la SoloQ no entra ni con escolta policial`,
   },
   {
     title: 'Bolsa en Picada', emoji: '📉', worse: 'high', threshold: 30, scale: 40,
     value: (p) => (p.lpDelta?.week == null ? null : -p.lpDelta.week),
-    reason: (v) => `perdió ${v} LP esta semana. Ni las cripto caen tan rápido`,
+    reason: (v) => `perdió ${v} LP esta semana. Ni Wall Street en el 29 se desplomó con semejante violencia`,
   },
   {
     title: 'El Jubilado', emoji: '👴', worse: 'high', threshold: 7, scale: 7,
     value: (p, now) => (now - recent(p)[0].endTs) / DAY,
-    reason: (v) => `no juega ranked hace ${fmt(v, 0)} días. Ya cobra la jubilación`,
+    reason: (v) => `no juega ranked hace ${fmt(v, 0)} días. Ya cobra la pensión y juega a las cartas en la plaza`,
   },
   {
     title: 'El Último Orejón del Tarro', emoji: '🥄', worse: 'high', threshold: 99, scale: 300,
@@ -193,7 +193,7 @@ const RULES = [
       if (ranked.length < 3 || ranked[0] !== p) return null;
       return ranked[1].solo.value - p.solo.value; // gap to the next-lowest friend
     },
-    reason: (v, p) => `el rango más bajo del grupo: ${p.solo.label}. Alguien tenía que serlo`,
+    reason: (v, p) => `el rango más bajo del grupo: ${p.solo.label}. Sostiene la tabla entera desde el abismo`,
   },
 ];
 
@@ -209,9 +209,9 @@ function mainChampion(p) {
 }
 
 const FALLBACKS = [
-  { title: 'Ni Fu Ni Fa', emoji: '😐', reason: 'ningún defecto claro... y ninguna virtud tampoco' },
-  { title: 'El Sospechosamente Normal', emoji: '🤨', reason: 'demasiado limpio para ser verdad. Lo estamos vigilando' },
-  { title: 'Perfil Bajo', emoji: '🫥', reason: 'ni carrea ni feedea. Es parte del decorado' },
+  { title: 'Ni Fu Ni Fa', emoji: '😐', reason: 'ningún defecto claro... y ninguna virtud tampoco. Un espectador de lujo con skin' },
+  { title: 'El Sospechosamente Normal', emoji: '🤨', reason: 'demasiado limpio para ser verdad. Parece un bot infiltrado en la partida' },
+  { title: 'Perfil Bajo', emoji: '🫥', reason: 'ni carrea ni feedea. Es parte del mobiliario y decorado de la Grieta' },
 ];
 
 export function assignNicknames(players, now = Date.now()) {

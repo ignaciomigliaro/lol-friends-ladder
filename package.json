@@ -10,6 +10,7 @@
   "scripts": {
     "start": "node server.js",
     "refresh": "node report.js --refresh",
+    "sync:opgg": "node scripts/sync-opgg.js",
     "rescore": "node scripts/recompute.js",
     "report": "node report.js",
     "demo": "node src/demo.js && node server.js",
