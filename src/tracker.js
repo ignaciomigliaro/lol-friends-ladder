@@ -8,6 +8,7 @@ import { assignNicknames } from './nicknames.js';
 import { buildGroupGame, mergeGroupGames, groupSummary } from './group.js';
 import { computeGroupRecords } from './records.js';
 import { computeGroupMeta } from './meta.js';
+import { fetchOpggMatches, applyOpggScores, setExact } from './opgg.js';
 
 const DAY = 24 * 60 * 60 * 1000;
 const LEADERBOARD_FILE = path.join(DATA_DIR, 'leaderboard.json');
@@ -49,7 +50,9 @@ function laneStats(p, m) {
 
 // games keeps up to profileMatches games for the personal tab; stats/topChampions use the most
 // recent statsGames of them so the leaderboard reflects current form.
-export function summarizePlayer({ friend, account, summoner, entries, matches, statsGames = Infinity, profileMatches = Infinity }) {
+// opgg: OP.GG's real scores for this player's recent games (src/opgg.js); exact: Map<matchId, {score, place}>
+// of games already matched with OP.GG on an earlier refresh. Both replace the site's own estimate.
+export function summarizePlayer({ friend, account, summoner, entries, matches, statsGames = Infinity, profileMatches = Infinity, opgg = [], exact = new Map() }) {
   const puuid = account.puuid;
   const games = [];
   for (const m of matches) {
@@ -94,6 +97,8 @@ export function summarizePlayer({ friend, account, summoner, entries, matches, s
     });
   }
   games.sort((a, b) => b.endTs - a.endTs);
+  for (const g of games) if (exact.has(g.matchId) && !g.isRemake) setExact(g, exact.get(g.matchId));
+  applyOpggScores(games, opgg);
 
   const maxHistory = Number.isFinite(profileMatches) ? profileMatches : Infinity;
   const historyGames = Number.isFinite(maxHistory) ? games.slice(0, maxHistory) : games;
@@ -370,6 +375,12 @@ export async function refreshAll(config, onProgress = () => {}) {
   const total = config.friends.length;
   const ddragonVersion = await latestDdragonVersion();
   const recentByPlayer = new Map();
+  // Games matched with OP.GG on an earlier refresh keep OP.GG's score after they drop out of
+  // OP.GG's last 20. Set "opgg": false in config.json to use only the site's own estimate.
+  const useOpgg = config.opgg !== false;
+  const prevBoard = useOpgg ? await readJson(LEADERBOARD_FILE, null) : null;
+  const exactByPlayer = new Map((prevBoard?.players ?? []).map((p) => [p.puuid,
+    new Map((p.games ?? []).filter((g) => g.scoreSource === 'opgg').map((g) => [g.matchId, { score: g.score, place: g.place }]))]));
 
   for (const [i, friend] of config.friends.entries()) {
     onProgress({ done: i, total, current: friend.riotId });
@@ -392,7 +403,10 @@ export async function refreshAll(config, onProgress = () => {}) {
       const ids = [...soloIds, ...flexIds];
       const matches = await Promise.all(ids.map((id) => client.match(id, region)));
       const maxHistory = config.profileMatches ?? config.matchesPerPlayer ?? 40;
+      const opgg = useOpgg ? await fetchOpggMatches({ gameName, tagLine, platform, limit: 20 }) : [];
       const player = summarizePlayer({
+        opgg,
+        exact: exactByPlayer.get(account.puuid),
         friend,
         account,
         summoner,

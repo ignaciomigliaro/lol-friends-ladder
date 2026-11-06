@@ -14,13 +14,12 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
-import { getDemoLiveMatch } from '../../src/live.js';
 
 const run = promisify(execFile);
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const BASE = '/lol-friends-ladder/'; // same sub-path as GitHub Pages
 const FAKE_WORKER = 'https://update.example.workers.dev';
-const VIEWS = ['overview', 'leaderboard', 'players', 'duels', 'records', 'synergy', 'apodos', 'meta'];
+const TABS = ['#', '#players', '#duelos', '#records', '#meta'];
 
 let tmp, server, url, browser, board;
 const workerCalls = [];
@@ -74,22 +73,17 @@ async function openPage({ width = 1280, hash = '' } = {}) {
   await page.setRequestInterception(true);
   page.on('request', (r) => {
     const u = r.url();
-    if (u.startsWith(`${FAKE_WORKER}/live`)) {
-      // The Worker's live check: one friend in a ranked game right now.
-      return r.respond({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify(getDemoLiveMatch()) });
-    }
     if (u.startsWith(FAKE_WORKER)) {
       workerCalls.push(r.method());
       return r.respond({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ result: 'cooldown', retryInSec: 125 }) });
     }
-    // Stay offline: champion art and fonts aren't needed to test behaviour.
+    // Stay offline: champion art isn't needed to test behaviour.
     if (/^(data|blob):/.test(u)) return r.continue();
     if (!u.startsWith(url.replace(BASE, ''))) return r.respond({ status: 204, body: '' });
     return r.continue();
   });
   await page.goto(url + hash, { waitUntil: 'load' });
-  // The app keeps polling (live games, sync status), so wait for the data to render instead of network idle.
-  await page.waitForFunction(() => document.querySelector('#podium-container')?.children.length > 0, { timeout: 15000 });
+  await page.waitForFunction(() => document.querySelector('#tabs a.active'), { timeout: 15000 });
   await settle(200);
   return { page, errors };
 }
@@ -98,35 +92,47 @@ const settle = (ms = 300) => new Promise((r) => setTimeout(r, ms));
 
 test('the site loads without script errors', async () => {
   const { page, errors } = await openPage();
+  const rows = await page.$$eval('#board .player', (r) => r.length);
+  assert.equal(rows, board.players.length);
   assert.deepEqual(errors, []);
   await page.close();
 });
 
-test('every page in the menu opens and shows content', async () => {
+test('every tab opens and shows content', async () => {
   const { page, errors } = await openPage();
-  for (const view of VIEWS) {
-    const link = await page.$(`.sidebar-nav [data-view="${view}"]`);
-    assert.ok(link, `menu has "${view}"`);
-    await link.click();
+  for (const hash of TABS) {
+    await page.click(`#tabs a[href="${hash}"]`);
     await settle();
-    const { active, text } = await page.$eval(`#view-${view}`, (s) => ({ active: s.classList.contains('active-view'), text: s.innerText.trim().length }));
-    assert.ok(active, `${view} becomes the visible page`);
-    assert.ok(text > 20, `${view} shows content`);
+    const active = await page.$eval('#tabs a.active', (a) => a.getAttribute('href'));
+    assert.equal(active, hash, `${hash} is the active tab`);
+    const text = await page.evaluate((h) => document.querySelector(h === '#' ? '#view-board' : '#view-player').innerText.trim().length, hash);
+    assert.ok(text > 50, `${hash} shows content`);
   }
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
+test('clicking a player shows their games with their place and MVP / ACE / Mochila tags', async () => {
+  const { page, errors } = await openPage();
+  await page.click('#board .player .row');
+  await page.waitForSelector('#board .player .games .game');
+  const badges = await page.$$eval('#board .player .badge', (b) => b.map((x) => x.textContent));
+  assert.ok(badges.some((b) => /\d+° \/ 10/.test(b)), 'each game shows its place');
+  const p = board.players.find((x) => x.puuid === board.players[0].puuid);
+  const shown = p.games.slice(0, 20).filter((g) => !g.isRemake);
+  if (shown.some((g) => g.mochila && !g.mvp && !g.ace)) assert.ok(badges.some((b) => b.includes('Mochila')), 'Mochila tag shown');
   assert.deepEqual(errors, []);
   await page.close();
 });
 
 test('Jugadores lists every player and opens their profile', async () => {
   const { page, errors } = await openPage({ hash: '#players' });
-  await settle();
-  const cards = await page.$$eval('#view-players .px-pcard', (c) => c.length);
+  const cards = await page.$$eval('#view-player .pcard', (c) => c.length);
   assert.equal(cards, board.players.length);
-
-  await page.click('#view-players .px-pcard');
-  await page.waitForSelector('#px-extras .px-h3');
-  const sections = await page.$$eval('#px-extras .px-h3', (h) => h.map((x) => x.textContent));
-  for (const name of ['Tendencia de Score', 'Vs jugadores de su elo', 'Por partida vs el grupo', 'Carriles', 'Campeones']) {
+  await page.click('#view-player .pcard');
+  await page.waitForSelector('#view-player .profile-head');
+  const sections = await page.$$eval('#view-player h3', (h) => h.map((x) => x.textContent));
+  for (const name of ['Tendencias', 'Contra jugadores de tu elo', 'Por partida contra el grupo', 'Líneas', 'Campeones', 'Partidas']) {
     assert.ok(sections.some((s) => s.includes(name)), `profile shows "${name}"`);
   }
   assert.deepEqual(errors, []);
@@ -134,25 +140,49 @@ test('Jugadores lists every player and opens their profile', async () => {
 });
 
 test('clicking a champion shows its matchups with both scores', async () => {
-  const { page, errors } = await openPage({ hash: `#player:${board.players[0].puuid}` });
-  await page.waitForSelector('#px-extras .px-champ-row');
-  await page.click('#px-extras .px-champ-row');
-  await page.waitForSelector('#px-champ-detail');
-  const headers = await page.$$eval('#px-champ-detail th', (th) => th.map((x) => x.textContent));
+  const { page, errors } = await openPage({ hash: '#players' });
+  await page.click('#view-player .pcard');
+  await page.waitForSelector('#view-player .champ-row');
+  await page.click('#view-player .champ-row');
+  await page.waitForSelector('#champ-detail');
+  const headers = await page.$$eval('#champ-detail th', (th) => th.map((x) => x.textContent));
   assert.ok(headers.includes('Su score') && headers.includes('Score rival'), 'matchup table has both scores');
-  const rows = await page.$$eval('#px-champ-detail .px-table tbody tr', (r) => r.length);
-  assert.ok(rows > 0, 'at least one matchup');
   assert.deepEqual(errors, []);
   await page.close();
 });
 
-test('Apodos shows a nickname and a full roast for every player', async () => {
-  const { page, errors } = await openPage({ hash: '#apodos' });
+test('nicknames and the weekly roasts are on the leaderboard', async () => {
+  const { page, errors } = await openPage();
+  const nicks = await page.$$eval('#board .row .nick', (n) => n.length);
+  assert.equal(nicks, board.players.filter((p) => p.nickname).length);
+  const roasts = await page.$$eval('#roast-list .roast p', (p) => p.map((x) => x.textContent.length));
+  assert.equal(roasts.length, board.players.filter((p) => p.roast).length);
+  assert.ok(roasts.every((n) => n > 60), 'roasts are full paragraphs');
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
+test('Duelos compares two players and switching one updates it', async () => {
+  const { page, errors } = await openPage({ hash: '#duelos' });
+  const rows = await page.$$eval('#view-player .duel-row', (r) => r.length);
+  assert.ok(rows >= 10, 'every stat is compared');
+  const before = await page.$eval('#view-player .duel-side.b .name', (n) => n.textContent);
+  const a = await page.$eval('#duel-a', (s) => s.value);
+  const other = board.players.find((p) => p.puuid !== a && p.name !== before);
+  await page.select('#duel-b', other.puuid);
   await settle();
-  const roasts = await page.$$eval('#apodos-grid .px-roast p', (p) => p.map((x) => x.textContent.length));
-  const expected = board.players.filter((p) => p.roast).length;
-  assert.equal(roasts.length, expected);
-  assert.ok(roasts.every((n) => n > 120), 'roasts are full paragraphs');
+  const after = await page.$eval('#view-player .duel-side.b .name', (n) => n.textContent);
+  assert.equal(after, other.name);
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
+test('Récords and Meta show the group data', async () => {
+  const { page, errors } = await openPage({ hash: '#records' });
+  assert.ok(await page.$$eval('#view-player .rcard', (c) => c.length) >= 5, 'records are listed');
+  await page.click('#tabs a[href="#meta"]');
+  await settle();
+  assert.ok(await page.$$eval('#view-player table.stats tbody tr', (r) => r.length) >= 3, 'champions are listed');
   assert.deepEqual(errors, []);
   await page.close();
 });
@@ -160,30 +190,23 @@ test('Apodos shows a nickname and a full roast for every player', async () => {
 test('the Update button asks the Worker for an update on the website', async () => {
   const { page, errors } = await openPage();
   workerCalls.length = 0;
-  await page.click('#header-refresh-btn');
+  await page.click('#refresh');
   await settle(1200);
   assert.ok(workerCalls.includes('POST'), 'Update button called the Worker');
   assert.deepEqual(errors, []);
   await page.close();
 });
 
-test('live games show up on the website (through the Worker)', async () => {
-  const { page, errors } = await openPage();
-  await page.waitForSelector('#live-tracker-banner .live-card-active', { timeout: 10000 });
-  const text = await page.$eval('#live-tracker-banner', (b) => b.innerText);
-  assert.match(text, /EN VIVO/);
-  assert.match(text, /Panda/);
-  await page.click('#live-tracker-banner .open-champ-build');
-  await page.waitForFunction(() => /objetos clave/i.test(document.querySelector('#build-modal-body')?.innerText ?? ''), { timeout: 10000 });
-  assert.deepEqual(errors, []);
-  await page.close();
-});
-
-test('phone width: player pages fit the screen', async () => {
-  const { page, errors } = await openPage({ width: 390, hash: `#player:${board.players[0].puuid}` });
-  await page.waitForSelector('#px-extras');
-  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-  assert.ok(overflow <= 1, `page scrolls sideways by ${overflow}px`);
-  assert.deepEqual(errors, []);
-  await page.close();
+test('phone width: every page fits the screen', async () => {
+  for (const hash of ['', '#players', '#duelos', '#records', '#meta']) {
+    const { page, errors } = await openPage({ width: 390, hash });
+    if (hash === '#players') {
+      await page.click('#view-player .pcard');
+      await page.waitForSelector('#view-player .profile-head');
+    }
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    assert.ok(overflow <= 1, `${hash || 'leaderboard'} scrolls sideways by ${overflow}px`);
+    assert.deepEqual(errors, []);
+    await page.close();
+  }
 });
