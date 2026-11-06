@@ -27,11 +27,10 @@ function ddragon(kind, name) {
 // Names are display names (Wukong); images are keyed by Riot's id (MonkeyKing).
 const champImg = (c) => ddragon('champion', board?.champIds?.[c] ?? (c === 'FiddleSticks' ? 'Fiddlesticks' : c));
 
-function timeAgo(ts) {
-  const m = Math.round((Date.now() - ts) / 60000);
-  if (m < 60) return `hace ${m} min`;
-  if (m < 60 * 24) return `hace ${Math.round(m / 60)} h`;
-  return `hace ${Math.round(m / 1440)} d`;
+// When a game ended, e.g. "5 nov, 14:30".
+function gameDate(ts) {
+  const d = new Date(ts);
+  return `${d.toLocaleDateString('es', { day: 'numeric', month: 'short' })}, ${d.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}`;
 }
 
 function toast(msg) {
@@ -85,6 +84,10 @@ function awardBadge(g) {
   return '';
 }
 
+// LP won or lost in the game (only known when it was the only game between two updates).
+const lpBadge = (g) => (g.lp == null ? ''
+  : `<span class="badge lp ${g.lp > 0 ? 'up' : g.lp < 0 ? 'down' : ''}" title="LP en ${QUEUE[g.queueId] ?? 'ranked'}">${signed(g.lp)} LP</span>`);
+
 function gameHtml(g) {
   const kda = ((g.kills + g.assists) / Math.max(1, g.deaths)).toFixed(2);
   if (g.isRemake) {
@@ -92,7 +95,7 @@ function gameHtml(g) {
       <b></b>
       <img loading="lazy" decoding="async" src="${champImg(g.champion)}" alt="${esc(g.champion)}" onerror="this.style.visibility='hidden'">
       <div><strong>${g.kills} / ${g.deaths} / ${g.assists}</strong><div class="sub">Remake · ${g.minutes} min</div></div>
-      <div class="hide-sm sub">${esc(g.champion)} · ${QUEUE[g.queueId] ?? 'Ranked'}<br>${timeAgo(g.endTs)}</div>
+      <div class="hide-sm sub">${esc(g.champion)} · ${QUEUE[g.queueId] ?? 'Ranked'}<br>${gameDate(g.endTs)}</div>
       <div class="game-place"><span class="badge place">Remake</span></div>
       <span class="score s-low">–</span>
     </div>`;
@@ -100,9 +103,9 @@ function gameHtml(g) {
   return `<div class="game ${g.win ? 'w' : ''}">
     <b></b>
     <img loading="lazy" decoding="async" src="${champImg(g.champion)}" alt="${esc(g.champion)}" onerror="this.style.visibility='hidden'">
-    <div><strong>${g.kills} / ${g.deaths} / ${g.assists}</strong><div class="sub">${kda} KDA · ${g.cs} CS</div></div>
-    <div class="hide-sm sub">${esc(g.champion)}${g.opp ? ` vs ${esc(g.opp.champion)}` : ''} · ${ROLE[g.position] ?? '—'} · ${QUEUE[g.queueId] ?? 'Ranked'}<br>${g.win ? 'Victoria' : 'Derrota'} · ${g.minutes} min · ${timeAgo(g.endTs)}</div>
-    <div class="game-place" title="Terminó ${ordinal(g.place)} de los 10 jugadores por score">${awardBadge(g)}<span class="badge place">${ordinal(g.place)} / 10</span></div>
+    <div><strong>${g.kills} / ${g.deaths} / ${g.assists}</strong><div class="sub">${kda} KDA · ${g.cs} CS</div><div class="sub sm-only">${gameDate(g.endTs)}</div></div>
+    <div class="hide-sm sub">${esc(g.champion)}${g.opp ? ` vs ${esc(g.opp.champion)}` : ''} · ${ROLE[g.position] ?? '—'} · ${QUEUE[g.queueId] ?? 'Ranked'}<br>${g.win ? 'Victoria' : 'Derrota'} · ${g.minutes} min · ${gameDate(g.endTs)}</div>
+    <div class="game-place" title="Terminó ${ordinal(g.place)} de los 10 jugadores por score">${lpBadge(g)}${awardBadge(g)}<span class="badge place">${ordinal(g.place)}</span></div>
     <span class="score ${scoreClass(g.score)}">${g.score.toFixed(1)}</span>
   </div>`;
 }
@@ -508,7 +511,7 @@ function champDetailHtml(champ, list) {
   const summary = `<div class="cstats">
     ${stat('Win rate', `${Math.round(a.winrate)}%`, `${a.wins}V ${a.losses}D`)}
     ${stat('Score promedio', `<span class="score ${scoreClass(a.score)}">${a.score.toFixed(1)}</span>`)}
-    ${stat('Puesto promedio', `${a.place.toFixed(1)} / 10`, `${a.mvp} MVP · ${a.ace} ACE · ${a.mochila} 🎒`)}
+    ${stat('Puesto promedio', `${a.place.toFixed(1)}°`, `${a.mvp} MVP · ${a.ace} ACE · ${a.mochila} 🎒`)}
     ${stat('KDA', a.kda.toFixed(2), `${a.kills.toFixed(1)} / ${a.deaths.toFixed(1)} / ${a.assists.toFixed(1)}`)}
     ${stat('CS / min', a.csMin.toFixed(1), `${Math.round(a.cs)} por partida`)}
     ${stat('Daño / partida', kNum(a.damage), `${pct(a.dmgShare)} del equipo`)}
@@ -587,7 +590,7 @@ function playerProfileHtml(p) {
 
   const headline = `<div class="headline">
     <div class="hl"><span class="sub">Score promedio</span><span class="score big ${scoreClass(a.score)}">${a.score.toFixed(1)}</span><span class="sub">en ${a.n} partidas</span></div>
-    <div class="hl"><span class="sub">Puesto promedio en la partida</span><strong class="hl-num">${a.place.toFixed(1)}<small> / 10</small></strong><span class="sub">${a.mvp} MVP · ${a.ace} ACE · ${a.mochila} 🎒 Mochila</span></div>
+    <div class="hl"><span class="sub">Puesto promedio en la partida</span><strong class="hl-num">${a.place.toFixed(1)}°</strong><span class="sub">${a.mvp} MVP · ${a.ace} ACE · ${a.mochila} 🎒 Mochila</span></div>
     <div class="hl"><span class="sub">Win rate</span><strong class="hl-num ${a.winrate >= 50 ? 'up' : 'down'}">${Math.round(a.winrate)}%</strong><span class="sub">${a.wins}V ${a.losses}D</span></div>
   </div>`;
 
@@ -675,7 +678,7 @@ function roastHtml(p) {
   return `<div class="roast">
     <img loading="lazy" decoding="async" src="${champImg(r.champion)}" alt="${esc(r.champion)}" onerror="this.style.visibility='hidden'">
     <div>
-      <strong>${esc(p.name)}</strong> <span class="sub">${esc(r.champion)}${r.opponent ? ` vs ${esc(r.opponent)}` : ''} · ${esc(r.kda)} · ${r.win ? 'Victoria' : 'Derrota'} · ${r.minutes} min · ${ordinal(r.place)} / 10</span>
+      <strong>${esc(p.name)}</strong> <span class="sub">${esc(r.champion)}${r.opponent ? ` vs ${esc(r.opponent)}` : ''} · ${esc(r.kda)} · ${r.win ? 'Victoria' : 'Derrota'} · ${r.minutes} min · ${ordinal(r.place)} puesto</span>
       <p>${esc(r.text)}</p>
     </div>
     <span class="score ${scoreClass(r.score)}">${r.score.toFixed(1)}</span>
@@ -907,14 +910,14 @@ function groupGameHtml(g) {
     <b class="gg-result ${g.win ? 'w' : ''}">${g.win ? 'VICTORIA' : 'DERROTA'}</b>
     <div class="gg-champs">${g.players.map((p) => `<img loading="lazy" decoding="async" src="${champImg(p.champion)}" alt="" title="${esc(p.name)} · ${esc(p.champion)}" style="border-color:${friendColor(p.puuid)}" onerror="this.style.visibility='hidden'">`).join('')}</div>
     <div class="gg-names"><strong>${g.players.map((p) => esc(p.name)).join(' + ')}</strong>
-      <div class="sub">${esc(g.queue)} · ${g.minutes}m · ${g.teamKills}–${g.enemyKills} kills · ${timeAgo(g.endTs)}</div></div>
+      <div class="sub">${esc(g.queue)} · ${g.minutes}m · ${g.teamKills}–${g.enemyKills} kills · ${gameDate(g.endTs)}</div></div>
     <span class="gg-toggle">${isOpen ? '▾' : '▸'}</span>
   </div>`;
   if (!isOpen) return `<article class="gg">${header}</article>`;
 
   const ranking = g.players.map((p, i) => {
     const tag = i === 0 ? '<span class="badge mvp">👑 Carry del grupo</span>' : i === n - 1 ? '<span class="badge place">🎒 Mochila del grupo</span>' : '';
-    const lobby = awardBadge(p) || `<span class="badge place">${ordinal(p.place)} de 10</span>`;
+    const lobby = awardBadge(p) || `<span class="badge place">${ordinal(p.place)}</span>`;
     return `<div class="gg-rank">
       <span class="pos">${i + 1}</span>
       <img loading="lazy" decoding="async" src="${champImg(p.champion)}" alt="" style="border-color:${friendColor(p.puuid)}" onerror="this.style.visibility='hidden'">

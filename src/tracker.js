@@ -155,18 +155,57 @@ export function summarizePlayer({ friend, account, summoner, entries, matches, s
 
 // --- LP history (so we can show "+45 LP this week") ---
 
+// Solo/Duo snapshots live under the puuid, Flex under "flex:<puuid>".
+export const flexKey = (puuid) => `flex:${puuid}`;
+
 export function recordHistory(history, players, now) {
   for (const p of players) {
-    if (!p.solo) continue;
-    const arr = (history[p.puuid] ??= []);
-    const last = arr.at(-1);
-    // g = season games played; it drops when Riot resets ranks, which marks a new season.
-    const g = p.solo.wins + p.solo.losses;
-    if (!last || last.value !== p.solo.value || (last.g != null && g < last.g) || now - last.t > DAY / 4) {
-      arr.push({ t: now, value: p.solo.value, label: p.solo.label, g });
+    for (const [key, entry] of [[p.puuid, p.solo], [flexKey(p.puuid), p.flex]]) {
+      if (!entry) continue;
+      const arr = (history[key] ??= []);
+      const last = arr.at(-1);
+      // g = season games played; it drops when Riot resets ranks, which marks a new season.
+      // A new snapshot after every game (g changes) is what lets each game get its own LP.
+      const g = entry.wins + entry.losses;
+      if (!last || last.value !== entry.value || last.g !== g || now - last.t > DAY / 4) {
+        arr.push({ t: now, value: entry.value, label: entry.label, g });
+      }
+      // Keep a year: long enough for a whole season's LP line.
+      history[key] = arr.filter((s) => now - s.t < 365 * DAY);
     }
-    // Keep a year: long enough for a whole season's LP line.
-    history[p.puuid] = arr.filter((s) => now - s.t < 365 * DAY);
+  }
+}
+
+// LP won or lost in one game, from the rank snapshots taken before and after it.
+// Only when exactly one game of that queue was played between the two snapshots, so the
+// difference belongs to it; otherwise null (several games between two refreshes can't be split).
+export function gameLp(game, snaps = [], games = []) {
+  if (game.isRemake || !snaps.length) return null;
+  let i = -1;
+  for (let k = 0; k < snaps.length && snaps[k].t <= game.endTs; k++) i = k;
+  if (i < 0) return null;
+  const a = snaps[i];
+  // Riot can take a minute to update the rank: skip later snapshots that still show the old game count.
+  let j = i + 1;
+  if (a.g != null) while (j < snaps.length && snaps[j].g != null && snaps[j].g <= a.g) j++;
+  const b = snaps[j];
+  if (!b) return null;
+  if (a.g != null && b.g != null && b.g - a.g !== 1) return null;
+  const between = games.filter((x) => x.queueId === game.queueId && !x.isRemake && x.endTs > a.t && x.endTs <= b.t);
+  if (between.length !== 1 || between[0] !== game) return null;
+  const lp = b.value - a.value;
+  if (lp === 0 && (a.g == null || b.g == null)) return null; // old snapshots without a game count: unsure
+  if ((game.win && lp < 0) || (!game.win && lp > 0)) return null; // doesn't add up (e.g. a decay)
+  return lp;
+}
+
+export function attachGameLp(players, history) {
+  for (const p of players) {
+    for (const g of p.games ?? []) {
+      const snaps = g.queueId === 420 ? history[p.puuid] : g.queueId === 440 ? history[flexKey(p.puuid)] : null;
+      const lp = gameLp(g, snaps, p.games);
+      if (lp != null) g.lp = lp;
+    }
   }
 }
 
@@ -321,10 +360,12 @@ export const readLeaderboard = async () => {
 // After an API key switch, every PUUID changes: move saved history and games to the new ones.
 function remapPuuids(history, groupGames, remap) {
   if (!remap?.size) return;
-  for (const [oldId, newId] of remap) {
-    if (history[oldId]) {
-      history[newId] = [...(history[oldId] ?? []), ...(history[newId] ?? [])].sort((a, b) => a.t - b.t);
-      delete history[oldId];
+  for (const [oldPuuid, newPuuid] of remap) {
+    for (const [oldId, newId] of [[oldPuuid, newPuuid], [flexKey(oldPuuid), flexKey(newPuuid)]]) {
+      if (history[oldId]) {
+        history[newId] = [...(history[oldId] ?? []), ...(history[newId] ?? [])].sort((a, b) => a.t - b.t);
+        delete history[oldId];
+      }
     }
   }
   for (const g of groupGames) for (const p of g.players) p.puuid = remap.get(p.puuid) ?? p.puuid;
@@ -342,6 +383,7 @@ export async function saveLeaderboard(config, players, errors, ddragonVersion, f
   await writeJson(GROUP_FILE, groupGames);
 
   recordHistory(history, players, now);
+  attachGameLp(players, history);
   const week = weekStart(now, config.weekStart);
   attachDeltas(players, history, now, week, config.seasonStart ? Date.parse(config.seasonStart) : null);
   // Solo/Duo LP snapshots for the LP-over-time chart (value = comparable LP, see ranks.js).
