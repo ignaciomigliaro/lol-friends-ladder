@@ -7,7 +7,7 @@ on:
     - cron: '*/30 * * * *'   # every 30 min (GitHub may delay scheduled runs a bit)
   workflow_dispatch:          # "Run workflow" button in the Actions tab (also used by the site's Update button)
   push:
-    branches: [main]
+    branches: [main, clasico]   # clasico: tested here, published by main's run (repo variable SITE_BRANCH)
   pull_request:               # test proposed changes before they are merged
 
 permissions:
@@ -52,13 +52,18 @@ jobs:
   update:
     needs: test
     # Runs when the tests passed, or when they were skipped (scheduled refresh / manual run).
-    if: always() && github.event_name != 'pull_request' && (needs.test.result == 'success' || needs.test.result == 'skipped')
+    # Only main may publish to Pages; a push to clasico just runs the tests.
+    if: always() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && (needs.test.result == 'success' || needs.test.result == 'skipped')
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
+      # The site is built from the branch named in the repository variable SITE_BRANCH
+      # (Settings → Secrets and variables → Actions → Variables), e.g. "clasico". Unset = this branch.
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ vars.SITE_BRANCH }}
 
       - uses: actions/setup-node@v4
         with:
