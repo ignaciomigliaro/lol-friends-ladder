@@ -117,7 +117,8 @@ test('clicking a player shows their games with their place and MVP / ACE / Mochi
   await page.click('#board .player .row');
   await page.waitForSelector('#board .player .games .game');
   const badges = await page.$$eval('#board .player .badge', (b) => b.map((x) => x.textContent));
-  assert.ok(badges.some((b) => /\d+° \/ 10/.test(b)), 'each game shows its place');
+  assert.ok(badges.some((b) => /^\d+°$/.test(b)), 'each game shows its place');
+  assert.ok(await page.$$eval('#board .player .game', (g) => g.every((x) => /\d+ \w+\.?, \d\d:\d\d/.test(x.innerText))), 'each game shows its date');
   const p = board.players.find((x) => x.puuid === board.players[0].puuid);
   const shown = p.games.slice(0, 20).filter((g) => !g.isRemake);
   if (shown.some((g) => g.mochila && !g.mvp && !g.ace)) assert.ok(badges.some((b) => b.includes('Mochila')), 'Mochila tag shown');
