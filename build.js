@@ -5,7 +5,6 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { ROOT, loadConfig } from './src/config.js';
 import { refreshAll, readLeaderboard } from './src/tracker.js';
-import { whatsappMessage } from './src/whatsapp.js';
 
 const SITE = process.env.LADDER_SITE_DIR ? path.resolve(process.env.LADDER_SITE_DIR) : path.join(ROOT, 'site');
 
@@ -29,6 +28,5 @@ const html = await fs.readFile(indexFile, 'utf8');
 await fs.writeFile(indexFile, html.replace('href="style.css"', `href="style.css?v=${v}"`).replace('src="app.js"', `src="app.js?v=${v}"`));
 // The page only needs these files. Raw Riot matches stay in data/ (they'd add ~40 MB to the site).
 await fs.writeFile(path.join(SITE, 'leaderboard.json'), JSON.stringify(board));
-await fs.writeFile(path.join(SITE, 'whatsapp.txt'), whatsappMessage(board));
 await fs.writeFile(path.join(SITE, '.nojekyll'), '');
 console.log(`Built site/ with ${board.players.length} players and ${board.groupGames?.length ?? 0} games together.`);
