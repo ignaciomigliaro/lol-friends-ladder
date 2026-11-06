@@ -155,13 +155,13 @@ let profileQueue = 'all';
 // #            -> leaderboard
 // #players     -> grid of all players
 // #p/<slug>    -> one player's page
-// #duelos, #records, #meta -> the other tabs
+// #roasts, #duelos, #records, #meta -> the other tabs
 function route() {
   const m = location.hash.match(/^#p\/(.+)$/);
   const player = m ? board?.players.find((p) => slug(p) === m[1]) ?? null : null;
   if (player) return { view: 'player', player };
   if (location.hash === '#players' || m) return { view: 'players' };
-  if (['#duelos', '#records', '#meta'].includes(location.hash)) return { view: location.hash.slice(1) };
+  if (['#roasts', '#duelos', '#records', '#meta'].includes(location.hash)) return { view: location.hash.slice(1) };
   return { view: 'board' };
 }
 
@@ -170,6 +170,7 @@ function renderTabs(view) {
   $('#tabs').innerHTML = [
     tab('#', '🏆 Clasificación', view === 'board'),
     tab('#players', `👤 Jugadores <span class="count">${board.players?.length ?? 0}</span>`, view === 'players' || view === 'player'),
+    tab('#roasts', '🔥 Roasts', view === 'roasts'),
     tab('#duelos', '⚔️ Duelos', view === 'duelos'),
     tab('#records', '🎖️ Récords', view === 'records'),
     tab('#meta', '🛡️ Meta', view === 'meta'),
@@ -681,10 +682,11 @@ function roastHtml(p) {
   </div>`;
 }
 
-function renderRoasts() {
+function roastsHtml() {
   const list = (board.players ?? []).filter((p) => p.roast).sort((a, b) => a.roast.score - b.roast.score);
-  $('#roasts').hidden = list.length === 0;
-  $('#roast-list').innerHTML = list.map(roastHtml).join('');
+  if (!list.length) return '<p class="muted">Todavía no hay roasts.</p>';
+  return `<p class="muted section-intro">La peor partida de cada uno en los últimos 30 días.</p>
+    <div id="roast-list">${list.map(roastHtml).join('')}</div>`;
 }
 
 // ---------- 1v1 duels ----------
@@ -855,7 +857,7 @@ function render() {
   renderTabs(view);
   $('#view-board').hidden = view !== 'board';
   $('#view-player').hidden = view === 'board';
-  const pages = { players: playersGridHtml, duelos: duelsHtml, records: recordsHtml, meta: metaHtml };
+  const pages = { players: playersGridHtml, roasts: roastsHtml, duelos: duelsHtml, records: recordsHtml, meta: metaHtml };
   if (pages[view]) {
     $('#view-player').innerHTML = pages[view]();
     return;
@@ -870,7 +872,6 @@ function render() {
   const errs = board.errors ?? [];
   $('#errors').hidden = errs.length === 0;
   $('#errors').innerHTML = errs.map((e) => `<div>⚠ ${esc(e.riotId)}: ${esc(e.error)}</div>`).join('');
-  renderRoasts();
   renderTogether();
 }
 
