@@ -19,7 +19,7 @@ const run = promisify(execFile);
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const BASE = '/lol-friends-ladder/'; // same sub-path as GitHub Pages
 const FAKE_WORKER = 'https://update.example.workers.dev';
-const TABS = ['#', '#players', '#duelos', '#records', '#meta'];
+const TABS = ['#', '#players', '#roasts', '#duelos', '#records', '#meta'];
 
 let tmp, server, url, browser, board;
 const workerCalls = [];
@@ -151,10 +151,13 @@ test('clicking a champion shows its matchups with both scores', async () => {
   await page.close();
 });
 
-test('nicknames and the weekly roasts are on the leaderboard', async () => {
+test('nicknames are on the leaderboard; the roasts have their own tab', async () => {
   const { page, errors } = await openPage();
   const nicks = await page.$$eval('#board .row .nick', (n) => n.length);
   assert.equal(nicks, board.players.filter((p) => p.nickname).length);
+  assert.equal(await page.$('#view-board .roast'), null, 'no roasts on the leaderboard');
+  await page.click('#tabs a[href="#roasts"]');
+  await settle();
   const roasts = await page.$$eval('#roast-list .roast p', (p) => p.map((x) => x.textContent.length));
   assert.equal(roasts.length, board.players.filter((p) => p.roast).length);
   assert.ok(roasts.every((n) => n > 60), 'roasts are full paragraphs');
@@ -198,7 +201,7 @@ test('the Update button asks the Worker for an update on the website', async () 
 });
 
 test('phone width: every page fits the screen', async () => {
-  for (const hash of ['', '#players', '#duelos', '#records', '#meta']) {
+  for (const hash of ['', '#players', '#roasts', '#duelos', '#records', '#meta']) {
     const { page, errors } = await openPage({ width: 390, hash });
     if (hash === '#players') {
       await page.click('#view-player .pcard');
