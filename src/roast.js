@@ -55,6 +55,9 @@ export function buildRoast(p, now = Date.now(), used = new Set()) {
       `Lo mataron ${g.deaths} veces: el equipo rival lo farmeaba como a un súbdito más.`,
       `${g.deaths} muertes. Si morir diera LP, ya estaría en Challenger.`,
       `Murió ${g.deaths} veces. Su respawn tenía más minutos de juego que él.`,
+      `Se inmoló ${g.deaths} veces. Tenía membresía VIP en el cementerio de la Grieta.`,
+      `Entregó la vida ${g.deaths} veces. Un cajero automático humano con cero por ciento de comisión.`,
+      `${g.deaths} muertes en ${g.minutes} minutos. El rival le mandó flores de agradecimiento.`,
     ]);
   }
   if (opp && opp.gold - (g.gold ?? 0) >= 1500) {
@@ -68,6 +71,8 @@ export function buildRoast(p, now = Date.now(), used = new Set()) {
       `${opp.champion} se compró dos ítems con los ${miles(diff)} de oro que le regaló.`,
       `${miles(diff)} de oro abajo de ${opp.champion}. Jugó la línea en modo donación.`,
       `${opp.champion} le sacó ${miles(diff)} de oro. A esta altura ya le debería mandar factura.`,
+      `Financió a ${opp.champion} con ${miles(diff)} de oro. Beca completa para el rival.`,
+      `Le transfirió ${miles(diff)} de oro a ${opp.champion} sin pedirle recibo. Un mecenas del ELO ajeno.`,
     ]);
   }
   if (opp && opp.cs - g.cs >= 40 && g.position !== 'UTILITY') {
@@ -76,6 +81,7 @@ export function buildRoast(p, now = Date.now(), used = new Set()) {
       `Farmeó ${diff} súbditos menos que su rival. Los dejaba pasar por lástima.`,
       `${diff} de CS abajo de ${opp.champion}. Los súbditos llegaban a su torre y él los saludaba.`,
       `${diff} súbditos menos que ${opp.champion}. Vegetariano estricto: no toca ni un minion.`,
+      `Perdió ${diff} de farmeo frente a ${opp.champion}. Huelga de hambre contra los súbditos.`,
     ]);
   }
   if (opp && opp.score != null && opp.score - g.score >= 3) {
@@ -87,6 +93,7 @@ export function buildRoast(p, now = Date.now(), used = new Set()) {
       `${fmt(opp.score)} de score para ${opp.champion}, ${fmt(g.score)} para él. Una paliza con nombre y apellido.`,
       `${opp.champion} sacó ${fmt(opp.score)} de score; él, ${fmt(g.score)}. Se notaba quién vino a jugar.`,
       `Entre ${opp.champion} (${fmt(opp.score)}) y él (${fmt(g.score)}) hubo más distancia que entre las dos bases.`,
+      `Score de ${fmt(g.score)} contra ${fmt(opp.score)} de ${opp.champion}. Una humillación de carácter histórico.`,
     ]);
   }
   if (g.place >= 8) {
@@ -95,6 +102,7 @@ export function buildRoast(p, now = Date.now(), used = new Set()) {
       `Puesto ${g.place} de 10 en su propia partida. El podio lo vio con binoculares.`,
       `${g.place}° de 10. Ni el que se fue AFK en el minuto 5 de otra partida lo hubiera hecho peor.`,
       `Terminó ${g.place}° de 10. Si hubiera un puesto 11, también se lo disputaba.`,
+      `Quedó ${g.place}° de 10 jugadores. El bot intermedio de tutorial jugaba con más soltura.`,
     ]);
   }
   if (g.dmgShare != null && g.dmgShare < 0.15 && g.position !== 'UTILITY') {
@@ -102,6 +110,7 @@ export function buildRoast(p, now = Date.now(), used = new Set()) {
       `Hizo el ${Math.round(100 * g.dmgShare)}% del daño de su equipo. Pegaba con una pluma.`,
       `Con ${miles(g.damage ?? 0)} de daño en ${g.minutes} minutos, el support le hacía la competencia.`,
       `${Math.round(100 * g.dmgShare)}% del daño del equipo. Los enemigos ni se dieron cuenta de que estaba.`,
+      `Aportó solo el ${Math.round(100 * g.dmgShare)}% del daño total. Sus golpes parecían masajes de cortesía.`,
     ]);
   }
   if (g.kp != null && g.kp < 0.35) {
@@ -109,6 +118,7 @@ export function buildRoast(p, now = Date.now(), used = new Set()) {
       `Estuvo en el ${Math.round(100 * g.kp)}% de las kills del equipo. El resto del tiempo, de turismo.`,
       `Participó en el ${Math.round(100 * g.kp)}% de las peleas. Las demás las miró desde la base.`,
       `${Math.round(100 * g.kp)}% de participación en kills. El equipo peleaba 4 contra 5 y él farmeaba recuerdos.`,
+      `Solo el ${Math.round(100 * g.kp)}% de participación en combate. Fue a la Grieta como espectador VIP.`,
     ]);
   }
   if (g.vision != null && g.vision / Math.max(1, g.minutes) < 0.5) {
@@ -116,6 +126,7 @@ export function buildRoast(p, now = Date.now(), used = new Set()) {
       `${g.vision} de visión en ${g.minutes} minutos. Jugó toda la partida con los ojos cerrados.`,
       `Puso tan pocos wards que el mapa para él era una pantalla negra.`,
       `${g.vision} de visión en ${g.minutes} minutos. Los wards los guardaba para una ocasión especial.`,
+      `${g.vision} de visión. Creía que los centinelas costaban dinero real.`,
     ]);
   }
   if (g.kills + g.assists <= 3 && g.deaths >= 5) {
@@ -123,6 +134,7 @@ export function buildRoast(p, now = Date.now(), used = new Set()) {
       `${g.kills}/${g.deaths}/${g.assists}: más muertes que todo lo demás junto.`,
       `Un ${g.kills}/${g.deaths}/${g.assists} que no se olvida fácil.`,
       `${g.kills}/${g.deaths}/${g.assists}. Ese KDA se lee mejor de atrás para adelante.`,
+      `${g.kills}/${g.deaths}/${g.assists}. Un desastre numérico digno de museo.`,
     ]);
   }
 
@@ -146,6 +158,8 @@ export function buildRoast(p, now = Date.now(), used = new Set()) {
     `${date}. ${g.champion}${role ? ` ${role}` : ''}${opp ? ` vs ${opp.champion}` : ''}. Lo que sigue es difícil de leer.`,
     `Capítulo del ${date}: ${g.champion}${opp ? ` contra ${opp.champion}` : ''}. Spoiler: sale mal.`,
     `Que alguien guarde el replay del ${date}. ${g.champion}${opp ? ` vs ${opp.champion}` : ''}, evidencia A.`,
+    `El ${date} se conectó con ${g.champion}${opp ? ` frente a ${opp.champion}` : ''} para cometer un atentado visual.`,
+    `Momento histórico del ${date}: ${g.champion}${opp ? ` vs ${opp.champion}` : ''}. Dolor en estado puro.`,
   ], seed, 0, used, norm);
 
   const ending = g.win
@@ -153,14 +167,18 @@ export function buildRoast(p, now = Date.now(), used = new Set()) {
         'Y lo peor: ganaron igual. El equipo lo cargó como a un trofeo de participación.',
         'Ganaron, sí. Los otros cuatro todavía esperan que les agradezca.',
         'Ganaron igual. Fue el pasajero más caro de la historia de LAN.',
+        'Se llevó la victoria de regalo. Los compañeros terminaron con hernia de disco por cargarlo.',
+        'Ganaron a pesar de su existencia en la partida. Un milagro del matchmaking.',
       ], seed, 7, used, norm)
     : pick([
         `Derrota en ${g.minutes} minutos. La Grieta no olvida.`,
-        `Perdieron en ${g.minutes} minutos y nadie se sorprendió.`,
+        `Derrota en ${g.minutes} minutos y nadie se sorprendió.`,
         'Derrota. Se recomienda desinstalar, tomar agua y pensar en lo que hizo.',
         `Derrota en ${g.minutes} minutos. Riot ya está usando el replay como tutorial de qué no hacer.`,
         'Derrota. El reporte de la partida debería venir con un pésame.',
-        `Perdieron en ${g.minutes} minutos. Los compañeros todavía están en terapia.`,
+        `Derrota en ${g.minutes} minutos con compañeros que todavía están en terapia.`,
+        'Derrota. El Nexo enemigo se destruyó de la risa antes de que él pudiera pegarle.',
+        'Derrota. Si el crimen de guerra existiera en LoL, esta partida iría a juicio.',
       ], seed, 7, used, norm);
 
   return {

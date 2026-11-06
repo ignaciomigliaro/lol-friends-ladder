@@ -135,7 +135,9 @@ async function main() {
     const wins = games.filter((g) => g.win).length;
     const avgScore = games.reduce((acc, g) => acc + g.score, 0) / games.length;
     const lpWeek = p.lpDelta?.week ?? 0;
-    const performanceIndex = (avgScore * 8) + (wins * 1.5) + (Math.max(0, lpWeek) * 0.1) + ((wins / games.length) * 20);
+    const mvps = games.filter((g) => g.mvp).length;
+    const netWins = Math.max(0, wins - (games.length - wins));
+    const performanceIndex = (avgScore * 10) + ((wins / games.length) * 25) + (Math.max(0, lpWeek) * 0.15) + (netWins * 2.5) + (mvps * 1.5) + (Math.min(games.length, 15) * 0.3);
     return {
       games: games.length,
       wins,

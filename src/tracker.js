@@ -8,6 +8,7 @@ import { assignNicknames } from './nicknames.js';
 import { buildGroupGame, mergeGroupGames, groupSummary } from './group.js';
 import { computeGroupRecords } from './records.js';
 import { computeGroupMeta } from './meta.js';
+import { fetchOpggMatches, enrichGamesWithOpgg } from './opgg.js';
 
 const DAY = 24 * 60 * 60 * 1000;
 const LEADERBOARD_FILE = path.join(DATA_DIR, 'leaderboard.json');
@@ -90,6 +91,7 @@ export function summarizePlayer({ friend, account, summoner, entries, matches, s
       gold: p.goldEarned,
       soloKills: p.challenges?.soloKills ?? 0,
       opp: opp ? { champion: opp.championName, score: scores.get(opp.puuid)?.score ?? null, ...laneStats(opp, m) } : null,
+      scoreSource: 'panda',
       ...s,
     });
   }
@@ -173,7 +175,7 @@ function lpChange(arr = [], now, value, windowMs) {
 
 // Start of the current week (default Monday 00:00 in the given time zone) as a UTC timestamp.
 const WEEKDAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-export function weekStart(now, { day = 'monday', timeZone = 'America/New_York' } = {}) {
+export function weekStart(now, { day = 'monday', timeZone = 'America/Mexico_City' } = {}) {
   const parts = (ts) => Object.fromEntries(
     new Intl.DateTimeFormat('en-US', {
       timeZone, hourCycle: 'h23', weekday: 'long',
@@ -325,7 +327,110 @@ function remapPuuids(history, groupGames, remap) {
   for (const g of groupGames) for (const p of g.players) p.puuid = remap.get(p.puuid) ?? p.puuid;
 }
 
+// Computes exact LP delta for freshly completed matches by diffing against the previous rank snapshot
+export function enrichMatchesWithLpDeltas(players, prevPlayers = []) {
+  const prevMap = new Map((prevPlayers || []).map((p) => [p.puuid, p]));
+
+  for (const player of players) {
+    const prev = prevMap.get(player.puuid);
+    if (!player.games?.length) continue;
+
+    // 1. Preserve existing known lpDelta from previous matches
+    const knownDeltas = new Map();
+    for (const g of prev?.games || []) {
+      if (g.lpDelta != null) knownDeltas.set(g.matchId, g.lpDelta);
+    }
+    for (const g of player.games) {
+      if (g.lpDelta == null && knownDeltas.has(g.matchId)) {
+        g.lpDelta = knownDeltas.get(g.matchId);
+      }
+    }
+
+    if (!prev) continue;
+
+    // 2. Exact diffing for new Solo/Duo matches (queueId 420)
+    if (player.solo?.value != null && prev.solo?.value != null) {
+      const diff = player.solo.value - prev.solo.value;
+      const prevSoloIds = new Set((prev.games || []).filter((g) => g.queueId === 420).map((g) => g.matchId));
+      const newSolo = player.games.filter((g) => g.queueId === 420 && !prevSoloIds.has(g.matchId) && !g.isRemake && g.lpDelta == null);
+
+      if (newSolo.length === 1) {
+        newSolo[0].lpDelta = diff;
+      } else if (newSolo.length > 1) {
+        const wins = newSolo.filter((g) => g.win).length;
+        const losses = newSolo.length - wins;
+        if (wins === newSolo.length && wins > 0) {
+          const each = Math.round(diff / wins);
+          for (const g of newSolo) g.lpDelta = each;
+        } else if (losses === newSolo.length && losses > 0) {
+          const each = Math.round(diff / losses);
+          for (const g of newSolo) g.lpDelta = each;
+        } else {
+          const net = wins - losses;
+          const avg = net !== 0 ? Math.round(diff / net) : (diff > 0 ? 20 : -20);
+          for (const g of newSolo) g.lpDelta = g.win ? Math.abs(avg) : -Math.abs(avg);
+        }
+      }
+    }
+
+    // 3. Exact diffing for new Ranked Flex matches (queueId 440)
+    if (player.flex?.value != null && prev.flex?.value != null) {
+      const diffFlex = player.flex.value - prev.flex.value;
+      const prevFlexIds = new Set((prev.games || []).filter((g) => g.queueId === 440).map((g) => g.matchId));
+      const newFlex = player.games.filter((g) => g.queueId === 440 && !prevFlexIds.has(g.matchId) && !g.isRemake && g.lpDelta == null);
+
+      if (newFlex.length === 1) {
+        newFlex[0].lpDelta = diffFlex;
+      } else if (newFlex.length > 1) {
+        const wins = newFlex.filter((g) => g.win).length;
+        if (wins === newFlex.length && wins > 0) {
+          const each = Math.round(diffFlex / wins);
+          for (const g of newFlex) g.lpDelta = each;
+        } else {
+          const net = wins - (newFlex.length - wins);
+          const avg = net !== 0 ? Math.round(diffFlex / net) : (diffFlex > 0 ? 20 : -20);
+          for (const g of newFlex) g.lpDelta = g.win ? Math.abs(avg) : -Math.abs(avg);
+        }
+      }
+    }
+  }
+}
+
 export async function saveLeaderboard(config, players, errors, ddragonVersion, freshGroupGames = [], puuidRemap) {
+  const prevBoard = await readJson(LEADERBOARD_FILE, null);
+  enrichMatchesWithLpDeltas(players, prevBoard?.players);
+
+  // Preserve previously verified OP.GG scores across refreshes
+  if (prevBoard?.players) {
+    const prevMap = new Map(prevBoard.players.map((p) => [p.puuid, p]));
+    for (const player of players) {
+      const prev = prevMap.get(player.puuid);
+      if (!prev?.games) continue;
+      const prevOpgg = new Map(prev.games.filter((g) => g.scoreSource === 'opgg').map((g) => [g.matchId, g]));
+      for (const g of player.games || []) {
+        if (g.scoreSource !== 'opgg' && prevOpgg.has(g.matchId)) {
+          const pg = prevOpgg.get(g.matchId);
+          g.score = pg.score;
+          g.place = pg.place;
+          g.mvp = pg.mvp;
+          g.ace = pg.ace;
+          g.scoreSource = 'opgg';
+          g.opggExact = true;
+        }
+      }
+      if (player.stats) {
+        const recent = (player.games || []).slice(0, config.matchesPerPlayer);
+        const n = recent.length;
+        if (n > 0) {
+          const sum = (fn) => recent.reduce((acc, g) => acc + fn(g), 0);
+          player.stats.avgScore = round(sum((g) => g.score) / n);
+          player.stats.mvp = sum((g) => (g.mvp ? 1 : 0));
+          player.stats.ace = sum((g) => (g.ace ? 1 : 0));
+        }
+      }
+    }
+  }
+
   const now = Date.now();
   const names = new Map(players.map((p) => [p.puuid, p.name]));
   const stored = await readJson(GROUP_FILE, []);
@@ -401,6 +506,25 @@ export async function refreshAll(config, onProgress = () => {}) {
         statsGames: config.matchesPerPlayer,
         profileMatches: maxHistory,
       });
+
+      // Synchronize with exact OP.GG match scores if available
+      try {
+        const opggMatches = await fetchOpggMatches({ gameName, tagLine, platform, limit: 20 });
+        if (opggMatches.length) {
+          const matched = enrichGamesWithOpgg(player.games, opggMatches);
+          if (matched > 0 && player.stats) {
+            const recent = (player.games || []).slice(0, config.matchesPerPlayer);
+            const n = recent.length;
+            if (n > 0) {
+              const sum = (fn) => recent.reduce((acc, g) => acc + fn(g), 0);
+              player.stats.avgScore = round(sum((g) => g.score) / n);
+              player.stats.mvp = sum((g) => (g.mvp ? 1 : 0));
+              player.stats.ace = sum((g) => (g.ace ? 1 : 0));
+            }
+          }
+        }
+      } catch {}
+
       player.platform = platform;
       players.push(player);
       recentByPlayer.set(account.puuid, { ids: new Set([...ids, ...recentIds]), region });

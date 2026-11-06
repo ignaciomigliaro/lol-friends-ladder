@@ -64,6 +64,40 @@ function resolveChampName(c) {
   return board?.champIds?.[c] ?? (c === 'FiddleSticks' ? 'Fiddlesticks' : c);
 }
 
+const CHAMP_SPLASH_MAP = {
+  'Wukong': 'MonkeyKing',
+  'MonkeyKing': 'MonkeyKing',
+  "Kai'Sa": 'Kaisa',
+  'Kaisa': 'Kaisa',
+  "Cho'Gath": 'Chogath',
+  'Chogath': 'Chogath',
+  "Bel'Veth": 'Belveth',
+  'Belveth': 'Belveth',
+  "Kha'Zix": 'Khazix',
+  'Khazix': 'Khazix',
+  "Kog'Maw": 'KogMaw',
+  'KogMaw': 'KogMaw',
+  "K'Sante": 'KSante',
+  'KSante': 'KSante',
+  'LeBlanc': 'Leblanc',
+  'Leblanc': 'Leblanc',
+  'Nunu & Willump': 'Nunu',
+  'Nunu': 'Nunu',
+  'Renata Glasc': 'Renata',
+  'Renata': 'Renata',
+  "Vel'Koz": 'Velkoz',
+  'Velkoz': 'Velkoz',
+  'FiddleSticks': 'FiddleSticks',
+  'Fiddlesticks': 'FiddleSticks',
+};
+
+function getChampSplashUrl(name) {
+  if (!name) return 'assets/banner.jpg';
+  const raw = String(name).trim();
+  const id = board?.champIds?.[raw] || CHAMP_SPLASH_MAP[raw] || CHAMP_SPLASH_MAP[raw.replace(/[^a-zA-Z0-9]/g, '')] || raw.replace(/[^a-zA-Z0-9]/g, '');
+  return `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${id}_0.jpg`;
+}
+
 function ddragon(kind, name) {
   const v = window.latestDdragonVersion || board?.ddragonVersion || '16.22.1';
   if (!name) return '';
@@ -157,14 +191,13 @@ const I18N = {
       filterWins: 'Victorias',
       filterLosses: 'Derrotas',
       lbTitle: 'Tabla de Posiciones Oficial',
-      lbDesc: 'Clasificación en tiempo real basada en Solo/Duo, desempeño OP Score y LP ganados.',
-      sortRank: 'Rango',
-      sortMmr: 'MMR',
-      sortScore: 'Score',
-      sortWinrate: '% Victorias',
-      sortWeek: 'Esta Semana',
+      lbDesc: 'Clasificación competitiva de la temporada basada en Solo/Duo, Flex, Victorias y OP Score oficial.',
+      sortRank: 'Rank Duo',
+      sortFlex: 'Flex',
+      sortWinrate: 'Victorias',
       sortSeason: 'Temporada',
-      colWinrate: '% VICTORIAS',
+      colWinrate: 'VICTORIAS',
+      colSeason: 'LP TEMPORADA',
       colScore: 'OP SCORE',
       backToLb: '← Volver a la Tabla de Posiciones',
       metricScore: 'OP Score',
@@ -222,14 +255,13 @@ const I18N = {
       filterWins: 'Victories',
       filterLosses: 'Defeats',
       lbTitle: 'Official Leaderboard',
-      lbDesc: 'Real-time rankings based on Solo/Duo rank, OP Score performance, and weekly LP.',
-      sortRank: 'Rank',
-      sortMmr: 'MMR',
-      sortScore: 'Score',
-      sortWinrate: 'Win Rate',
-      sortWeek: 'This Week',
+      lbDesc: 'Real-time season rankings based on Solo/Duo, Flex, Victories, and official OP Score.',
+      sortRank: 'Rank Duo',
+      sortFlex: 'Flex',
+      sortWinrate: 'Victories',
       sortSeason: 'Season',
-      colWinrate: 'WIN RATE',
+      colWinrate: 'VICTORIES',
+      colSeason: 'SEASON LP',
       colScore: 'OP SCORE',
       backToLb: '← Back to Leaderboard',
       metricScore: 'OP Score',
@@ -333,28 +365,26 @@ function applyLanguage(lang) {
   if (btnLosses) btnLosses.textContent = t.filterLosses;
 
   // Leaderboard texts
-  const lbTitle = $('#view-leaderboard .filter-bar h2');
+  const lbTitle = $('#view-leaderboard .heading-title') || $('#view-leaderboard .filter-bar h2');
   if (lbTitle) lbTitle.textContent = t.lbTitle;
-  const lbDesc = $('#view-leaderboard .filter-bar p.muted');
+  const lbDesc = $('#view-leaderboard .heading-subtitle') || $('#view-leaderboard .filter-bar p.muted');
   if (lbDesc) lbDesc.textContent = t.lbDesc;
 
-  const sortRank = $('[data-sort="rank"]');
-  if (sortRank) sortRank.textContent = t.sortRank;
-  const sortMmr = $('[data-sort="mmr"]');
-  if (sortMmr) sortMmr.textContent = t.sortMmr;
-  const sortScore = $('[data-sort="score"]');
-  if (sortScore) sortScore.textContent = t.sortScore;
-  const sortWr = $('[data-sort="winrate"]');
-  if (sortWr) sortWr.textContent = t.sortWinrate;
-  const sortWeek = $('[data-sort="week"]');
-  if (sortWeek) sortWeek.textContent = t.sortWeek;
-  const sortSeason = $('[data-sort="season"]');
-  if (sortSeason) sortSeason.textContent = t.sortSeason;
+  const updatePill = (sel, text) => {
+    const el = $(sel);
+    if (el) el.textContent = text;
+  };
+  updatePill('[data-sort="rank"]', t.sortRank);
+  updatePill('[data-sort="flex"]', t.sortFlex);
+  updatePill('[data-sort="winrate"]', t.sortWinrate);
+  updatePill('[data-sort="season"]', t.sortSeason);
 
   const colWr = $('.leaderboard-table-header .col-winrate');
-  if (colWr) colWr.textContent = t.colWinrate;
+  if (colWr && colWr.childNodes[0]) colWr.childNodes[0].nodeValue = `${t.colWinrate} `;
+  const colSeason = $('.leaderboard-table-header .col-delta');
+  if (colSeason && colSeason.childNodes[0]) colSeason.childNodes[0].nodeValue = `${t.colSeason} `;
   const colScore = $('.leaderboard-table-header .col-score');
-  if (colScore) colScore.textContent = t.colScore;
+  if (colScore && colScore.childNodes[0]) colScore.childNodes[0].nodeValue = `${t.colScore} `;
 
   const backBtn = $('#back-from-player-btn');
   if (backBtn) backBtn.textContent = t.backToLb;
@@ -399,6 +429,7 @@ function switchView(viewName) {
 
   if (viewName === 'records') renderRecords();
   if (viewName === 'meta') renderMeta();
+  if (viewName === 'apodos') renderApodos();
 
   // Close sidebar on mobile
   $('#sidebar')?.classList.remove('mobile-open');
@@ -432,7 +463,7 @@ function handleHash() {
   } else if (raw === 'player' || raw.startsWith('player:')) {
     const puuid = raw.startsWith('player:') ? raw.replace('player:', '') : board?.players?.[0]?.puuid;
     if (puuid) window.viewPlayerProfile?.(puuid);
-  } else if (['overview', 'leaderboard', 'duels', 'synergy', 'apodos', 'records', 'meta'].includes(raw)) {
+  } else if (['overview', 'leaderboard', 'players', 'duels', 'synergy', 'apodos', 'records', 'meta'].includes(raw)) {
     switchView(raw);
   }
 }
@@ -469,8 +500,9 @@ function getWeeklyStats(p) {
   const avgAssists = (assists / games.length).toFixed(1);
   const lpWeek = p.lpDelta?.week ?? 0;
   const mvps = games.filter((g) => g.mvp).length;
-  // Composite Weekly Performance: Impact (Score), Victories (Winrate) and LP progression
-  const performanceIndex = (avgScore * 8) + (wins * 1.5) + (Math.max(0, lpWeek) * 0.1) + ((wins / games.length) * 20);
+  // Composite Weekly Performance: Impact (Score x10), Winrate (x25), Net Wins (x2.5), MVPs (x1.5), LP progression (x0.15), capped activity
+  const netWins = Math.max(0, wins - (games.length - wins));
+  const performanceIndex = (avgScore * 10) + ((wins / games.length) * 25) + (Math.max(0, lpWeek) * 0.15) + (netWins * 2.5) + (mvps * 1.5) + (Math.min(games.length, 15) * 0.3);
   return {
     games: games.length,
     wins,
@@ -500,11 +532,13 @@ function getFilteredPlayers() {
   }
   const by = {
     rank: (p) => p.solo?.value ?? -1,
+    flex: (p) => p.flex?.value ?? -1,
+    winrate: (p) => p.stats?.winrate ?? -1,
+    season: (p) => p.lpDelta?.season ?? p.lpDelta?.week ?? -9999,
     mmr: (p) => estimateMmr(p, getWeeklyStats(p)).mmr,
     score: (p) => p.stats?.avgScore ?? -1,
-    winrate: (p) => p.stats?.winrate ?? -1,
-    week: (p) => p.lpDelta?.week ?? -9999,
-    season: (p) => p.lpDelta?.season ?? -9999,
+    kda: (p) => p.stats?.kda != null ? Number(p.stats.kda) : -1,
+    streak: (p) => p.stats?.streak ?? -99,
   }[currentSort] ?? ((p) => p.solo?.value ?? -1);
 
   return ps.sort((a, b) => by(b) - by(a));
@@ -662,8 +696,7 @@ function renderMvp() {
   const kda = w ? w.kda : (s ? s.kda : '—');
   const gamesCount = w ? `${w.games} partidas jugadas en la semana` : (s ? `${s.games} partidas jugadas en la semana` : '');
   const topChamp = mvp.topChampions?.[0]?.champion || (mvp.games?.[0] ? resolveChampName(mvp.games[0].champion) : 'Kai\'Sa');
-  const cleanChamp = resolveChampName(topChamp).replace(/[^a-zA-Z0-9]/g, '');
-  const champSplashUrl = `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${cleanChamp}_0.jpg`;
+  const champSplashUrl = getChampSplashUrl(topChamp);
 
   const wrTitle = w
     ? (currentLang === 'en'
@@ -689,10 +722,10 @@ function renderMvp() {
 
   container.innerHTML = `
     <div class="mvp-banner-card">
-      <div class="mvp-champ-bg" style="background-image: linear-gradient(90deg, #0B1322 0%, #0B1322 35%, rgba(11, 19, 34, 0.82) 55%, rgba(11, 19, 34, 0.2) 75%, rgba(11, 19, 34, 0.88) 100%), url('${champSplashUrl}'), url('assets/mvp-champion.jpg');"></div>
+      <div class="mvp-champ-bg" style="background-image: linear-gradient(90deg, #0B1322 0%, #0B1322 35%, rgba(11, 19, 34, 0.82) 55%, rgba(11, 19, 34, 0.2) 75%, rgba(11, 19, 34, 0.88) 100%), url('${champSplashUrl}'), url('assets/banner.jpg');"></div>
       
       <div class="mvp-top-bar">
-        <div class="mvp-tag-pill">
+        <div class="mvp-tag-pill clickable" id="mvp-tag-pill-btn" role="button" tabindex="0" title="Ver ranking y cálculo del MVP de la semana">
           <span>${t.mvpTag || 'MVP DE LA SEMANA'}</span>
         </div>
         <div class="mvp-champ-chip" title="Campeón insignia">
@@ -886,7 +919,7 @@ function renderPodium() {
     const s = p.stats;
     const w = getWeeklyStats(p);
     const mmrData = estimateMmr(p, w, currentLang);
-    const dWeek = p.lpDelta?.week;
+    const dSeason = p.lpDelta?.season ?? p.lpDelta?.week;
     const wr = s ? s.winrate : 50;
     const wins = s?.wins ?? 0;
     const games = s?.games ?? 0;
@@ -894,27 +927,30 @@ function renderPodium() {
     const kda = s?.kda ?? '—';
     const streak = s?.streak ?? 0;
     const streakText = streak > 0 ? `${streak}W 🔥` : streak < 0 ? `${Math.abs(streak)}L ❄️` : '—';
-    const lpWeek = dWeek != null ? (dWeek > 0 ? `+${dWeek} LP ▲` : dWeek < 0 ? `${dWeek} LP ▼` : '0 LP') : '+0 LP';
+    const lpSeason = dSeason != null ? (dSeason > 0 ? `+${dSeason} LP ▲` : dSeason < 0 ? `${dSeason} LP ▼` : '0 LP') : '+0 LP';
+    const soloTier = p.solo?.tier ? p.solo.tier.toLowerCase() : 'unranked';
+    const flexTier = p.flex?.tier ? p.flex.tier.toLowerCase() : 'unranked';
     const soloTierLabel = p.solo?.label ?? 'Unranked';
     const flexTierLabel = p.flex?.label ?? 'Unranked';
     const score = s ? s.avgScore.toFixed(1) : '—';
 
     const topChamp = p.topChampions?.[0]?.champion || (p.games?.[0] ? resolveChampName(p.games[0].champion) : 'Kai\'Sa');
-    const cleanChamp = resolveChampName(topChamp).replace(/[^a-zA-Z0-9]/g, '');
-    const champSplashUrl = `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${cleanChamp}_0.jpg`;
+    const champSplashUrl = getChampSplashUrl(topChamp);
     const playerIconUrl = iconImg(p.profileIconId);
 
     const placeTitle = pos === '1' ? '1° LUGAR · LÍDER' : pos === '2' ? '2° LUGAR · SUBCAMPEÓN' : '3° LUGAR · TERCER LUGAR';
+    const medalEmoji = pos === '1' ? '🥇' : pos === '2' ? '🥈' : '🥉';
 
     return `
       <div class="podium-card ${placeClass}" onclick="window.viewPlayerProfile('${esc(p.puuid)}')">
-        <div class="podium-champ-bg" style="background-image: linear-gradient(180deg, rgba(11, 19, 34, 0.42) 0%, rgba(11, 19, 34, 0.88) 50%, #0B1322 100%), url('${champSplashUrl}'), url('assets/mvp-champion.jpg');"></div>
+        <div class="podium-champ-bg" style="background-image: linear-gradient(180deg, rgba(11, 19, 34, 0.22) 0%, rgba(11, 19, 34, 0.75) 45%, #0B1322 96%), url('${champSplashUrl}'), url('assets/banner.jpg');"></div>
 
         <div class="podium-top-bar">
           <div class="podium-tag-pill ${placeClass}">
-            <span>${placeTitle}</span>
+            <span>${medalEmoji} ${placeTitle}</span>
           </div>
           <div class="podium-champ-chip" title="Campeón insignia">
+            <img class="podium-champ-mini-icon" src="${champImg(topChamp)}" alt="${esc(topChamp)}" onerror="this.style.display='none'">
             <span>${esc(topChamp)}</span>
           </div>
         </div>
@@ -923,10 +959,15 @@ function renderPodium() {
           ${crown ? `<div class="podium-crown" title="Líder de la Grieta">👑</div>` : ''}
           <div class="podium-avatar-wrap">
             <img class="podium-avatar" src="${playerIconUrl}" alt="${esc(p.name)}" onerror="this.src='logo.jpg'">
-            ${p.level ? `<span class="podium-level-pill">${p.level}</span>` : ''}
           </div>
           <div class="podium-rank-badge ${placeClass}">${pos}</div>
         </div>
+
+        ${p.level ? `
+          <div class="podium-level-pill" title="Nivel ${p.level}">
+            <span class="podium-lvl-label">NVL</span> <strong class="podium-lvl-val">${p.level}</strong>
+          </div>
+        ` : ''}
 
         <div class="podium-identity">
           <div class="podium-name-line">
@@ -939,42 +980,48 @@ function renderPodium() {
           </div>
         </div>
 
-        <!-- Rangos Solo/Duo y Flex -->
+        <!-- Rangos Solo/Duo y Flex con colores oficiales de tier -->
         <div class="podium-ranks-line">
-          <span class="podium-rank-chip solo ${p.solo?.tier ? p.solo.tier.toLowerCase() : 'unranked'}" title="Clasificatoria Solo/Duo">
+          <span class="podium-rank-chip solo tier-${soloTier}" title="Clasificatoria Solo/Duo">
             <strong class="q-label">Solo:</strong> ${esc(soloTierLabel)}
           </span>
-          <span class="podium-rank-chip flex ${p.flex?.tier ? p.flex.tier.toLowerCase() : 'unranked'}" title="Clasificatoria Flex">
+          <span class="podium-rank-chip flex tier-${flexTier}" title="Clasificatoria Flex">
             <strong class="q-label">Flex:</strong> ${esc(flexTierLabel)}
           </span>
         </div>
 
-        <!-- Chips de estadísticas clave al estilo MVP de la semana -->
+        <!-- Micro-Grid de estadísticas perfectamente alineado -->
         <div class="podium-substats">
-          <span class="podium-stat-chip winrate" title="Porcentaje de Victorias">
-            WR: <strong style="color:var(--text-primary)">${wr}%</strong>
-            <span class="podium-chip-sub">(${wins}V - ${losses}D)</span>
+          <span class="podium-stat-chip winrate" title="Porcentaje de Victorias (${wins}V - ${losses}D)">
+            <span class="podium-stat-label">WR</span>
+            <strong class="podium-stat-val">${wr}%</strong>
+            <span class="podium-chip-sub">(${wins}V-${losses}D)</span>
           </span>
-          <span class="podium-stat-chip lp" title="Balance de LP esta semana">
-            Semana: <strong class="${(dWeek ?? 0) >= 0 ? 'pos' : 'neg'}">${lpWeek}</strong>
+          <span class="podium-stat-chip lp ${(dSeason ?? 0) >= 0 ? 'pos' : 'neg'}" title="Balance de LP en la temporada">
+            <span class="podium-stat-label">Temporada</span>
+            <strong class="podium-stat-val">${lpSeason}</strong>
           </span>
-          <span class="podium-stat-chip kda" title="Ratio KDA">
-            KDA: <strong style="color:var(--text-primary)">${kda}</strong>
+          <span class="podium-stat-chip kda" title="Ratio KDA = (Kills + Asistencias) ÷ Muertes">
+            <span class="podium-stat-label">KDA</span>
+            <strong class="podium-stat-val">${kda}</strong>
           </span>
           <span class="podium-stat-chip mmr" title="MMR Estimado: ~${mmrData.mmr} (${mmrData.healthLabel})">
-            MMR: <strong style="color:var(--text-primary)">~${mmrData.mmr}</strong>
+            <span class="podium-stat-label">MMR</span>
+            <strong class="podium-stat-val">~${mmrData.mmr}</strong>
             <span class="mmr-health-dot" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${mmrData.healthColor};box-shadow:0 0 6px ${mmrData.healthColor};margin-left:2px;" aria-hidden="true"></span>
           </span>
-          <span class="podium-stat-chip streak" title="Racha actual">
-            Racha: <strong style="color:var(--text-primary)">${streakText}</strong>
+          <span class="podium-stat-chip streak" title="Racha actual de partidas">
+            <span class="podium-stat-label">Racha</span>
+            <strong class="podium-stat-val">${streakText}</strong>
           </span>
         </div>
 
-        <!-- OP Score Badge -->
+        <!-- OP Score Badge Oficial OP.GG -->
         <div class="podium-score-wrap">
-          <div class="podium-score-emblem" title="OP Score Promedio">
+          <div class="podium-score-emblem ${placeClass}" title="Calificación Oficial de Rendimiento OP.GG">
+            <span class="podium-score-brand">OP.GG</span>
             <span class="podium-score-num">${score}</span>
-            <span class="podium-score-title">OP SCORE</span>
+            <span class="podium-score-title">SCORE</span>
           </div>
         </div>
       </div>
@@ -997,9 +1044,9 @@ function renderPlayerRowCard(p, rank) {
   const s = p.stats;
   const w = getWeeklyStats(p);
   const mmrData = estimateMmr(p, w, currentLang);
-  const dWeek = p.lpDelta?.week;
-  const deltaText = dWeek != null ? `${signed(dWeek)} LP ${dWeek >= 0 ? '▲' : '▼'}` : '—';
-  const deltaClass = (dWeek ?? 0) >= 0 ? 'positive' : 'negative';
+  const dSeason = p.lpDelta?.season ?? p.lpDelta?.week;
+  const deltaText = dSeason != null ? `${signed(dSeason)} LP ${dSeason >= 0 ? '▲' : '▼'}` : '—';
+  const deltaClass = (dSeason ?? 0) >= 0 ? 'positive' : 'negative';
 
   const wr = s ? `${s.winrate}%` : '—';
   const wins = s?.wins ?? 0;
@@ -1009,6 +1056,8 @@ function renderPlayerRowCard(p, rank) {
   const streak = s?.streak ?? 0;
   const streakText = streak > 0 ? `${streak}W 🔥` : streak < 0 ? `${Math.abs(streak)}L ❄️` : '—';
 
+  const soloTier = p.solo?.tier ? p.solo.tier.toLowerCase() : 'unranked';
+  const flexTier = p.flex?.tier ? p.flex.tier.toLowerCase() : 'unranked';
   const soloTierLabel = p.solo?.label ?? 'Unranked';
   const flexTierLabel = p.flex?.label ?? 'Unranked';
   const score = s ? s.avgScore.toFixed(1) : '—';
@@ -1036,10 +1085,10 @@ function renderPlayerRowCard(p, rank) {
           ${nick}
         </div>
         <div class="row-ranks-line">
-          <span class="row-rank-badge solo ${p.solo?.tier ? p.solo.tier.toLowerCase() : 'unranked'}" title="Clasificatoria Solo/Duo">
+          <span class="row-rank-badge solo tier-${soloTier}" title="Clasificatoria Solo/Duo">
             <strong class="q-label">Solo:</strong> ${esc(soloTierLabel)}
           </span>
-          <span class="row-rank-badge flex ${p.flex?.tier ? p.flex.tier.toLowerCase() : 'unranked'}" title="Clasificatoria Flex">
+          <span class="row-rank-badge flex tier-${flexTier}" title="Clasificatoria Flex">
             <strong class="q-label">Flex:</strong> ${esc(flexTierLabel)}
           </span>
         </div>
@@ -1057,13 +1106,13 @@ function renderPlayerRowCard(p, rank) {
         </div>
 
         <div class="row-stat-col row-winrate" title="Porcentaje de Victorias (${wins}W - ${losses}D)">
-          <span class="row-stat-val">${wr}</span>
+          <span class="row-stat-val ${s && s.winrate >= 55 ? 'high-wr' : ''}">${wr}</span>
           <span class="row-stat-sub">${wins}V - ${losses}D</span>
         </div>
 
-        <div class="row-stat-col row-delta ${deltaClass}" title="Puntos de Liga ganados/perdidos esta semana">
+        <div class="row-stat-col row-delta ${deltaClass}" title="Puntos de Liga ganados/perdidos en la temporada">
           <span class="row-stat-val">${deltaText}</span>
-          <span class="row-stat-sub">Semana</span>
+          <span class="row-stat-sub">Temporada</span>
         </div>
 
         <div class="row-stat-col row-streak" title="Racha consecutiva actual">
@@ -1076,9 +1125,11 @@ function renderPlayerRowCard(p, rank) {
         </div>
       </div>
 
-      <div class="row-stat-col row-score" title="OP Score Promedio">
-        <span class="row-score-val">${score}</span>
-        <span class="row-score-sub">SCORE</span>
+      <div class="row-stat-col row-score" title="OP Score Promedio Oficial OP.GG">
+        <div class="row-score-box ${placeClass}">
+          <span class="row-score-val">${score}</span>
+          <span class="row-score-sub opgg-source">OP.GG</span>
+        </div>
       </div>
     </article>
   `;
@@ -1103,6 +1154,18 @@ function timeAgo(ts) {
   if (diffDays === 1) return 'Ayer';
   if (diffDays < 7) return `Hace ${diffDays} días`;
   return new Date(ts).toLocaleDateString('es-ES', { month: 'short', day: 'numeric' });
+}
+
+function formatMatchDate(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  const day = d.getDate();
+  const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+  const month = months[d.getMonth()];
+  const year = d.getFullYear();
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  return `${day} ${month} ${year} · ${hours}:${minutes}`;
 }
 
 function getGroupMatchesList() {
@@ -1244,26 +1307,6 @@ function renderRecentMatchesFeed() {
   if (currentMatchPage > totalPages) currentMatchPage = totalPages;
   if (currentMatchPage < 1) currentMatchPage = 1;
 
-  function computeMatchLpDelta(m, player) {
-    const isRanked = m.queueId === 420 || m.queueId === 440 || m.queue?.includes('Ranked') || m.queue?.includes('Solo') || m.queue?.includes('Flex');
-    if (!isRanked) return null;
-    if (m.minutes < 5 || m.isRemake) return 0;
-
-    let hash = 0;
-    const s = String(m.matchId || '');
-    for (let i = 0; i < s.length; i++) hash = (hash * 31 + s.charCodeAt(i)) & 0xffffffff;
-    const mod = Math.abs(hash) % 4;
-
-    const wr = player?.stats?.winrate ?? 50;
-    const boost = wr >= 56 ? 2 : wr <= 46 ? -2 : 0;
-
-    if (m.win) {
-      return 22 + mod + boost;
-    } else {
-      return -(19 + mod - boost);
-    }
-  }
-
   if (!totalMatches) {
     feed.innerHTML = `
       <div style="text-align:center; padding:40px; background:rgba(255,255,255,0.02); border-radius:12px; border:1px solid var(--border-light);" class="muted">
@@ -1284,9 +1327,7 @@ function renderRecentMatchesFeed() {
     const isWin = m.win;
     const qName = m.queueId === 420 ? 'Solo/Duo' : m.queueId === 440 ? 'Ranked Flex' : (m.queue || 'Ranked');
     const hasMultipleFriends = m.friends.length > 1;
-
-    const primaryPlayer = board?.players?.find((p) => p.puuid === m.friends[0]?.puuid) || board?.players?.[0];
-    const lpDelta = computeMatchLpDelta(m, primaryPlayer);
+    const matchLpDelta = m.friends?.find((f) => f.lpDelta != null)?.lpDelta ?? null;
 
     return `
       <article class="overview-match-card ${isRemake ? 'remake' : isWin ? 'win' : 'loss'}" data-match-id="${esc(m.matchId)}">
@@ -1297,19 +1338,19 @@ function renderRecentMatchesFeed() {
             </span>
             ${isSurrender && !isRemake ? `
               <span class="feed-badge-surrender ${isWin ? 'enemy' : 'team'}" title="${isWin ? 'Victoria por rendición del equipo enemigo' : 'Derrota por rendición'}">
-                Rendición
+                Surrender
               </span>
             ` : ''}
             <span class="feed-badge-queue">${qName}</span>
             <span class="feed-badge-time">
               ${m.minutes}m
-              ${lpDelta != null ? `
-                <span class="feed-badge-lp ${lpDelta > 0 ? 'pos' : lpDelta < 0 ? 'neg' : 'zero'}" title="${lpDelta > 0 ? 'Puntos de liga ganados' : lpDelta < 0 ? 'Puntos de liga perdidos' : 'Sin variación de LP'}">
-                  ${lpDelta > 0 ? `+${lpDelta} LP ▲` : lpDelta < 0 ? `${lpDelta} LP ▼` : '±0 LP'}
+              ${matchLpDelta != null ? `
+                <span class="feed-badge-lp ${matchLpDelta > 0 ? 'pos' : matchLpDelta < 0 ? 'neg' : 'zero'}" title="${matchLpDelta > 0 ? `Ganó +${matchLpDelta} LP` : matchLpDelta < 0 ? `Perdió ${matchLpDelta} LP` : 'Sin variación de LP'}">
+                  ${matchLpDelta > 0 ? `+${matchLpDelta} LP ▲` : matchLpDelta < 0 ? `${matchLpDelta} LP ▼` : '±0 LP'}
                 </span>
               ` : ''}
-              &nbsp;·&nbsp; ${timeAgo(m.endTs)}
             </span>
+            <span class="feed-badge-date">${formatMatchDate(m.endTs)}</span>
             ${hasMultipleFriends ? `<span class="feed-badge-duo">${m.friends.length} Amigos juntos</span>` : ''}
           </div>
           <div class="feed-header-right">
@@ -1359,8 +1400,8 @@ function renderRecentMatchesFeed() {
                 <!-- Score OP Score & Place -->
                 <div class="overview-score-group">
                   <div class="overview-score-box">
-                    <span class="overview-score-tag" title="Puntuación de desempeño OP Score (1 a 10)">
-                      <span class="score-lbl">OP SCORE</span>
+                    <span class="overview-score-tag opgg-source" title="Calificación oficial de OP.GG (1 a 10)">
+                      <span class="score-lbl">OP.GG</span>
                       <span class="score-val">${f.score?.toFixed(1) || '—'}</span>
                     </span>
                     <span class="overview-place-tag ${f.place === 1 ? 'top-1' : f.place <= 3 ? 'top-3' : 'mid'}" title="Posición ${f.place || 5} de 10 jugadores en la partida">
@@ -1374,12 +1415,10 @@ function renderRecentMatchesFeed() {
                   ${f.opp ? `
                     <div class="overview-rival-title">Rival en Línea:</div>
                     <div class="overview-rival-content">
-                      <img class="overview-rival-champ-img" src="${champImg(f.opp.champion)}" alt="${esc(resolveChampName(f.opp.champion))}" onerror="this.src='logo.jpg'">
+                      <img class="overview-rival-champ-img" src="${champImg(f.opp.champion)}" alt="${esc(resolveChampName(f.opp.champion))}" title="${esc(resolveChampName(f.opp.champion))}" onerror="this.src='logo.jpg'">
                       <div class="overview-rival-info">
                         <span class="overview-rival-status ${f.score >= (f.opp.score || 0) ? 'win' : 'loss'}">
-                          ${f.score >= (f.opp.score || 0)
-                            ? `Victoria vs <strong>${esc(resolveChampName(f.opp.champion))}</strong>`
-                            : `Derrota vs <strong>${esc(resolveChampName(f.opp.champion))}</strong>`}
+                          ${f.score >= (f.opp.score || 0) ? 'Ganó vs' : 'Perdió vs'}
                         </span>
                         <span class="overview-rival-scores">
                           Score: ${f.score?.toFixed(1) || '—'} vs ${f.opp.score?.toFixed(1) || '—'}
@@ -1599,6 +1638,189 @@ function renderLeaderboards() {
 }
 
 // ---------- 1v1 Duels Arena ----------
+const kNum = (n) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : `${Math.round(n)}`);
+
+function calculateDuelOdds(pA, pB) {
+  const soloValA = pA.solo?.value ?? 800;
+  const soloValB = pB.solo?.value ?? 800;
+  const eloDiff = soloValA - soloValB;
+  const eloProbA = 1 / (1 + Math.pow(10, -eloDiff / 600));
+
+  const scoreA = pA.stats?.avgScore ?? 5.0;
+  const scoreB = pB.stats?.avgScore ?? 5.0;
+  const scoreDiff = scoreA - scoreB;
+  const scoreProbA = 0.5 + (scoreDiff * 0.12);
+
+  const wrA = (pA.stats?.winrate ?? 50) / 100;
+  const wrB = (pB.stats?.winrate ?? 50) / 100;
+  const wrDiff = wrA - wrB;
+  const wrProbA = 0.5 + (wrDiff * 0.8);
+
+  const kdaA = Number(pA.stats?.kda ?? 2.0);
+  const kdaB = Number(pB.stats?.kda ?? 2.0);
+  const kdaDiff = (kdaA - kdaB) / Math.max(1, (kdaA + kdaB) / 2);
+  const kdaProbA = 0.5 + (kdaDiff * 0.15);
+
+  const topChampA = pA.topChampions?.[0];
+  const topChampB = pB.topChampions?.[0];
+  const champWrA = topChampA?.games ? (topChampA.wins / topChampA.games) : 0.5;
+  const champWrB = topChampB?.games ? (topChampB.wins / topChampB.games) : 0.5;
+  const champProbA = 0.5 + ((champWrA - champWrB) * 0.3);
+
+  let finalProbA = (
+    eloProbA * 0.35 +
+    scoreProbA * 0.25 +
+    wrProbA * 0.15 +
+    kdaProbA * 0.15 +
+    champProbA * 0.10
+  );
+  finalProbA = Math.max(0.12, Math.min(0.88, finalProbA));
+  const pctA = Math.round(finalProbA * 100);
+  const pctB = 100 - pctA;
+
+  const winner = pctA >= pctB ? pA : pB;
+  const loser = pctA >= pctB ? pB : pA;
+  const winnerPct = Math.max(pctA, pctB);
+  const loserPct = Math.min(pctA, pctB);
+  const margin = Math.abs(pctA - pctB);
+
+  return {
+    pctA,
+    pctB,
+    winner,
+    loser,
+    winnerPct,
+    loserPct,
+    margin,
+    isSideAWinner: pctA >= pctB,
+    factors: {
+      elo: { valA: soloValA, valB: soloValB, diff: eloDiff, adv: eloDiff > 0 ? 'A' : eloDiff < 0 ? 'B' : 'EQUAL' },
+      score: { valA: scoreA, valB: scoreB, diff: scoreDiff, adv: scoreDiff > 0 ? 'A' : scoreDiff < 0 ? 'B' : 'EQUAL' },
+      wr: { valA: Math.round(wrA * 100), valB: Math.round(wrB * 100), diff: Math.round(wrDiff * 100), adv: wrDiff > 0 ? 'A' : wrDiff < 0 ? 'B' : 'EQUAL' },
+      kda: { valA: kdaA, valB: kdaB, diff: kdaA - kdaB, adv: kdaA > kdaB ? 'A' : kdaA < kdaB ? 'B' : 'EQUAL' },
+      champ: {
+        champA: topChampA?.champion || 'Kai\'Sa',
+        champB: topChampB?.champion || 'Kai\'Sa',
+        wrA: Math.round(champWrA * 100),
+        wrB: Math.round(champWrB * 100),
+        adv: champWrA > champWrB ? 'A' : champWrA < champWrB ? 'B' : 'EQUAL'
+      }
+    }
+  };
+}
+
+function generateDuelHumor(pA, pB, odds) {
+  const winner = odds.winner;
+  const loser = odds.loser;
+  const margin = odds.margin;
+
+  const slogans = [
+    'Duelo de discapacidades motrices: a ver quién erra el Flash contra la pared primero.',
+    'El choque del siglo... o al menos de los dos con peor promedio de visión de LAN.',
+    'Uno juega con monitor encendido; el otro se orienta por las vibraciones del teclado.',
+    'Probabilidad de que este 1v1 termine con ragequit y bloqueo mutuo en WhatsApp: 94.8%.',
+    'Si este duelo fuera un streaming, Twitch lo clasificaría bajo "Contenido sensible y perturbador".',
+    'El perdedor pagará las pizzas y tendrá prohibido pedir línea por las próximas 3 semanas.',
+    'Uno cree que es Faker en Worlds, el otro todavía está leyendo qué hacen las habilidades de su campeón.',
+    'Duelo a muerte en la Grieta: los súbditos ya compraron palomitas para ver el espectáculo.'
+  ];
+
+  let verdictTitle = '';
+  let verdictText = '';
+
+  if (margin >= 26) {
+    verdictTitle = `Paliza Histórica: ${esc(winner.name)} lo manda al lobby a replantearse la vida`;
+    verdictText = `No va a ser un duelo, va a ser un trámite judicial. ${esc(winner.name)} tiene un contundente ${odds.winnerPct}% de probabilidad de victoria frente a un mísero ${odds.loserPct}% de ${esc(loser.name)}. La distancia entre ambos es más grande que la fosa de las Marianas. Se recomienda tener a mano un número de asistencia psicológica para ${esc(loser.name)}, porque ni jugando con el monitor apagado pierde ${esc(winner.name)}.`;
+  } else if (margin >= 14) {
+    verdictTitle = `Ventaja Decisiva para ${esc(winner.name)} (${odds.winnerPct}% vs ${odds.loserPct}%)`;
+    verdictText = `${esc(winner.name)} se impone con autoridad. ${esc(loser.name)} va a pelear con ganas los primeros 3 minutos, hasta que su instinto biológico de trollear y divear bajo torre sin vida se active automáticamente. ${esc(loser.name)} culpará al lag, al teclado y al jungla, pero la matemática no miente.`;
+  } else {
+    verdictTitle = `Victoria Apretada: Duelo de Inválidos (${odds.winnerPct}% vs ${odds.loserPct}%)`;
+    verdictText = `Duelo cochino, trabado y doloroso para la vista. ${esc(winner.name)} se lleva la victoria raspando (${odds.winnerPct}%), no por mérito propio, sino porque ${esc(loser.name)} encontrará la forma más poética y ridícula de tirar la partida (inting) en el momento decisivo. El verdadero perdedor aquí es el espectador.`;
+  }
+
+  // Loser specific roasts
+  const roasts = [];
+  const loserDeaths = loser.stats?.avgDeaths ?? 5.5;
+  if (loserDeaths >= 6.0) {
+    roasts.push(`<strong>Causa de defunción:</strong> Con un promedio de ${loserDeaths.toFixed(1)} muertes por partida, ${esc(loser.name)} pasa más tiempo en pantalla gris que jugando. Debería poner un sofá en la fuente enemiga.`);
+  }
+  const loserScore = loser.stats?.avgScore ?? 5.0;
+  if (loserScore < 5.2) {
+    roasts.push(`<strong>Calificación OP.GG:</strong> Registra un humillante ${loserScore.toFixed(1)} de score promedio. Ni la inteligencia artificial de Riot puede encontrar una jugada salvable en su historial.`);
+  }
+  const loserMochila = (board?.groupGames || []).filter((g) =>
+    g.players?.some((p) => p.puuid === loser.puuid && p.mochila)
+  ).length;
+  if (loserMochila > 0) {
+    roasts.push(`<strong>Antecedente penal:</strong> Ha sido etiquetado como "Mochila" ${loserMochila} veces en las partidas del grupo. Sus compañeros todavía tienen dolores lumbares de tener que cargarlo.`);
+  }
+  if (!roasts.length) {
+    roasts.push(`<strong>Factores de tilteo:</strong> Su tasa de victorias del ${loser.stats?.winrate ?? 50}% refleja que cada vez que entra a ranked, su equipo empieza jugando 4v6.`);
+  }
+
+  const sloganIdx = Math.abs((pA.name.length * 3 + pB.name.length * 7)) % slogans.length;
+  const slogan = slogans[sloganIdx];
+
+  return {
+    slogan,
+    verdictTitle,
+    verdictText,
+    loserRoast: roasts.join('<br><br>')
+  };
+}
+
+let isDuelSimulating = false;
+
+function triggerDuelSimulationAnimation() {
+  if (isDuelSimulating) return;
+  isDuelSimulating = true;
+
+  const stage = $('#duel-battle-stage');
+  const badge = $('#duel-vs-badge');
+  const ticker = $('#duel-battle-ticker');
+  const btn = $('#btn-simulate-duel');
+
+  if (stage) stage.classList.add('duel-clashing');
+  if (badge) badge.classList.add('pulse');
+  if (btn) btn.disabled = true;
+
+  const lines = [
+    'Calculando fallos de Flash en pared...',
+    'Analizando índice de tilteo y llanto...',
+    'Consultando a la IA quién es más manco...',
+    'Midiendo tradeos suicidas en el río...'
+  ];
+
+  if (ticker) {
+    ticker.style.display = 'block';
+    let lineIdx = 0;
+    ticker.textContent = lines[0];
+    const interval = setInterval(() => {
+      lineIdx = (lineIdx + 1) % lines.length;
+      ticker.textContent = lines[lineIdx];
+    }, 180);
+
+    setTimeout(() => {
+      clearInterval(interval);
+      if (stage) stage.classList.remove('duel-clashing');
+      if (badge) badge.classList.remove('pulse');
+      if (ticker) ticker.style.display = 'none';
+      if (btn) btn.disabled = false;
+      isDuelSimulating = false;
+      updateDuelComparison(false);
+    }, 700);
+  } else {
+    setTimeout(() => {
+      if (stage) stage.classList.remove('duel-clashing');
+      if (badge) badge.classList.remove('pulse');
+      if (btn) btn.disabled = false;
+      isDuelSimulating = false;
+      updateDuelComparison(false);
+    }, 500);
+  }
+}
+
 function populateDuelSelectors() {
   const selectA = $('#duel-select-a');
   const selectB = $('#duel-select-b');
@@ -1607,51 +1829,406 @@ function populateDuelSelectors() {
   const ps = board?.players ?? [];
   if (!ps.length) return;
 
-  const options = ps.map((p, idx) => `<option value="${p.puuid}">${esc(p.name)}</option>`).join('');
+  const options = ps.map((p) => `<option value="${p.puuid}">${esc(p.name)}</option>`).join('');
   selectA.innerHTML = options;
   selectB.innerHTML = options;
 
   if (ps.length > 1) {
     selectB.selectedIndex = 1;
   }
-  updateDuelComparison();
+
+  // Presets handling
+  $$('.duel-preset-pill').forEach((btn) => {
+    btn.onclick = () => {
+      $$('.duel-preset-pill').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      const preset = btn.dataset.preset;
+      const sortedBySolo = [...ps].sort((a, b) => (b.solo?.value ?? 0) - (a.solo?.value ?? 0));
+
+      if (preset === 'classic') {
+        selectA.selectedIndex = 0;
+        selectB.selectedIndex = Math.min(1, ps.length - 1);
+      } else if (preset === 'titans') {
+        if (sortedBySolo.length >= 2) {
+          selectA.value = sortedBySolo[0].puuid;
+          selectB.value = sortedBySolo[1].puuid;
+        }
+      } else if (preset === 'relegation') {
+        if (sortedBySolo.length >= 2) {
+          selectA.value = sortedBySolo[sortedBySolo.length - 2].puuid;
+          selectB.value = sortedBySolo[sortedBySolo.length - 1].puuid;
+        }
+      } else if (preset === 'random') {
+        const idxA = Math.floor(Math.random() * ps.length);
+        let idxB = Math.floor(Math.random() * ps.length);
+        if (idxB === idxA && ps.length > 1) idxB = (idxA + 1) % ps.length;
+        selectA.selectedIndex = idxA;
+        selectB.selectedIndex = idxB;
+      }
+      triggerDuelSimulationAnimation();
+    };
+  });
+
+  $('#btn-simulate-duel')?.addEventListener('click', triggerDuelSimulationAnimation);
+
+  updateDuelComparison(false);
 }
 
-function updateDuelComparison() {
+function updateDuelComparison(isAnimated = false) {
   const selectA = $('#duel-select-a');
   const selectB = $('#duel-select-b');
   if (!selectA || !selectB) return;
 
-  const puuidA = selectA.value;
-  const puuidB = selectB.value;
-  const pA = board?.players?.find((p) => p.puuid === puuidA);
-  const pB = board?.players?.find((p) => p.puuid === puuidB);
+  let puuidA = selectA.value;
+  let puuidB = selectB.value;
+
+  const ps = board?.players ?? [];
+  if (ps.length > 1 && puuidA === puuidB) {
+    const nextIdx = (selectA.selectedIndex + 1) % ps.length;
+    selectB.selectedIndex = nextIdx;
+    puuidB = selectB.value;
+  }
+
+  const pA = ps.find((p) => p.puuid === puuidA);
+  const pB = ps.find((p) => p.puuid === puuidB);
   if (!pA || !pB) return;
 
+  // 1. Basic Player Cards Update
   $('#duel-avatar-a').src = iconImg(pA.profileIconId);
   $('#duel-avatar-b').src = iconImg(pB.profileIconId);
   $('#duel-tier-a').textContent = pA.solo?.label ?? 'Unranked';
   $('#duel-tier-b').textContent = pB.solo?.label ?? 'Unranked';
 
-  const t = (I18N[currentLang] || I18N.es).ui;
+  const nickA = $('#duel-nick-a');
+  if (nickA) nickA.textContent = pA.nickname?.title ? `“${pA.nickname.title}”` : '';
+  const nickB = $('#duel-nick-b');
+  if (nickB) nickB.textContent = pB.nickname?.title ? `“${pB.nickname.title}”` : '';
+
+  const mainA = pA.topChampions?.[0]?.champion || (pA.games?.[0] ? resolveChampName(pA.games[0].champion) : 'Kai\'Sa');
+  const mainB = pB.topChampions?.[0]?.champion || (pB.games?.[0] ? resolveChampName(pB.games[0].champion) : 'Kai\'Sa');
+
+  const chipA = $('#duel-champ-badge-a');
+  if (chipA) {
+    chipA.innerHTML = `<img src="${champImg(mainA)}" alt="${esc(mainA)}" onerror="this.src='logo.jpg'"> <span>${esc(mainA)}</span>`;
+  }
+  const chipB = $('#duel-champ-badge-b');
+  if (chipB) {
+    chipB.innerHTML = `<img src="${champImg(mainB)}" alt="${esc(mainB)}" onerror="this.src='logo.jpg'"> <span>${esc(mainB)}</span>`;
+  }
+
+  // 2. Real Odds & Dark Humor Calculation
+  const odds = calculateDuelOdds(pA, pB);
+  const humor = generateDuelHumor(pA, pB, odds);
+
+  const boxA = $('#duel-player-box-a');
+  const boxB = $('#duel-player-box-b');
+  if (boxA && boxB) {
+    boxA.classList.toggle('is-winner', odds.isSideAWinner);
+    boxA.classList.toggle('is-loser', !odds.isSideAWinner);
+    boxB.classList.toggle('is-winner', !odds.isSideAWinner);
+    boxB.classList.toggle('is-loser', odds.isSideAWinner);
+  }
+
+  // 3. Render Dynamic Verdict Container
+  const verdictContainer = $('#duel-verdict-container');
+  if (verdictContainer) {
+    const marginClass = odds.margin >= 26 ? 'crushing' : odds.margin >= 14 ? 'clear' : 'tight';
+    const marginLabel = odds.margin >= 26 ? 'Paliza Pronosticada' : odds.margin >= 14 ? 'Ventaja Clara' : 'Pelea de Inválidos (Cerrada)';
+
+    verdictContainer.innerHTML = `
+      <div class="duel-verdict-card">
+        <div class="duel-slogan-banner">
+          🔥 <strong>Choque de Titanes:</strong> ${humor.slogan}
+        </div>
+
+        <div class="duel-winner-callout">
+          <h3 class="duel-winner-title">
+            <span>👑 Favorito por Matemática:</span>
+            <strong>${esc(odds.winner.name)}</strong>
+          </h3>
+          <span class="duel-margin-pill ${marginClass}">${marginLabel}</span>
+        </div>
+
+        <div class="duel-gauge-container">
+          <div class="duel-gauge-labels">
+            <span style="color:var(--cyan);">${esc(pA.name)} · ${odds.pctA}%</span>
+            <span style="color:var(--gold);">${esc(pB.name)} · ${odds.pctB}%</span>
+          </div>
+          <div class="duel-gauge-track">
+            <div class="duel-gauge-left" style="width:${odds.pctA}%">${odds.pctA}%</div>
+            <div class="duel-gauge-right" style="width:${odds.pctB}%">${odds.pctB}%</div>
+          </div>
+        </div>
+
+        <div class="duel-factors-grid">
+          <div class="duel-factor-chip">
+            <span class="duel-factor-name">📈 ELO / Rango Solo</span>
+            <span class="duel-factor-val">${pA.solo?.label ?? 'Unranked'} vs ${pB.solo?.label ?? 'Unranked'}</span>
+            <span class="duel-factor-desc">${odds.factors.elo.diff > 0 ? `+${odds.factors.elo.diff} pts para ${esc(pA.name)}` : odds.factors.elo.diff < 0 ? `+${Math.abs(odds.factors.elo.diff)} pts para ${esc(pB.name)}` : 'Empate técnico'}</span>
+          </div>
+          <div class="duel-factor-chip">
+            <span class="duel-factor-name">🏆 OP.GG Score</span>
+            <span class="duel-factor-val">${pA.stats?.avgScore.toFixed(1) ?? '—'} vs ${pB.stats?.avgScore.toFixed(1) ?? '—'}</span>
+            <span class="duel-factor-desc">${odds.factors.score.diff > 0 ? `${esc(pA.name)} más regular` : odds.factors.score.diff < 0 ? `${esc(pB.name)} más regular` : 'Misma consistencia'}</span>
+          </div>
+          <div class="duel-factor-chip">
+            <span class="duel-factor-name">⚔️ KDA y Muertes</span>
+            <span class="duel-factor-val">${pA.stats?.kda ?? '—'} vs ${pB.stats?.kda ?? '—'}</span>
+            <span class="duel-factor-desc">${(pA.stats?.avgDeaths ?? 0) <= (pB.stats?.avgDeaths ?? 0) ? `${esc(pA.name)} muere menos` : `${esc(pB.name)} muere menos`}</span>
+          </div>
+          <div class="duel-factor-chip">
+            <span class="duel-factor-name">🎯 Main Champ WR</span>
+            <span class="duel-factor-val">${odds.factors.champ.wrA}% vs ${odds.factors.champ.wrB}%</span>
+            <span class="duel-factor-desc">${odds.factors.champ.wrA >= odds.factors.champ.wrB ? `Ventaja ${esc(odds.factors.champ.champA)}` : `Ventaja ${esc(odds.factors.champ.champB)}`}</span>
+          </div>
+        </div>
+
+        <div class="duel-roast-box">
+          <div class="duel-roast-header">
+            <span>💀 Autopsia del Duelo & Veredicto Destructivo</span>
+          </div>
+          <p class="duel-roast-text">${humor.verdictText}</p>
+          <div class="duel-roast-loser-stats">
+            ${humor.loserRoast}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  // 4. Render VS de Campeones Insignia (Clash de Mains)
+  const champsClash = $('#duel-champs-clash');
+  if (champsClash) {
+    const topA = pA.topChampions?.[0];
+    const topB = pB.topChampions?.[0];
+    const splashA = getChampSplashUrl(mainA);
+    const splashB = getChampSplashUrl(mainB);
+    const gamesA = topA?.games ?? 0;
+    const winsA = topA?.wins ?? 0;
+    const wrA = gamesA > 0 ? Math.round((winsA / gamesA) * 100) : 50;
+    const scoreA = topA?.score ? topA.score.toFixed(1) : '—';
+
+    const gamesB = topB?.games ?? 0;
+    const winsB = topB?.wins ?? 0;
+    const wrB = gamesB > 0 ? Math.round((winsB / gamesB) * 100) : 50;
+    const scoreB = topB?.score ? topB.score.toFixed(1) : '—';
+
+    // Top 3 champions comparison rows
+    const topChampsA = pA.topChampions?.slice(0, 3) ?? [];
+    const topChampsB = pB.topChampions?.slice(0, 3) ?? [];
+    const maxLen = Math.max(topChampsA.length, topChampsB.length);
+    let top3RowsHtml = '';
+    for (let i = 0; i < maxLen; i++) {
+      const cA = topChampsA[i];
+      const cB = topChampsB[i];
+      const nameA = cA?.champion || '—';
+      const nameB = cB?.champion || '—';
+      const cWrA = cA?.games ? Math.round((cA.wins / cA.games) * 100) : 0;
+      const cWrB = cB?.games ? Math.round((cB.wins / cB.games) * 100) : 0;
+      top3RowsHtml += `
+        <tr>
+          <td>
+            ${cA ? `<span class="duel-top3-champ-cell"><img src="${champImg(nameA)}" alt="" onerror="this.src='logo.jpg'"> <strong>${esc(nameA)}</strong> (${cA.games}p · ${cWrA}% WR)</span>` : '—'}
+          </td>
+          <td style="color:var(--text-muted); font-size:12px; font-weight:700;">Pick #${i + 1}</td>
+          <td>
+            ${cB ? `<span class="duel-top3-champ-cell"><img src="${champImg(nameB)}" alt="" onerror="this.src='logo.jpg'"> <strong>${esc(nameB)}</strong> (${cB.games}p · ${cWrB}% WR)</span>` : '—'}
+          </td>
+        </tr>
+      `;
+    }
+
+    champsClash.innerHTML = `
+      <div class="duel-section-header">
+        <h3 class="duel-section-title">⚔️ Choque de Campeones Insignia (Main vs Main)</h3>
+        <p class="muted sub" style="margin:0;">Enfrentamiento directo entre el pick más jugado de cada invocador.</p>
+      </div>
+
+      <div class="duel-champs-grid">
+        <!-- Champion Card A -->
+        <div class="duel-champ-card side-a">
+          <div class="duel-champ-splash-bg" style="background-image: linear-gradient(180deg, rgba(11, 19, 34, 0.4) 0%, rgba(11, 19, 34, 0.92) 80%), url('${splashA}'), url('assets/banner.jpg');"></div>
+          <div class="duel-champ-card-content">
+            <div class="duel-champ-head">
+              <div class="duel-champ-icon-wrap">
+                <img src="${champImg(mainA)}" alt="${esc(mainA)}" onerror="this.src='logo.jpg'">
+                <span class="duel-champ-role-badge">${esc(pA.games?.[0]?.position ?? 'MID')}</span>
+              </div>
+              <div class="duel-champ-identity">
+                <strong>${esc(mainA)}</strong>
+                <span>Pick Principal de ${esc(pA.name)}</span>
+              </div>
+            </div>
+            <div class="duel-champ-stats-row">
+              <span class="duel-champ-stat-pill">Partidas: <strong>${gamesA}</strong></span>
+              <span class="duel-champ-stat-pill">Winrate: <strong style="color:${wrA >= 50 ? 'var(--cyan)' : 'var(--danger)'};">${wrA}%</strong> (${winsA}V - ${gamesA - winsA}D)</span>
+              <span class="duel-champ-stat-pill">Score OP: <strong>${scoreA}</strong></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="duel-champs-mid-vs">VS</div>
+
+        <!-- Champion Card B -->
+        <div class="duel-champ-card side-b">
+          <div class="duel-champ-splash-bg" style="background-image: linear-gradient(180deg, rgba(11, 19, 34, 0.4) 0%, rgba(11, 19, 34, 0.92) 80%), url('${splashB}'), url('assets/banner.jpg');"></div>
+          <div class="duel-champ-card-content">
+            <div class="duel-champ-head">
+              <div class="duel-champ-icon-wrap">
+                <img src="${champImg(mainB)}" alt="${esc(mainB)}" onerror="this.src='logo.jpg'">
+                <span class="duel-champ-role-badge">${esc(pB.games?.[0]?.position ?? 'MID')}</span>
+              </div>
+              <div class="duel-champ-identity">
+                <strong>${esc(mainB)}</strong>
+                <span>Pick Principal de ${esc(pB.name)}</span>
+              </div>
+            </div>
+            <div class="duel-champ-stats-row">
+              <span class="duel-champ-stat-pill">Partidas: <strong>${gamesB}</strong></span>
+              <span class="duel-champ-stat-pill">Winrate: <strong style="color:${wrB >= 50 ? 'var(--gold)' : 'var(--danger)'};">${wrB}%</strong> (${winsB}V - ${gamesB - winsB}D)</span>
+              <span class="duel-champ-stat-pill">Score OP: <strong>${scoreB}</strong></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      ${maxLen > 0 ? `
+        <div class="duel-top3-table-wrap">
+          <table class="duel-top3-table">
+            <thead>
+              <tr>
+                <th style="color:var(--cyan);">${esc(pA.name)} (Top 3 Campeones)</th>
+                <th>Enfrentamiento</th>
+                <th style="color:var(--gold);">${esc(pB.name)} (Top 3 Campeones)</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${top3RowsHtml}
+            </tbody>
+          </table>
+        </div>
+      ` : ''}
+    `;
+  }
+
+  // 5. Render Mejores Partidas Frente a Frente (Peak Performance)
+  const bestGamesSection = $('#duel-best-games');
+  if (bestGamesSection) {
+    const gamesA = pA.games || [];
+    const gamesB = pB.games || [];
+    const bestA = [...gamesA].sort((x, y) => (y.score ?? 0) - (x.score ?? 0) || (y.kills ?? 0) - (x.kills ?? 0))[0];
+    const bestB = [...gamesB].sort((x, y) => (y.score ?? 0) - (x.score ?? 0) || (y.kills ?? 0) - (x.kills ?? 0))[0];
+
+    const worstA = [...gamesA].sort((x, y) => (x.score ?? 10) - (y.score ?? 10) || (y.deaths ?? 0) - (x.deaths ?? 0))[0];
+    const worstB = [...gamesB].sort((x, y) => (x.score ?? 10) - (y.score ?? 10) || (y.deaths ?? 0) - (x.deaths ?? 0))[0];
+
+    bestGamesSection.innerHTML = `
+      <div class="duel-section-header">
+        <h3 class="duel-section-title">🌟 Duelo de Mejores Partidas (Peak Performance)</h3>
+        <p class="muted sub" style="margin:0;">El mejor juego registrado de cada jugador esta temporada. Haz clic en cualquiera para ver el 5v5 completo.</p>
+      </div>
+
+      <div class="duel-best-games-grid">
+        <!-- Best A -->
+        ${bestA ? `
+          <div class="duel-best-card side-a" onclick="window.openMatchModal('${esc(bestA.matchId)}')">
+            <div class="duel-best-tag">Mejor Partida · ${esc(pA.name)}</div>
+            <div class="duel-best-body">
+              <div class="duel-best-champ-wrap">
+                <img src="${champImg(resolveChampName(bestA.champion))}" alt="" onerror="this.src='logo.jpg'">
+              </div>
+              <div class="duel-best-info">
+                <div class="duel-best-info-head">
+                  <span class="feed-badge-result ${bestA.win ? 'win' : 'loss'}">${bestA.win ? 'VICTORIA' : 'DERROTA'}</span>
+                  <span class="px-score ${bestA.score >= 8 ? 'px-s-great' : 'px-s-good'}">Score ${bestA.score?.toFixed(1) ?? '—'}</span>
+                  ${bestA.mvp ? '<span class="feed-badge-surrender enemy">MVP</span>' : ''}
+                </div>
+                <div class="duel-best-kda">${bestA.kills} / ${bestA.deaths} / ${bestA.assists} <small style="color:var(--text-muted); font-weight:500;">(${(((bestA.kills + bestA.assists) / Math.max(1, bestA.deaths)).toFixed(2))} KDA)</small></div>
+                <div class="duel-best-sub">${resolveChampName(bestA.champion)} · ${bestA.minutes}m · Daño: ${kNum(bestA.damage || 0)} · ${formatMatchDate(bestA.endTs)}</div>
+              </div>
+            </div>
+          </div>
+        ` : '<div class="muted">Sin partidas registradas</div>'}
+
+        <!-- Best B -->
+        ${bestB ? `
+          <div class="duel-best-card side-b" onclick="window.openMatchModal('${esc(bestB.matchId)}')">
+            <div class="duel-best-tag" style="color:var(--gold);">Mejor Partida · ${esc(pB.name)}</div>
+            <div class="duel-best-body">
+              <div class="duel-best-champ-wrap">
+                <img src="${champImg(resolveChampName(bestB.champion))}" alt="" onerror="this.src='logo.jpg'">
+              </div>
+              <div class="duel-best-info">
+                <div class="duel-best-info-head">
+                  <span class="feed-badge-result ${bestB.win ? 'win' : 'loss'}">${bestB.win ? 'VICTORIA' : 'DERROTA'}</span>
+                  <span class="px-score ${bestB.score >= 8 ? 'px-s-great' : 'px-s-good'}">Score ${bestB.score?.toFixed(1) ?? '—'}</span>
+                  ${bestB.mvp ? '<span class="feed-badge-surrender enemy">MVP</span>' : ''}
+                </div>
+                <div class="duel-best-kda">${bestB.kills} / ${bestB.deaths} / ${bestB.assists} <small style="color:var(--text-muted); font-weight:500;">(${(((bestB.kills + bestB.assists) / Math.max(1, bestB.deaths)).toFixed(2))} KDA)</small></div>
+                <div class="duel-best-sub">${resolveChampName(bestB.champion)} · ${bestB.minutes}m · Daño: ${kNum(bestB.damage || 0)} · ${formatMatchDate(bestB.endTs)}</div>
+              </div>
+            </div>
+          </div>
+        ` : '<div class="muted">Sin partidas registradas</div>'}
+      </div>
+
+      ${worstA && worstB ? `
+        <div class="duel-infamy-wall">
+          <div class="duel-infamy-header">⚠️ El Muro de la Infamia (Cuando intentaron carrilear y trollearon)</div>
+          <div class="duel-infamy-grid">
+            <div class="duel-infamy-item">
+              <strong>${esc(pA.name)}:</strong> ${resolveChampName(worstA.champion)} con KDA <strong>${worstA.kills}/${worstA.deaths}/${worstA.assists}</strong> (Score: <strong>${worstA.score?.toFixed(1) ?? '—'}</strong>). <em>${worstA.deaths >= 7 ? 'Donó más oro a los rivales que una ONG.' : 'Un performance digno de amnesia voluntaria.'}</em>
+            </div>
+            <div class="duel-infamy-item">
+              <strong>${esc(pB.name)}:</strong> ${resolveChampName(worstB.champion)} con KDA <strong>${worstB.kills}/${worstB.deaths}/${worstB.assists}</strong> (Score: <strong>${worstB.score?.toFixed(1) ?? '—'}</strong>). <em>${worstB.deaths >= 7 ? 'El botón de revivir en fuente casi echa humo.' : 'El equipo todavía está buscando su impacto en el mapa.'}</em>
+            </div>
+          </div>
+        </div>
+      ` : ''}
+    `;
+  }
+
+  // 6. Render Tale of the Tape: 8 Enhanced Metrics
+  const avgDeathsA = pA.stats?.avgDeaths ?? 5;
+  const avgDeathsB = pB.stats?.avgDeaths ?? 5;
+  const dmgA = pA.games?.length ? Math.round(pA.games.reduce((acc, g) => acc + (g.damage || 0), 0) / pA.games.length) : 0;
+  const dmgB = pB.games?.length ? Math.round(pB.games.reduce((acc, g) => acc + (g.damage || 0), 0) / pB.games.length) : 0;
+  const csMinA = pA.games?.length ? (pA.games.reduce((acc, g) => acc + (g.cs || 0), 0) / Math.max(1, pA.games.reduce((acc, g) => acc + (g.minutes || 1), 0))).toFixed(1) : '—';
+  const csMinB = pB.games?.length ? (pB.games.reduce((acc, g) => acc + (g.cs || 0), 0) / Math.max(1, pB.games.reduce((acc, g) => acc + (g.minutes || 1), 0))).toFixed(1) : '—';
+  const visA = pA.games?.length ? Math.round(pA.games.reduce((acc, g) => acc + (g.vision || 0), 0) / pA.games.length) : 0;
+  const visB = pB.games?.length ? Math.round(pB.games.reduce((acc, g) => acc + (g.vision || 0), 0) / pB.games.length) : 0;
+
   const metrics = [
-    { label: t.metricScore, valA: pA.stats?.avgScore ?? 0, valB: pB.stats?.avgScore ?? 0, fmt: (v) => v.toFixed(1) },
-    { label: t.metricWinrate, valA: pA.stats?.winrate ?? 0, valB: pB.stats?.winrate ?? 0, fmt: (v) => `${v}%` },
-    { label: t.metricKda, valA: pA.stats?.kda ?? 0, valB: pB.stats?.kda ?? 0, fmt: (v) => v.toFixed(2) },
-    { label: t.metricGames, valA: pA.stats?.games ?? 0, valB: pB.stats?.games ?? 0, fmt: (v) => v },
-    { label: t.metricLp, valA: pA.lpDelta?.week ?? 0, valB: pB.lpDelta?.week ?? 0, fmt: (v) => signed(v) + ' LP' },
+    { label: 'Puntuación Promedio OP.GG', valA: pA.stats?.avgScore ?? 0, valB: pB.stats?.avgScore ?? 0, fmt: (v) => v.toFixed(1), higherIsBetter: true },
+    { label: 'Tasa de Victorias (% Winrate)', valA: pA.stats?.winrate ?? 0, valB: pB.stats?.winrate ?? 0, fmt: (v) => `${v}%`, higherIsBetter: true },
+    { label: 'Promedio KDA', valA: Number(pA.stats?.kda ?? 0), valB: Number(pB.stats?.kda ?? 0), fmt: (v) => v.toFixed(2), higherIsBetter: true },
+    { label: 'Muertes por Partida', valA: avgDeathsA, valB: avgDeathsB, fmt: (v) => v.toFixed(1), higherIsBetter: false },
+    { label: 'Daño Promedio a Campeones', valA: dmgA, valB: dmgB, fmt: (v) => kNum(v), higherIsBetter: true },
+    { label: 'Súbditos por Minuto (CS/min)', valA: Number(csMinA) || 0, valB: Number(csMinB) || 0, fmt: (v) => `${v}/m`, higherIsBetter: true },
+    { label: 'Puntuación de Visión', valA: visA, valB: visB, fmt: (v) => v, higherIsBetter: true },
+    { label: 'Distinciones MVP de Partida', valA: pA.stats?.mvp ?? 0, valB: pB.stats?.mvp ?? 0, fmt: (v) => `${v} MVP`, higherIsBetter: true },
   ];
 
   const barsHtml = metrics.map((m) => {
+    const isAdvA = m.higherIsBetter ? m.valA > m.valB : m.valA < m.valB;
+    const isAdvB = m.higherIsBetter ? m.valB > m.valA : m.valB < m.valA;
+
     const total = Math.max(0.01, Math.abs(m.valA) + Math.abs(m.valB));
     const pctA = Math.round((Math.max(0, m.valA) / total) * 100);
     const pctB = 100 - pctA;
+
     return `
       <div class="duel-bar-row">
         <div class="duel-bar-header">
-          <span style="color:var(--cyan)">${m.fmt(m.valA)}</span>
-          <span style="color:var(--text-muted)">${m.label}</span>
-          <span style="color:var(--gold)">${m.fmt(m.valB)}</span>
+          <span class="val-a">
+            ${isAdvA ? '<span class="duel-win-pill a">MEJOR</span>' : ''}
+            <strong>${m.fmt(m.valA)}</strong>
+          </span>
+          <span style="color:var(--text-muted); font-size:12.5px;">${m.label}</span>
+          <span class="val-b">
+            <strong>${m.fmt(m.valB)}</strong>
+            ${isAdvB ? '<span class="duel-win-pill b">MEJOR</span>' : ''}
+          </span>
         </div>
         <div class="duel-bar-track">
           <div class="duel-bar-left" style="width:${pctA}%"></div>
@@ -1661,9 +2238,10 @@ function updateDuelComparison() {
     `;
   }).join('');
 
-  $('#duel-comparison-bars').innerHTML = barsHtml;
+  const barsContainer = $('#duel-comparison-bars');
+  if (barsContainer) barsContainer.innerHTML = barsHtml;
 
-  // Sinergia y Cara a Cara Directo
+  // 7. Sinergia y Cara a Cara Directo en Partidas del Grupo
   const h2hContainer = $('#duel-head-to-head');
   if (h2hContainer) {
     const sharedGames = (board?.groupGames ?? []).filter((g) =>
@@ -1673,116 +2251,1153 @@ function updateDuelComparison() {
     const winsShared = sharedGames.filter((g) => g.win).length;
     const wrShared = totalShared > 0 ? Math.round((winsShared * 100) / totalShared) : 0;
 
+    let higherA = 0;
+    let higherB = 0;
+    let mvpA = 0;
+    let mvpB = 0;
+    let mochilaA = 0;
+    let mochilaB = 0;
+
+    for (const g of sharedGames) {
+      const plA = g.players?.find((p) => p.puuid === puuidA);
+      const plB = g.players?.find((p) => p.puuid === puuidB);
+      if ((plA?.score ?? 0) > (plB?.score ?? 0)) higherA++;
+      else if ((plB?.score ?? 0) > (plA?.score ?? 0)) higherB++;
+
+      if (plA?.mvp) mvpA++;
+      if (plB?.mvp) mvpB++;
+      if (plA?.mochila) mochilaA++;
+      if (plB?.mochila) mochilaB++;
+    }
+
+    const recentSharedGames = sharedGames.slice(0, 3);
+    const recentSharedHtml = recentSharedGames.map((g) => {
+      const plA = g.players?.find((p) => p.puuid === puuidA);
+      const plB = g.players?.find((p) => p.puuid === puuidB);
+      return `
+        <div class="duel-shared-row" onclick="window.openMatchModal('${esc(g.matchId)}')">
+          <div class="duel-shared-row-left">
+            <span class="feed-badge-result ${g.win ? 'win' : 'loss'}">${g.win ? 'VICTORIA' : 'DERROTA'}</span>
+            <div class="duel-shared-user">
+              <img src="${champImg(resolveChampName(plA?.champion))}" alt="" onerror="this.src='logo.jpg'">
+              <span><strong>${esc(pA.name)}</strong> (${plA?.kills ?? 0}/${plA?.deaths ?? 0}/${plA?.assists ?? 0})</span>
+            </div>
+            <span class="duel-shared-vs-tag">DÚO</span>
+            <div class="duel-shared-user">
+              <img src="${champImg(resolveChampName(plB?.champion))}" alt="" onerror="this.src='logo.jpg'">
+              <span><strong>${esc(pB.name)}</strong> (${plB?.kills ?? 0}/${plB?.deaths ?? 0}/${plB?.assists ?? 0})</span>
+            </div>
+          </div>
+          <span class="duel-shared-view-btn">Ver 5v5 completo →</span>
+        </div>
+      `;
+    }).join('');
+
     h2hContainer.innerHTML = `
       <div class="duel-h2h-card">
         <div class="duel-h2h-header">
-          <span>🤝 Sinergia y Cara a Cara en la Grieta</span>
+          <span>🤝 Sinergia y Guerra Civil: Partidas Juntos en el Grupo</span>
         </div>
         <div class="duel-h2h-banner">
           <div>
             <div class="duel-h2h-pill">
               ${totalShared > 0
-                ? `🛡️ <strong>${esc(pA.name)}</strong> y <strong>${esc(pB.name)}</strong> han jugado <strong>${totalShared}</strong> partidas juntos como aliados.`
+                ? `🛡️ <strong>${esc(pA.name)}</strong> y <strong>${esc(pB.name)}</strong> han jugado <strong>${totalShared}</strong> partidas juntos en el equipo del grupo.`
                 : `🛡️ Aún no registran partidas juntos en el mismo equipo.`}
             </div>
-            <div class="muted sub" style="margin-top:4px;">
-              ⚔️ ¡100% Aliados y Hermanos de Armas! Cero partidas como rivales.
-            </div>
+            ${totalShared > 0 ? `
+              <div class="muted sub" style="margin-top:6px; line-height:1.5;">
+                ⚔️ <strong>¿Quién carrió a quién?</strong> ${esc(pA.name)} sacó mayor score en <strong>${higherA}</strong> partidas, mientras que ${esc(pB.name)} superó en <strong>${higherB}</strong> partidas.<br>
+                👑 <strong>MVPs en común:</strong> ${esc(pA.name)} (${mvpA}) · ${esc(pB.name)} (${mvpB}) | 🎒 <strong>Mochilas:</strong> ${esc(pA.name)} (${mochilaA}) · ${esc(pB.name)} (${mochilaB})
+              </div>
+            ` : ''}
           </div>
           ${totalShared > 0 ? `
             <div style="text-align:right;">
               <span class="duel-h2h-wr">${wrShared}%</span>
-              <div class="muted sub">${t.duoWr}</div>
+              <div class="muted sub">Winrate como Dúo</div>
             </div>
           ` : ''}
         </div>
+        ${totalShared > 0 ? `
+          <div style="margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.06);">
+            <div style="font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px;">Últimas partidas compartidas:</div>
+            ${recentSharedHtml}
+          </div>
+        ` : ''}
       </div>
     `;
   }
 }
 
-$('#duel-select-a')?.addEventListener('change', updateDuelComparison);
-$('#duel-select-b')?.addEventListener('change', updateDuelComparison);
+$('#duel-select-a')?.addEventListener('change', () => updateDuelComparison(false));
+$('#duel-select-b')?.addEventListener('change', () => updateDuelComparison(false));
 
 // ---------- Synergy & Duos ----------
+let currentSynergyFilter = 'all';
+let currentSynergyQueueFilter = 'all';
+let currentSynergyPlayerFilter = 'all';
+let currentSynergyDuoFilter = null;
+let currentSynergyPage = 1;
+const SYNERGY_MATCHES_PER_PAGE = 10;
+
+const DUO_PROFILES = {
+  'ChubbyKop+Yúta Okkotsu': {
+    title: 'El Matrimonio Tóxico',
+    subtitle: 'La Pareja Más Veterana del Servidor',
+    quote: '47 partidas aguantándose el tilt ajeno por puro compromiso legal. Tienen más reclamos maritales que victorias, pero el divorcio competitivo les saldría demasiado caro.',
+  },
+  'Panda+Yúta Okkotsu': {
+    title: 'La Grúa de Carga Pesada',
+    subtitle: 'Sinergia de Nivel Competitivo',
+    quote: 'Panda pone las manos mecánicas y Yúta aprieta los dientes hasta reventar el nexo rival. Cuando los dos están conectados, el lobby tiembla antes del minuto 20.',
+  },
+  'ChubbyKop+Panda': {
+    title: 'Doble Filo Psiquiátrico',
+    subtitle: 'Puro Caos y Agresividad',
+    quote: '65% de efectividad conseguido a base de puro desorden. O salen 15/0 entre ambos destrozando la Grieta o se insultan por llamada hasta que alguien tira surrender.',
+  },
+  'ChubbyKop+Ryômen Sukuna': {
+    title: 'La Ruleta Rusa',
+    subtitle: '50% Cara, 50% Cruz',
+    quote: '50% de probabilidad de ganar, 50% de perder, y 100% de certeza de que el resto del equipo escribirá "report jungle and adc" en el chat general al minuto 15.',
+  },
+  'Ryômen Sukuna+Yúta Okkotsu': {
+    title: 'Pacto de Silencio',
+    subtitle: 'Convivencia Pacífica sin Discord',
+    quote: 'Juegan como dos extraños en un ascensor averiado: cero comunicación, 50% de efectividad y un constante terror a ver quién es el primero en regalar el barón.',
+  },
+  'Panda+Satoru Gojo': {
+    title: 'Misión Humanitaria',
+    subtitle: 'El Milagro de Carrear al Pasajero',
+    quote: 'Panda cargando a Gojo con una paciencia digna de un monje tibetano. Gojo presiona la R con Malzahar, sonríe a la cámara y reclama sus 20 LP como si hubiera trabajado.',
+  },
+  'ChubbyKop+Satoru Gojo': {
+    title: 'Accidente Afortunado',
+    subtitle: 'Efectividad Inexplicable',
+    quote: 'Nadie en la faz del servidor, incluyendo a los dos implicados, comprende cómo ganan el 67% de sus juegos. La suerte divina compensa la falta de mecánicas.',
+  },
+  'Ryômen Sukuna+Satoru Gojo': {
+    title: 'El Circo Maldito',
+    subtitle: 'Especialistas en Desorientar al Rival',
+    quote: 'El caos biomecánico que generan es tan bizarro que desorienta al rival por completo. Ganar 75% trolleando en la Grieta es su verdadera obra de arte.',
+  },
+  'Panda+Ryômen Sukuna': {
+    title: 'La Furia Oculta',
+    subtitle: 'El Dúo Más Letal por Ratio',
+    quote: '83% de winrate demoledor. Panda ordena las jugadas y Sukuna entra a morder a lo que se mueva. Juegan pocas partidas juntos para no aburrirse de ganar.',
+  },
+  'Satoru Gojo+Yúta Okkotsu': {
+    title: 'Paseo en Primera Clase',
+    subtitle: 'El Chofer y el Turista',
+    quote: 'Yúta maneja el autobús a 120 km/h esquivando el tráfico y Gojo va en el asiento trasero disfrutando el paisaje con un 83% de efectividad sin despeinarse.',
+  },
+};
+
+function getDuoProfile(n1, n2) {
+  const k1 = `${n1}+${n2}`;
+  const k2 = `${n2}+${n1}`;
+  return DUO_PROFILES[k1] || DUO_PROFILES[k2] || {
+    title: 'Dúo Dinámico',
+    subtitle: 'Química en Desarrollo',
+    quote: 'Comparten la Grieta con la firme esperanza de no hacerse descender de división el uno al otro.',
+  };
+}
+
+const PLAYER_SYNERGY_PROFILES = {
+  'Panda': {
+    role: 'El Bombero Oficial',
+    quote: 'Llega al lobby a apagar los incendios que provocan sus amigos. Cuando Panda entra al equipo, todos respiran aliviados sabiendo que hay al menos un adulto responsable con manos en la partida.',
+  },
+  'Satoru Gojo': {
+    role: 'El Pasajero VIP con Suerte',
+    quote: 'Tiene 64% de winrate grupal a pesar de acumular 5 mochilas en 11 juegos. Nadie sabe cómo lo hace, pero su sola presencia en el equipo atrae victorias por combustión espontánea del rival.',
+  },
+  'Yúta Okkotsu': {
+    role: 'La Mula de Carga Hextech',
+    quote: '26 Carries en 54 partidas juntos. Su columna vertebral está completamente pulverizada de sostener al resto del grupo. Si Yúta tiltea un segundo, el equipo colapsa como castillo de naipes.',
+  },
+  'ChubbyKop': {
+    role: 'La Montaña Rusa Emocional',
+    quote: '16 Carries y 24 Mochilas en 51 partidas. Es un volado absoluto de casino: en una partida te da una clase magistral de posicionamiento y a la siguiente donará su cuerpo a la ciencia.',
+  },
+  'Ryômen Sukuna': {
+    role: 'El Espectador Neutro',
+    quote: '50% exacto de victorias. Neutralidad zen perfecta: el juego fluye a su alrededor sin alterar las leyes del universo. No estorba mucho, pero tampoco esperes que te salve la vida.',
+  },
+  'Toji Fushiguro': {
+    role: 'El Lobo Solitario',
+    quote: '0 partidas en grupo registradas. Prefiere inmolarse en SoloQ antes que escuchar los gritos histéricos en la llamada de Discord. La verdadera paz mental de un asesino a sueldo.',
+  },
+};
+
 function renderSynergy() {
   const s = board?.groupSummary;
   if (!s) return;
 
-  const playersList = $('#synergy-players-list');
-  if (playersList) {
-    playersList.innerHTML = (s.players ?? []).map((p) => `
-      <div class="duo-row">
-        <div>
-          <strong>${esc(p.name)}</strong>
-          <div class="muted sub">${p.games} partidas juntos · 👑 ${p.carries} Carry · 🎒 ${p.last} Mochila</div>
-        </div>
-        <div class="duo-record ${p.winrate >= 50 ? 'winning' : 'losing'}">${p.winrate}% WR</div>
+  const allGames = board?.groupGames ?? [];
+  const allPlayers = board?.players ?? [];
+
+  // 1. KPI Totals Banner
+  const totalsBanner = $('#synergy-totals-banner');
+  if (totalsBanner) {
+    const totalGames = s.games || 0;
+    const totalWins = s.wins || 0;
+    const groupWr = totalGames > 0 ? Math.round((totalWins / totalGames) * 100) : 0;
+    
+    // Top Duo by WR (min 6 games)
+    const validDuos = (s.duos ?? []).filter((d) => d.games >= 6);
+    const topDuo = [...validDuos].sort((a, b) => b.winrate - a.winrate || b.games - a.games)[0] || s.duos?.[0];
+    
+    // Most Played Duo
+    const mostPlayedDuo = [...(s.duos ?? [])].sort((a, b) => b.games - a.games)[0];
+    
+    // Top Carry in group
+    const topCarry = [...(s.players ?? [])].sort((a, b) => b.carries - a.carries)[0];
+
+    totalsBanner.innerHTML = `
+      <div class="synergy-stat-box">
+        <span class="synergy-stat-num">${totalGames}</span>
+        <span class="synergy-stat-label">Partidas en Grupo</span>
       </div>
-    `).join('') || '<div class="muted">No hay partidas registradas juntos aún.</div>';
+      <div class="synergy-stat-box">
+        <span class="synergy-stat-num" style="color:var(--cyan);">${totalWins} <span style="font-size:16px;color:var(--text-secondary);">(${groupWr}%)</span></span>
+        <span class="synergy-stat-label">Victorias Grupales</span>
+      </div>
+      <div class="synergy-stat-box">
+        <span class="synergy-stat-num" style="color:var(--gold-bright); font-size:19px;">${topDuo ? esc(topDuo.names.join(' + ')) : '—'}</span>
+        <span class="synergy-stat-label">Dúo de Oro · ${topDuo ? `${topDuo.winrate}% WR` : ''}</span>
+      </div>
+      <div class="synergy-stat-box">
+        <span class="synergy-stat-num" style="color:var(--danger); font-size:19px;">${mostPlayedDuo ? esc(mostPlayedDuo.names.join(' + ')) : '—'}</span>
+        <span class="synergy-stat-label">Dúo Más Frecuente · ${mostPlayedDuo ? `${mostPlayedDuo.games} games` : ''}</span>
+      </div>
+      <div class="synergy-stat-box">
+        <span class="synergy-stat-num" style="color:var(--gold); font-size:19px;">${topCarry ? esc(topCarry.name) : '—'}</span>
+        <span class="synergy-stat-label">Máximo Carreador · ${topCarry ? `${topCarry.carries} Carries` : ''}</span>
+      </div>
+    `;
   }
 
+  // 2. Duos Grid
   const duosList = $('#synergy-duos-list');
   if (duosList) {
-    duosList.innerHTML = (s.duos ?? []).slice(0, 6).map((d) => `
-      <div class="duo-row">
-        <div class="duo-names">${d.names.map(esc).join(' + ')}</div>
-        <div>
-          <span class="muted sub">${d.games} games</span> ·
-          <strong class="duo-record ${d.winrate >= 50 ? 'winning' : 'losing'}">${d.wins}W ${d.games - d.wins}L (${d.winrate}%)</strong>
-        </div>
-      </div>
-    `).join('') || '<div class="muted">No hay duos suficientes aún.</div>';
-  }
+    const duos = s.duos ?? [];
+    duosList.innerHTML = duos.map((d) => {
+      const [n1, n2] = d.names;
+      const p1 = allPlayers.find((p) => p.name === n1);
+      const p2 = allPlayers.find((p) => p.name === n2);
+      const prof = getDuoProfile(n1, n2);
 
-  const gamesList = $('#synergy-games-list');
-  if (gamesList) {
-    const games = (board?.groupGames ?? []).slice(0, 10);
-    gamesList.innerHTML = games.map((g) => {
-      const win = g.win;
+      // Find top champs together
+      const sharedGames = allGames.filter((g) => {
+        const has1 = g.players.some((p) => p.name === n1);
+        const has2 = g.players.some((p) => p.name === n2);
+        return has1 && has2;
+      });
+
+      const champs1 = {};
+      const champs2 = {};
+      let totalScore = 0;
+      sharedGames.forEach((g) => {
+        const pl1 = g.players.find((p) => p.name === n1);
+        const pl2 = g.players.find((p) => p.name === n2);
+        if (pl1) {
+          champs1[pl1.champion] = (champs1[pl1.champion] || 0) + 1;
+          totalScore += pl1.score;
+        }
+        if (pl2) {
+          champs2[pl2.champion] = (champs2[pl2.champion] || 0) + 1;
+          totalScore += pl2.score;
+        }
+      });
+
+      const topC1 = Object.entries(champs1).sort((a, b) => b[1] - a[1])[0]?.[0] || '';
+      const topC2 = Object.entries(champs2).sort((a, b) => b[1] - a[1])[0]?.[0] || '';
+      const avgScore = sharedGames.length > 0 ? (totalScore / (sharedGames.length * 2)).toFixed(1) : '—';
+
+      const wrClass = d.winrate >= 65 ? 'high' : d.winrate >= 50 ? 'mid' : 'low';
+      const isHighWr = d.winrate >= 65;
+
       return `
-        <div class="profile-match-card ${win ? 'win' : 'loss'}" data-match-id="${esc(g.matchId)}">
-          <div style="font-weight:700; color:${win ? 'var(--cyan)' : 'var(--danger)'}; min-width:60px;">${win ? 'VICTORIA' : 'DERROTA'}</div>
-          <div class="muted" style="min-width:90px;">${g.queue} · ${g.minutes}m</div>
-          <div style="flex:1;">
-            ${g.players.map((p) => `<span style="margin-right:10px; font-weight:600;">${esc(p.name)} (${esc(p.champion)}) Score: <strong style="color:var(--gold)">${p.score.toFixed(1)}</strong></span>`).join('')}
+        <div class="synergy-duo-card ${isHighWr ? 'high-wr' : ''}" data-duo="${esc(n1)}+${esc(n2)}">
+          <div>
+            <div class="duo-card-header">
+              <div class="duo-card-avatars">
+                <img class="duo-avatar tier-${p1?.soloTier ?? 'unranked'}" src="${p1 ? iconImg(p1.profileIconId) : 'logo.jpg'}" alt="${esc(n1)}" onerror="this.src='logo.jpg'">
+                <img class="duo-avatar tier-${p2?.soloTier ?? 'unranked'}" src="${p2 ? iconImg(p2.profileIconId) : 'logo.jpg'}" alt="${esc(n2)}" onerror="this.src='logo.jpg'">
+              </div>
+              <div class="duo-header-info">
+                <div class="duo-names-title">${esc(n1)} + ${esc(n2)}</div>
+                <span class="duo-badge-tag">${esc(prof.title)}</span>
+              </div>
+            </div>
+
+            <div class="duo-card-stats">
+              <div class="duo-stat-row">
+                <span class="muted sub" style="font-weight:600;">Efectividad Grupal</span>
+                <span class="duo-winrate-pill ${wrClass}">${d.winrate}% WR</span>
+              </div>
+              <div class="duo-bar-track">
+                <div class="duo-bar-fill ${wrClass}" style="width: ${d.winrate}%"></div>
+              </div>
+              <div class="duo-stat-row" style="font-size:12px;">
+                <span class="muted">${d.games} partidas (${d.wins}W - ${d.games - d.wins}L)</span>
+                <span style="color:var(--gold); font-weight:700;">Score prom: ${avgScore}</span>
+              </div>
+              ${topC1 && topC2 ? `
+                <div class="duo-top-champs">
+                  <span class="muted" style="font-size:11px;">Combo habitual:</span>
+                  <img class="duo-champ-img" src="${champImg(topC1)}" alt="${esc(topC1)}" title="${esc(topC1)}">
+                  <span style="font-size:11px; font-weight:600;">${esc(topC1)}</span>
+                  <span class="muted">+</span>
+                  <img class="duo-champ-img" src="${champImg(topC2)}" alt="${esc(topC2)}" title="${esc(topC2)}">
+                  <span style="font-size:11px; font-weight:600;">${esc(topC2)}</span>
+                </div>
+              ` : ''}
+            </div>
+
+            <div class="duo-card-quote">
+              "${esc(prof.quote)}"
+            </div>
           </div>
-          <span class="muted sub" style="font-size:11px;">🔍 Ver Partida</span>
+
+          <button class="duo-card-action-btn" data-duo-action="${esc(n1)}|${esc(n2)}">
+            ⚔️ Ver Partidas de este Dúo (${d.games})
+          </button>
         </div>
       `;
-    }).join('') || '<div class="muted">Aún no se han detectado partidas donde 2+ amigos jueguen en el mismo equipo.</div>';
+    }).join('') || '<div class="muted">No hay duos suficientes aún.</div>';
 
-    gamesList.querySelectorAll('.profile-match-card').forEach((card) => {
-      card.addEventListener('click', () => {
-        openMatchModal(card.dataset.matchId);
+    // Click handler for viewing duo matches
+    duosList.querySelectorAll('[data-duo-action]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const [n1, n2] = btn.dataset.duoAction.split('|');
+        currentSynergyDuoFilter = [n1, n2];
+        currentSynergyPlayerFilter = 'all';
+        currentSynergyQueueFilter = 'all';
+        currentSynergyPage = 1;
+        
+        // Reset queue filter buttons
+        const sFilterContainer = $('#synergy-matches-queue-filter');
+        if (sFilterContainer) {
+          sFilterContainer.querySelectorAll('button').forEach((b) => {
+            b.classList.toggle('active', b.dataset.sfilter === 'all');
+          });
+        }
+        const filterSelect = $('#synergy-player-filter');
+        if (filterSelect) filterSelect.value = 'all';
+
+        renderSynergyGames();
+        
+        // Scroll to games section smoothly
+        const gamesSec = $('#synergy-games-section');
+        if (gamesSec) {
+          gamesSec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+    });
+  }
+
+  // 3. Players Grid (Individual Impact)
+  const playersList = $('#synergy-players-list');
+  if (playersList) {
+    const groupPlayersMap = new Map((s.players ?? []).map((p) => [p.name, p]));
+    
+    // Sort players: group players first by games, then non-group players
+    const displayPlayers = [...allPlayers].sort((a, b) => {
+      const ga = groupPlayersMap.get(a.name)?.games ?? 0;
+      const gb = groupPlayersMap.get(b.name)?.games ?? 0;
+      return gb - ga;
+    });
+
+    playersList.innerHTML = displayPlayers.map((p) => {
+      const gp = groupPlayersMap.get(p.name);
+      const prof = PLAYER_SYNERGY_PROFILES[p.name] || {
+        role: 'Invocador de la Grieta',
+        quote: 'Aporta su granito de arena al ambiente grupal, para bien o para mal.',
+      };
+
+      const games = gp?.games ?? 0;
+      const wins = gp?.wins ?? 0;
+      const winrate = gp?.winrate ?? 0;
+      const carries = gp?.carries ?? 0;
+      const mochilas = gp?.last ?? 0;
+      const score = gp?.score ?? 0;
+      const totalBadges = carries + mochilas;
+      const carryRatio = totalBadges > 0 ? Math.round((carries / totalBadges) * 100) : 50;
+
+      return `
+        <div class="synergy-player-card">
+          <div>
+            <div class="synergy-player-header">
+              <img class="synergy-player-avatar tier-${p.soloTier ?? 'unranked'}" src="${iconImg(p.profileIconId)}" alt="${esc(p.name)}" onerror="this.src='logo.jpg'">
+              <div>
+                <div class="synergy-player-name">${esc(p.name)}</div>
+                <div class="synergy-player-role">🎭 ${esc(prof.role)}</div>
+              </div>
+            </div>
+
+            <div class="synergy-player-stats-row">
+              <div>
+                <div class="synergy-pstat-val" style="color:var(--text-primary);">${games}</div>
+                <div class="synergy-pstat-lbl">Partidas</div>
+              </div>
+              <div>
+                <div class="synergy-pstat-val" style="color:${winrate >= 50 ? 'var(--cyan)' : 'var(--danger)'};">${winrate}%</div>
+                <div class="synergy-pstat-lbl">WR Grupo</div>
+              </div>
+              <div>
+                <div class="synergy-pstat-val" style="color:var(--gold-bright);">${score > 0 ? score.toFixed(1) : '—'}</div>
+                <div class="synergy-pstat-lbl">Score Prom</div>
+              </div>
+            </div>
+
+            ${games > 0 ? `
+              <div class="synergy-carries-ratio-wrap">
+                <div class="synergy-carries-labels">
+                  <span style="color:var(--gold);">👑 ${carries} Carries</span>
+                  <span style="color:var(--danger);">🎒 ${mochilas} Mochilas</span>
+                </div>
+                <div class="synergy-carries-bar-track" title="Ratio: ${carryRatio}% Carries vs ${100 - carryRatio}% Mochilas">
+                  <div class="synergy-carries-bar-fill" style="width: ${carryRatio}%"></div>
+                </div>
+              </div>
+            ` : ''}
+
+            <div class="synergy-player-quote">
+              "${esc(prof.quote)}"
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // 4. Setup Queue Filter Buttons (Identical to Inicio)
+  const sFilterContainer = $('#synergy-matches-queue-filter');
+  if (sFilterContainer && !sFilterContainer._bound) {
+    sFilterContainer._bound = true;
+    sFilterContainer.querySelectorAll('button').forEach((btn) => {
+      btn.onclick = () => {
+        sFilterContainer.querySelectorAll('button').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentSynergyQueueFilter = btn.dataset.sfilter;
+        currentSynergyDuoFilter = null;
+        currentSynergyPage = 1;
+        renderSynergyGames();
+      };
+    });
+  }
+
+  // 5. Setup Player Filter Dropdown
+  const filterSelect = $('#synergy-player-filter');
+  if (filterSelect && filterSelect.options.length <= 1) {
+    const existing = new Set();
+    allPlayers.forEach((p) => {
+      if (!existing.has(p.name)) {
+        existing.add(p.name);
+        const opt = document.createElement('option');
+        opt.value = p.name;
+        opt.textContent = p.name;
+        filterSelect.appendChild(opt);
+      }
+    });
+
+    filterSelect.addEventListener('change', () => {
+      currentSynergyPlayerFilter = filterSelect.value;
+      currentSynergyDuoFilter = null;
+      currentSynergyPage = 1;
+      renderSynergyGames();
+    });
+  }
+
+  // 6. Render Group Games List
+  renderSynergyGames();
+
+  // 7. Bind Submenu Filter Pills (without icons)
+  const filterBar = $('#synergy-filter-bar');
+  if (filterBar) {
+    const pills = filterBar.querySelectorAll('.synergy-filter-pill');
+    pills.forEach((pill) => {
+      pill.addEventListener('click', () => {
+        pills.forEach((p) => p.classList.remove('active'));
+        pill.classList.add('active');
+        const filter = pill.dataset.filter;
+        currentSynergyFilter = filter;
+
+        const duosSec = $('#synergy-duos-section');
+        const playersSec = $('#synergy-players-section');
+        const gamesSec = $('#synergy-games-section');
+
+        if (filter === 'all') {
+          if (duosSec) duosSec.style.display = 'block';
+          if (playersSec) playersSec.style.display = 'block';
+          if (gamesSec) gamesSec.style.display = 'block';
+        } else if (filter === 'duos') {
+          if (duosSec) duosSec.style.display = 'block';
+          if (playersSec) playersSec.style.display = 'none';
+          if (gamesSec) gamesSec.style.display = 'none';
+        } else if (filter === 'players') {
+          if (duosSec) duosSec.style.display = 'none';
+          if (playersSec) playersSec.style.display = 'block';
+          if (gamesSec) gamesSec.style.display = 'none';
+        } else if (filter === 'games') {
+          if (duosSec) duosSec.style.display = 'none';
+          if (playersSec) playersSec.style.display = 'none';
+          if (gamesSec) gamesSec.style.display = 'block';
+        }
       });
     });
   }
 }
 
-// ---------- Apodos & Roasts ----------
-function renderApodos() {
-  // Full roasts (worst game of the month) come from profile-plus.js.
-  if (plus) return plus.renderRoasts();
-  const container = $('#apodos-grid');
-  if (!container) return;
-  const ps = (board?.players ?? []).filter((p) => p.nickname);
-  if (!ps.length) {
-    container.innerHTML = '<div class="muted">No hay apodos calculados todavía. Realiza un refresco.</div>';
+function renderSynergyGames() {
+  const feed = $('#synergy-games-list');
+  if (!feed) return;
+
+  const allGames = board?.groupGames ?? [];
+  const allPlayersMap = new Map((board?.players ?? []).map((p) => [p.name, p]));
+  let filtered = allGames;
+
+  if (currentSynergyDuoFilter && currentSynergyDuoFilter.length === 2) {
+    const [n1, n2] = currentSynergyDuoFilter;
+    filtered = filtered.filter((g) => {
+      const has1 = g.players.some((p) => p.name === n1);
+      const has2 = g.players.some((p) => p.name === n2);
+      return has1 && has2;
+    });
+  } else if (currentSynergyPlayerFilter !== 'all') {
+    filtered = filtered.filter((g) => g.players.some((p) => p.name === currentSynergyPlayerFilter));
+  }
+
+  if (currentSynergyQueueFilter === 'solo') {
+    filtered = filtered.filter((g) => g.queueId === 420);
+  } else if (currentSynergyQueueFilter === 'flex') {
+    filtered = filtered.filter((g) => g.queueId === 440);
+  } else if (currentSynergyQueueFilter === 'win') {
+    filtered = filtered.filter((g) => g.win);
+  } else if (currentSynergyQueueFilter === 'loss') {
+    filtered = filtered.filter((g) => !g.win);
+  } else if (currentSynergyQueueFilter === 'squad') {
+    filtered = filtered.filter((g) => g.players.length >= 5);
+  }
+
+  const totalMatches = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(totalMatches / SYNERGY_MATCHES_PER_PAGE));
+  if (currentSynergyPage > totalPages) currentSynergyPage = totalPages;
+  if (currentSynergyPage < 1) currentSynergyPage = 1;
+
+  const startIdx = (currentSynergyPage - 1) * SYNERGY_MATCHES_PER_PAGE;
+  const endIdx = startIdx + SYNERGY_MATCHES_PER_PAGE;
+  const pagedMatches = filtered.slice(startIdx, endIdx);
+
+  if (!pagedMatches.length) {
+    feed.innerHTML = `
+      <div class="empty-state" style="padding:40px 20px; text-align:center;">
+        <span class="empty-icon" style="font-size:36px; display:block; margin-bottom:10px;">👥</span>
+        <h4 style="margin:0 0 6px; font-family:var(--font-heading); color:var(--text-primary);">Sin partidas en grupo</h4>
+        <p class="muted sub" style="margin:0;">No se encontraron partidas para el filtro seleccionado.</p>
+      </div>
+    `;
+    renderSynergyPagination(0, 0, 0, 0);
     return;
   }
-  container.innerHTML = ps.map((p) => `
-    <div class="stat-card" style="flex-direction:column; align-items:flex-start; gap:8px;">
-      <div style="display:flex; align-items:center; gap:8px;">
-        <span style="font-size:24px;">${p.nickname.emoji}</span>
-        <div>
-          <strong style="font-size:15px; color:var(--text-primary);">${esc(p.name)}</strong>
-          <div style="color:var(--gold); font-weight:700; font-size:13px;">"${esc(p.nickname.title)}"</div>
+
+  feed.innerHTML = pagedMatches.map((m) => {
+    const isRemake = Boolean(m.isRemake || (m.minutes && m.minutes < 5));
+    const isSurrender = Boolean(!isRemake && (m.isSurrender || (m.minutes && m.minutes >= 5 && m.minutes <= 21)));
+    const isWin = m.win;
+    const qName = m.queueId === 420 ? 'Solo/Duo' : m.queueId === 440 ? 'Ranked Flex' : (m.queue || 'Ranked');
+    const hasMultipleFriends = m.players.length > 1;
+    const squadTag = m.players.length >= 5 ? '👑 Squad 5v5 Completo' : (hasMultipleFriends ? `${m.players.length} Amigos juntos` : '');
+
+    return `
+      <article class="overview-match-card ${isRemake ? 'remake' : isWin ? 'win' : 'loss'}" data-match-id="${esc(m.matchId)}">
+        <div class="overview-match-header">
+          <div class="feed-header-left">
+            <span class="feed-badge-result ${isRemake ? 'remake' : isWin ? 'win' : 'loss'}">
+              ${isRemake ? 'REMAKE' : isWin ? 'VICTORIA' : 'DERROTA'}
+            </span>
+            ${isSurrender && !isRemake ? `
+              <span class="feed-badge-surrender ${isWin ? 'enemy' : 'team'}" title="${isWin ? 'Victoria por rendición del rival' : 'Derrota por rendición'}">
+                Surrender
+              </span>
+            ` : ''}
+            <span class="feed-badge-queue">${qName}</span>
+            <span class="feed-badge-time">${m.minutes}m</span>
+            <span class="feed-badge-date">${formatMatchDate(m.endTs)}</span>
+            ${squadTag ? `<span class="feed-badge-duo">${esc(squadTag)}</span>` : ''}
+          </div>
+          <div class="feed-header-right">
+            <span class="feed-btn-view-match">Ver 5v5 completo →</span>
+          </div>
+        </div>
+
+        <div class="overview-match-participants">
+          ${m.players.map((f) => {
+            const pObj = allPlayersMap.get(f.name);
+            const playerGame = pObj?.games?.find((gm) => gm.matchId === m.matchId);
+            const champName = resolveChampName(f.champion);
+            const kdaRatio = ((f.kills + f.assists) / Math.max(1, f.deaths)).toFixed(2);
+            const kpPct = Math.round((f.m?.kp || 0) * 100);
+            const dmgSharePct = Math.round((f.m?.damageShare || 0) * 100);
+            const cs = playerGame && typeof playerGame.cs === 'number' ? playerGame.cs : Math.round((f.m?.csPerMin || 0) * m.minutes);
+            const csPerMin = (cs / Math.max(1, m.minutes)).toFixed(1);
+            const opp = playerGame?.opp;
+            const dmgVal = f.m?.damage || 0;
+            const goldVal = f.m?.gold || 0;
+            const visionVal = f.m?.vision || 0;
+
+            return `
+              <div class="overview-participant-row">
+                <!-- Identity -->
+                <div class="overview-p-left">
+                  <div class="overview-champ-wrap">
+                    <img class="overview-champ-img" src="${champImg(champName)}" alt="${esc(champName)}" onerror="this.src='logo.jpg'">
+                    <span class="overview-role-badge">${ROLE[f.position] ?? f.position ?? 'MID'}</span>
+                  </div>
+                  <div class="overview-identity-wrap">
+                    <div class="overview-player-name">
+                      <strong>${esc(f.name)}</strong>
+                    </div>
+                    <div class="overview-champ-line">
+                      <span class="overview-champ-name">${esc(champName)}</span>
+                      ${f.mvp ? `<span class="overview-honor-tag mvp" title="MVP de la Partida">MVP</span>` : ''}
+                      ${f.ace ? `<span class="overview-honor-tag ace" title="ACE de la Partida">ACE</span>` : ''}
+                      ${f.mochila ? `<span class="overview-honor-tag mochila" title="Insignia Mochila">🎒 MOCHILA</span>` : ''}
+                    </div>
+                  </div>
+                </div>
+
+                <!-- KDA -->
+                <div class="overview-kda-group">
+                  <div class="overview-kda-numbers">
+                    <strong>${f.kills}</strong> / <span class="deaths">${f.deaths}</span> / <strong>${f.assists}</strong>
+                  </div>
+                  <div class="overview-kda-sub">
+                    <strong style="color:var(--text-primary);">${kdaRatio}</strong> KDA · <span>${kpPct}% KP</span>
+                  </div>
+                </div>
+
+                <!-- Score OP Score & Place -->
+                <div class="overview-score-group">
+                  <div class="overview-score-box">
+                    <span class="overview-score-tag opgg-source" title="Calificación oficial de OP.GG (1 a 10)">
+                      <span class="score-lbl">OP.GG</span>
+                      <span class="score-val">${f.score?.toFixed(1) || '—'}</span>
+                    </span>
+                    <span class="overview-place-tag ${f.place === 1 ? 'top-1' : f.place <= 3 ? 'top-3' : 'mid'}" title="Posición ${f.place || 5} de 10 jugadores en la partida">
+                      ${f.place ? `${f.place}/10` : '—'}
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Lane Opponent Matchup -->
+                <div class="overview-rival-box">
+                  ${opp ? `
+                    <div class="overview-rival-title">Rival en Línea:</div>
+                    <div class="overview-rival-content">
+                      <img class="overview-rival-champ-img" src="${champImg(opp.champion)}" alt="${esc(resolveChampName(opp.champion))}" title="${esc(resolveChampName(opp.champion))}" onerror="this.src='logo.jpg'">
+                      <div class="overview-rival-info">
+                        <span class="overview-rival-status ${f.score >= (opp.score || 0) ? 'win' : 'loss'}">
+                          ${f.score >= (opp.score || 0) ? 'Ganó vs' : 'Perdió vs'}
+                        </span>
+                        <span class="overview-rival-scores">
+                          Score: ${f.score?.toFixed(1) || '—'} vs ${opp.score?.toFixed(1) || '—'}
+                        </span>
+                      </div>
+                    </div>
+                  ` : `
+                    <div class="overview-rival-title">Rival en Línea:</div>
+                    <div class="overview-rival-empty muted sub">Sin rival directo</div>
+                  `}
+                </div>
+
+                <!-- Mobile Toggle Button -->
+                <button class="overview-mobile-toggle-btn" type="button" aria-expanded="false" title="Mostrar u ocultar estadísticas de combate">
+                  <span class="toggle-text">Estadísticas de Combate</span>
+                  <span class="toggle-icon">▾</span>
+                </button>
+
+                <!-- Detailed Combat & Economy Stats -->
+                <div class="overview-combat-stats">
+                  <div class="overview-stat-item" title="Daño infligido a campeones">
+                    <span class="stat-lbl">Daño:</span>
+                    <strong>${(dmgVal / 1000).toFixed(1)}k</strong>
+                    <span class="stat-sub">(${dmgSharePct}%)</span>
+                  </div>
+                  <div class="overview-stat-item" title="Súbditos y monstruos asesinados">
+                    <span class="stat-lbl">CS:</span>
+                    <strong>${cs}</strong>
+                    <span class="stat-sub">(${csPerMin}/m)</span>
+                  </div>
+                  <div class="overview-stat-item" title="Oro total acumulado">
+                    <span class="stat-lbl">Oro:</span>
+                    <strong>${(goldVal / 1000).toFixed(1)}k</strong>
+                  </div>
+                  <div class="overview-stat-item" title="Puntuación de visión">
+                    <span class="stat-lbl">Visión:</span>
+                    <strong>${visionVal || 0}</strong>
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </article>
+    `;
+  }).join('');
+
+  // Render Pagination
+  renderSynergyPagination(totalPages, totalMatches, startIdx, endIdx);
+
+  // Mobile expandable stats toggle
+  feed.querySelectorAll('.overview-mobile-toggle-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const row = btn.closest('.overview-participant-row');
+      if (!row) return;
+      const isExp = row.classList.toggle('is-expanded');
+      btn.setAttribute('aria-expanded', isExp ? 'true' : 'false');
+      const textSpan = btn.querySelector('.toggle-text');
+      const iconSpan = btn.querySelector('.toggle-icon');
+      if (textSpan) textSpan.textContent = isExp ? 'Ocultar estadísticas' : 'Estadísticas de Combate';
+      if (iconSpan) iconSpan.textContent = isExp ? '▴' : '▾';
+    });
+  });
+
+  // Bind clicks to open full 5v5 match modal
+  feed.querySelectorAll('.overview-match-card').forEach((card) => {
+    card.addEventListener('click', () => {
+      openMatchModal(card.dataset.matchId);
+    });
+  });
+}
+
+function renderSynergyPagination(totalPages, totalMatches, startIdx, endIdx) {
+  const container = $('#synergy-pagination');
+  if (!container) return;
+
+  if (totalPages <= 1) {
+    container.innerHTML = `
+      <div class="matches-pagination-info">
+        Mostrando todas las <strong>${totalMatches}</strong> partidas en grupo
+      </div>
+    `;
+    return;
+  }
+
+  const pages = getPaginationPages(currentSynergyPage, totalPages);
+  const pageBtnsHtml = pages.map((p) => {
+    if (p === '...') {
+      return '<span style="color:var(--text-secondary); padding:0 4px; font-weight:700;">…</span>';
+    }
+    return `<button class="pagination-btn ${p === currentSynergyPage ? 'active' : ''}" data-spage="${p}">${p}</button>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="matches-pagination-info">
+      Página <strong>${currentSynergyPage}</strong> de <strong>${totalPages}</strong> &middot; Mostrando <strong>${startIdx + 1}–${Math.min(endIdx, totalMatches)}</strong> de <strong>${totalMatches}</strong> partidas en grupo
+    </div>
+    <div class="matches-pagination-controls">
+      <button class="pagination-btn" id="prev-synergy-page" ${currentSynergyPage === 1 ? 'disabled' : ''}>
+        Anterior
+      </button>
+      <div class="pagination-pages">
+        ${pageBtnsHtml}
+      </div>
+      <button class="pagination-btn" id="next-synergy-page" ${currentSynergyPage === totalPages ? 'disabled' : ''}>
+        Siguiente
+      </button>
+    </div>
+  `;
+
+  // Bind pagination events
+  $('#prev-synergy-page')?.addEventListener('click', () => {
+    if (currentSynergyPage > 1) {
+      currentSynergyPage--;
+      renderSynergyGames();
+      $('#synergy-games-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
+
+  $('#next-synergy-page')?.addEventListener('click', () => {
+    if (currentSynergyPage < totalPages) {
+      currentSynergyPage++;
+      renderSynergyGames();
+      $('#synergy-games-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
+
+  container.querySelectorAll('button[data-spage]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const pageNum = parseInt(btn.dataset.spage, 10);
+      if (!isNaN(pageNum) && pageNum !== currentSynergyPage) {
+        currentSynergyPage = pageNum;
+        renderSynergyGames();
+        $('#synergy-games-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  });
+}
+
+// ---------- Apodos & Roasts & Premios del Año ----------
+function renderApodos() {
+  if (plus) plus.renderRoasts();
+  renderApodosSummary();
+  renderAwards();
+  setupApodosFilterBar();
+}
+
+function renderApodosSummary() {
+  const container = $('#apodos-totals-banner');
+  if (!container || !board?.players) return;
+
+  const ps = board.players;
+  const totalRoasts = ps.filter((p) => p.roast || p.nickname).length;
+
+  const allRoasts = ps.filter((p) => p.roast).map((p) => p.roast);
+  const worstScore = allRoasts.length ? Math.min(...allRoasts.map((r) => r.score)) : 0.3;
+
+  let maxDeaths = 12;
+  ps.forEach((p) => {
+    (p.games || []).forEach((g) => {
+      if (g.deaths && g.deaths > maxDeaths) maxDeaths = g.deaths;
+    });
+  });
+
+  let maxGoldDiff = 7400;
+  ps.forEach((p) => {
+    (p.games || []).forEach((g) => {
+      if (g.opp && g.gold) {
+        const diff = g.opp.gold - g.gold;
+        if (diff > maxGoldDiff) maxGoldDiff = diff;
+      }
+    });
+  });
+
+  container.innerHTML = `
+    <div class="apodos-stat-box">
+      <span class="apodos-stat-num">${totalRoasts}</span>
+      <span class="apodos-stat-label">Jugadores Expuestos</span>
+    </div>
+    <div class="apodos-stat-box">
+      <span class="apodos-stat-num">${worstScore.toFixed(1)}</span>
+      <span class="apodos-stat-label">Peor Score OP.GG (Histórico)</span>
+    </div>
+    <div class="apodos-stat-box">
+      <span class="apodos-stat-num">${maxDeaths}</span>
+      <span class="apodos-stat-label">Récord de Muertes en 1 Partida</span>
+    </div>
+    <div class="apodos-stat-box">
+      <span class="apodos-stat-num">-${Math.round(maxGoldDiff / 100) / 10}k</span>
+      <span class="apodos-stat-label">Mayor Donación de Oro al Rival</span>
+    </div>
+  `;
+}
+
+function renderAwards() {
+  const container = $('#apodos-awards-grid');
+  if (!container || !board?.players) return;
+
+  const ps = board.players;
+  if (!ps.length) return;
+
+  // 1. El Ataúd de Oro (Mayor Donante de Sangre)
+  const deathNominees = [...ps].sort((a, b) => b.stats.avgDeaths - a.stats.avgDeaths);
+  const deathWinner = deathNominees[0];
+  const deathWorst = deathWinner.roast?.deaths || 12;
+
+  // 2. La Mochila de Titanio (El Pasajero VIP)
+  const mochilaNominees = [...ps].sort((a, b) => (b.stats.mochila || 0) - (a.stats.mochila || 0) || a.stats.avgScore - b.stats.avgScore);
+  const mochilaWinner = mochilaNominees[0];
+
+  // 3. La Fundación Caritativa (Patrocinador Oficial del Rival)
+  const goldNominees = [...ps].map((p) => {
+    const laned = (p.games || []).filter((g) => g.opp);
+    const avgDeficit = laned.length ? laned.reduce((acc, g) => acc + (g.opp.gold - g.gold), 0) / laned.length : 0;
+    return { p, avgDeficit };
+  }).sort((a, b) => b.avgDeficit - a.avgDeficit);
+  const goldWinner = goldNominees[0];
+
+  // 4. El Murciélago Ciego (Premio Helen Keller)
+  const visNominees = [...ps].map((p) => {
+    const games = p.games || [];
+    const avgVis = games.length ? games.reduce((acc, g) => acc + (g.vision || 0) / Math.max(1, g.minutes), 0) / games.length : 1;
+    return { p, avgVis };
+  }).sort((a, b) => a.avgVis - b.avgVis);
+  const visWinner = visNominees[0];
+
+  // 5. El Granjero del Apocalipsis (El Ausente de Teamfights)
+  const kpNominees = [...ps].map((p) => {
+    const games = p.games || [];
+    const avgKp = games.length ? games.reduce((acc, g) => acc + (g.kp || 0.5), 0) / games.length : 0.5;
+    return { p, avgKp };
+  }).sort((a, b) => a.avgKp - b.avgKp);
+  const kpWinner = kpNominees[0];
+
+  // 6. Caricia de Seda (El Gatillo de Peluche)
+  const dmgNominees = [...ps].map((p) => {
+    const games = p.games || [];
+    const avgDmg = games.length ? games.reduce((acc, g) => acc + (g.dmgShare || 0.2), 0) / games.length : 0.2;
+    return { p, avgDmg };
+  }).sort((a, b) => a.avgDmg - b.avgDmg);
+  const dmgWinner = dmgNominees[0];
+
+  // 7. Wall Street en Ruina (El Acelerador de Derrotas)
+  const streakNominees = [...ps].sort((a, b) => a.stats.streak - b.stats.streak);
+  const streakWinner = streakNominees[0];
+
+  // 8. El Payaso del Año 2026 (La Peor Partida Individual)
+  const allWorstGames = ps.filter((p) => p.roast).map((p) => ({ p, r: p.roast })).sort((a, b) => a.r.score - b.r.score);
+  const clownWinner = allWorstGames[0];
+
+  const awards = [
+    {
+      icon: '💀',
+      title: 'El Ataúd de Oro',
+      tag: 'PREMIO AL MAYOR ALIMENTADOR',
+      desc: 'Galardón a quien más tiempo pasó meditando frente a la pantalla gris y alimentando a los rivales como si fuera buffet libre sin costo alguno.',
+      nominees: deathNominees.slice(0, 3).map((p) => ({
+        name: p.name,
+        avatar: iconImg(p.profileIconId),
+        stat: `${p.stats.avgDeaths} m/partida`,
+      })),
+      winner: {
+        name: deathWinner.name,
+        avatar: iconImg(deathWinner.profileIconId),
+        tier: deathWinner.soloTier || deathWinner.solo?.tier?.toLowerCase() || 'unranked',
+        badge: '💀 GANADOR POR SANGRE DERRAMADA',
+        stat: `${deathWinner.stats.avgDeaths} muertes promedio · Hasta ${deathWorst} muertes en un solo juego`,
+        speech: '“Agradezco a la pantalla gris por hacerme compañía el 40% de la partida. Y gracias al jungla rival por acampar en mi carril sin pagar alquiler.”',
+        matchId: deathWinner.roast?.matchId,
+      },
+    },
+    {
+      icon: '🎒',
+      title: 'Mochila de Titanio 2026',
+      tag: 'EL PASAJERO VIP DE LA GRIETA',
+      desc: 'Otorgado a quien logró ganar partidas jugando en modo espectador de lujo mientras sus cuatro amigos sudaban sangre y se dislocaban la espalda 4v5.',
+      nominees: mochilaNominees.slice(0, 3).map((p) => ({
+        name: p.name,
+        avatar: iconImg(p.profileIconId),
+        stat: `${p.stats.mochila || 0} mochilas`,
+      })),
+      winner: {
+        name: mochilaWinner.name,
+        avatar: iconImg(mochilaWinner.profileIconId),
+        tier: mochilaWinner.soloTier || mochilaWinner.solo?.tier?.toLowerCase() || 'unranked',
+        badge: '🎒 CARGA PESADA INDESTRUCTIBLE',
+        stat: `${mochilaWinner.stats.mochila || 0} partidas de mochila · Score promedio ${mochilaWinner.stats.avgScore.toFixed(1)}`,
+        speech: '“Carrear es para gente sin amigos. El verdadero talento está en sentarse en el asiento de atrás, mirar el paisaje y reclamar 20 LP al final.”',
+        matchId: mochilaWinner.roast?.matchId,
+      },
+    },
+    {
+      icon: '💸',
+      title: 'La Fundación Caritativa',
+      tag: 'PATROCINADOR OFICIAL DEL RIVAL',
+      desc: 'Reconocimiento al alma más generosa de la Grieta que le financió la build completa a su oponente de carril con ventajas de oro astronómicas.',
+      nominees: goldNominees.slice(0, 3).map((row) => ({
+        name: row.p.name,
+        avatar: iconImg(row.p.profileIconId),
+        stat: `+${Math.round(row.avgDeficit)}g regalados`,
+      })),
+      winner: {
+        name: goldWinner.p.name,
+        avatar: iconImg(goldWinner.p.profileIconId),
+        tier: goldWinner.p.soloTier || goldWinner.p.solo?.tier?.toLowerCase() || 'unranked',
+        badge: '💸 MECENAS DEL ELO RIVAL',
+        stat: `+${Math.round(goldWinner.avgDeficit)} oro de media al rival directo en cada línea`,
+        speech: '“La caridad empieza por casa, pero preferí empezarla con el mid rival para que termine su Rabadon al minuto 15. De nada, crack.”',
+        matchId: goldWinner.p.roast?.matchId,
+      },
+    },
+    {
+      icon: '🦯',
+      title: 'El Murciélago Ciego',
+      tag: 'PREMIO HELEN KELLER DE LA VISIÓN',
+      desc: 'Al estratega que jugó con el minimapa en resolución 0x0, creyó que los centinelas costaban Riot Points y nunca compró un Guardián de Control.',
+      nominees: visNominees.slice(0, 3).map((row) => ({
+        name: row.p.name,
+        avatar: iconImg(row.p.profileIconId),
+        stat: `${row.avgVis.toFixed(2)} vis/min`,
+      })),
+      winner: {
+        name: visWinner.p.name,
+        avatar: iconImg(visWinner.p.profileIconId),
+        tier: visWinner.p.soloTier || visWinner.p.solo?.tier?.toLowerCase() || 'unranked',
+        badge: '🦯 JUGÓ CON EL MONITOR APAGADO',
+        stat: `${visWinner.avgVis.toFixed(2)} puntos de visión por minuto · Ceguera casi total`,
+        speech: '“Si no pongo centinelas, no veo los ganks. Y si no los veo, técnicamente no existen hasta que me mandan a base. Pura paz mental.”',
+        matchId: visWinner.p.roast?.matchId,
+      },
+    },
+    {
+      icon: '🌾',
+      title: 'El Granjero del Apocalipsis',
+      tag: 'EL AUSENTE DE TEAMFIGHTS',
+      desc: 'Al ermitaño que prefirió farmear súbditos pacíficamente en una esquina del mapa mientras su equipo moría en Baron Nashor y el Nexo caía.',
+      nominees: kpNominees.slice(0, 3).map((row) => ({
+        name: row.p.name,
+        avatar: iconImg(row.p.profileIconId),
+        stat: `${Math.round(row.avgKp * 100)}% KP`,
+      })),
+      winner: {
+        name: kpWinner.p.name,
+        avatar: iconImg(kpWinner.p.profileIconId),
+        tier: kpWinner.p.soloTier || kpWinner.p.solo?.tier?.toLowerCase() || 'unranked',
+        badge: '🌾 COSECHA PACÍFICA EN PLENO DESASTRE',
+        stat: `Solo ${Math.round(kpWinner.avgKp * 100)}% de presencia en peleas · 100% de devoción al farm`,
+        speech: '“El Nexo es temporal, pero 6 súbditos magos bajo la torre enemiga son para siempre. Las peleas 4v5 forjan el carácter de mis compañeros.”',
+        matchId: kpWinner.p.roast?.matchId,
+      },
+    },
+    {
+      icon: '☁️',
+      title: 'Caricia de Seda',
+      tag: 'EL GATILLO DE PELUCHE',
+      desc: 'Al carry que disparó balas de salva y pegó con un fideo hervido, logrando el porcentaje de daño a campeones más inofensivo de toda la temporada.',
+      nominees: dmgNominees.slice(0, 3).map((row) => ({
+        name: row.p.name,
+        avatar: iconImg(row.p.profileIconId),
+        stat: `${Math.round(row.avgDmg * 100)}% dmg share`,
+      })),
+      winner: {
+        name: dmgWinner.p.name,
+        avatar: iconImg(dmgWinner.p.profileIconId),
+        tier: dmgWinner.p.soloTier || dmgWinner.p.solo?.tier?.toLowerCase() || 'unranked',
+        badge: '☁️ PACIFISTA NOBEL DE LA GRIETA',
+        stat: `Apenas ${Math.round(dmgWinner.avgDmg * 100)}% del daño total del equipo · Ataques inofensivos`,
+        speech: '“La violencia genera violencia. Mis ataques eran caricias diseñadas para abrir canales de diplomacia y diálogo con el equipo enemigo.”',
+        matchId: dmgWinner.p.roast?.matchId,
+      },
+    },
+    {
+      icon: '📉',
+      title: 'Wall Street en Ruina',
+      tag: 'EL ACELERADOR DE DERROTAS',
+      desc: 'A la racha de derrotas más autodestructiva y sin frenos de la temporada. Ni las criptomonedas cayeron tan rápido al fondo del abismo.',
+      nominees: streakNominees.slice(0, 3).map((p) => ({
+        name: p.name,
+        avatar: iconImg(p.profileIconId),
+        stat: `${p.stats.streak} racha`,
+      })),
+      winner: {
+        name: streakWinner.name,
+        avatar: iconImg(streakWinner.profileIconId),
+        tier: streakWinner.soloTier || streakWinner.solo?.tier?.toLowerCase() || 'unranked',
+        badge: '📉 TERRORISTA DEL HISTORIAL',
+        stat: `${Math.abs(streakWinner.stats.streak)} derrotas consecutivas · Récord de caída libre de ELO`,
+        speech: '“Dicen que después de tocar fondo solo queda subir, pero yo descubrí que abajo todavía hay subsuelo, alcantarillas y Hierro IV.”',
+        matchId: streakWinner.roast?.matchId,
+      },
+    },
+    {
+      icon: '🤡',
+      title: 'El Payaso del Año 2026',
+      tag: 'PEOR PARTIDA INDIVIDUAL DE LA HISTORIA',
+      desc: 'La actuación individual más criminal, bochornosa y catastrófica jamás registrada en los anales de la Grieta de los Pibes.',
+      nominees: allWorstGames.slice(0, 3).map((row) => ({
+        name: row.p.name,
+        avatar: iconImg(row.p.profileIconId),
+        stat: `${row.r.champion} (${row.r.score.toFixed(1)} score)`,
+      })),
+      winner: {
+        name: clownWinner.p.name,
+        avatar: iconImg(clownWinner.p.profileIconId),
+        tier: clownWinner.p.soloTier || clownWinner.p.solo?.tier?.toLowerCase() || 'unranked',
+        badge: '👑 EL REY DE LA VERGÜENZA 2026',
+        stat: `${clownWinner.r.champion} · Score ${clownWinner.r.score.toFixed(1)} / 10 · KDA: ${clownWinner.r.kda} · ${clownWinner.r.place}° de 10`,
+        speech: '“Exijo una auditoría a Riot Games. Ese teclado estaba poseído por un demonio de LAN y el mouse tenía interferencia electromagnética.”',
+        matchId: clownWinner.r.matchId,
+      },
+    },
+  ];
+
+  container.innerHTML = awards.map((a) => `
+    <article class="award-card">
+      <div class="award-card-header">
+        <div class="award-category-group">
+          <span class="award-trophy-icon">${a.icon}</span>
+          <div>
+            <h4 class="award-card-title">${esc(a.title)}</h4>
+            <span class="award-card-tag">${esc(a.tag)}</span>
+          </div>
         </div>
       </div>
-      <p class="muted sub">${esc(p.nickname.reason)}</p>
-    </div>
+
+      <p class="award-card-desc">${esc(a.desc)}</p>
+
+      <div class="award-nominees-section">
+        <span class="award-nominees-label">Nominados Oficiales:</span>
+        <div class="award-nominees-list">
+          ${a.nominees.map((n) => `
+            <div class="award-nominee-chip" title="${esc(n.name)}: ${esc(n.stat)}">
+              <img class="award-nominee-avatar" src="${n.avatar}" alt="${esc(n.name)}" onerror="this.src='logo.jpg'">
+              <span>${esc(n.name)}</span>
+              <span class="award-nominee-stat">(${esc(n.stat)})</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <div class="award-winner-box">
+        <div class="award-winner-badge-row">
+          <span class="award-winner-badge">${esc(a.winner.badge)}</span>
+        </div>
+        <div class="award-winner-profile">
+          <img class="award-winner-avatar tier-${a.winner.tier}" src="${a.winner.avatar}" alt="${esc(a.winner.name)}" onerror="this.src='logo.jpg'">
+          <div>
+            <div class="award-winner-name">${esc(a.winner.name)}</div>
+            <div class="award-winner-stat">${esc(a.winner.stat)}</div>
+          </div>
+        </div>
+        <p class="award-speech-quote">${esc(a.winner.speech)}</p>
+        ${a.winner.matchId ? `
+          <button class="award-match-link-btn" type="button" data-award-match="${esc(a.winner.matchId)}">
+            ⚔️ Ver Partida del Crimen 5v5 →
+          </button>
+        ` : ''}
+      </div>
+    </article>
   `).join('');
+
+  // Bind click events on award match buttons
+  container.querySelectorAll('[data-award-match]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      openMatchModal(btn.dataset.awardMatch);
+    });
+  });
+}
+
+function setupApodosFilterBar() {
+  const bar = $('#apodos-filter-bar');
+  if (!bar || bar.dataset.bound) return;
+  bar.dataset.bound = 'true';
+
+  bar.querySelectorAll('.apodos-filter-pill').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      bar.querySelectorAll('.apodos-filter-pill').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      const filter = btn.dataset.afilter;
+      const awardsSec = $('#apodos-awards-section');
+      const cardsSec = $('#apodos-cards-section');
+
+      if (filter === 'all') {
+        if (awardsSec) awardsSec.style.display = 'block';
+        if (cardsSec) cardsSec.style.display = 'block';
+      } else if (filter === 'awards') {
+        if (awardsSec) awardsSec.style.display = 'block';
+        if (cardsSec) cardsSec.style.display = 'none';
+      } else if (filter === 'cards') {
+        if (awardsSec) awardsSec.style.display = 'none';
+        if (cardsSec) cardsSec.style.display = 'block';
+      }
+    });
+  });
 }
 
 // ---------- Hall of Fame & Records ----------
@@ -1812,175 +3427,425 @@ function renderRecords() {
     `;
   }
 
+  // 1. SALÓN DE LA GLORIA (LO MEJOR DE TODOS)
   const grid = $('#records-grid');
-  if (!grid) return;
+  if (grid) {
+    const recordCards = [
+      {
+        title: 'Bomba Atómica',
+        icon: '💥',
+        tag: 'Mayor Daño',
+        data: r.maxDamage,
+        unit: 'Daño a Campeones',
+        fmt: (v) => v.toLocaleString(),
+        highlight: true,
+        desc: 'Récord histórico de destrucción total en una partida.',
+      },
+      {
+        title: 'El Exterminador',
+        icon: '🩸',
+        tag: 'Más Kills',
+        data: r.maxKills,
+        unit: 'Asesinatos',
+        fmt: (v) => `${v} Kills`,
+        highlight: true,
+        desc: 'Mayor cantidad de bajas enemigas conseguidas en un solo juego.',
+      },
+      {
+        title: 'Ojo de Halcón',
+        icon: '👁️',
+        tag: 'Mayor Visión',
+        data: r.maxVision,
+        unit: 'Puntos de Visión',
+        fmt: (v) => `${v} Visión`,
+        highlight: false,
+        desc: 'Nadie camina en la niebla de guerra sin su permiso.',
+      },
+      {
+        title: 'El Magnate',
+        icon: '💰',
+        tag: 'Más Oro',
+        data: r.maxGold,
+        unit: 'Oro Acumulado',
+        fmt: (v) => `${v.toLocaleString()} Oro`,
+        highlight: false,
+        desc: 'Más oro conseguido en las arcas en un solo encuentro.',
+      },
+      {
+        title: 'Aspiradora de Minions',
+        icon: '🌾',
+        tag: 'Mayor CS',
+        data: r.maxCs,
+        unit: 'Súbditos',
+        fmt: (v) => `${v} CS`,
+        highlight: false,
+        desc: 'Limpió oleadas como si no hubiera un mañana.',
+      },
+      {
+        title: 'Ángel Guardián',
+        icon: '🤝',
+        tag: 'Más Asistencias',
+        data: r.maxAssists,
+        unit: 'Asistencias',
+        fmt: (v) => `${v} Asistencias`,
+        highlight: false,
+        desc: 'Estuvo en todas las peleas respaldando a los compañeros.',
+      },
+      {
+        title: 'Verdugo Solitario',
+        icon: '⚔️',
+        tag: 'Solo Kills',
+        data: r.maxSoloKills,
+        unit: 'Bajas 1v1',
+        fmt: (v) => `${v} Solo Kills`,
+        highlight: false,
+        desc: 'Destruyó al rival en el uno contra uno sin ayuda.',
+      },
+      {
+        title: 'Partida Legendaria',
+        icon: '👑',
+        tag: 'Mejor KDA',
+        data: r.bestKda,
+        unit: 'KDA Ratio (5+ kills)',
+        fmt: (v) => `${v.toFixed(1)} KDA`,
+        highlight: false,
+        desc: 'Rendimiento casi impecable en una victoria con impacto.',
+      },
+      {
+        title: 'Rey del MVP',
+        icon: '🎖️',
+        tag: 'Premio MVP',
+        data: r.mostMvp,
+        unit: 'Premios MVP OP Score',
+        fmt: (v) => `${v} MVPs`,
+        highlight: true,
+        desc: 'El jugador más condecorado de La Grieta de los Pibes.',
+      },
+      {
+        title: 'Mayor Efectividad',
+        icon: '🎯',
+        tag: 'Win Rate %',
+        data: r.highestWinrate,
+        unit: 'Porcentaje de Victoria',
+        fmt: (v) => `${v}% WR (${r.highestWinrate?.games} partidas)`,
+        highlight: false,
+        desc: 'La mayor tasa de triunfos en partidas clasificatorias.',
+      },
+      {
+        title: 'Guerra Interminable',
+        icon: '⏳',
+        tag: 'Duración',
+        data: r.longestGame,
+        unit: 'Minutos de Batalla',
+        fmt: (v) => `${v} Minutos`,
+        highlight: false,
+        desc: 'La partida más agónica y épica registrada en el servidor.',
+      },
+    ];
 
-  const recordCards = [
-    {
-      title: 'Bomba Atómica',
-      icon: '💥',
-      tag: 'Mayor Daño',
-      data: r.maxDamage,
-      unit: 'Daño a Campeones',
-      fmt: (v) => v.toLocaleString(),
-      highlight: true,
-      desc: 'Récord histórico de destrucción total en una partida.',
-    },
-    {
-      title: 'El Exterminador',
-      icon: '🩸',
-      tag: 'Más Kills',
-      data: r.maxKills,
-      unit: 'Asesinatos',
-      fmt: (v) => `${v} Kills`,
-      highlight: true,
-      desc: 'Mayor cantidad de bajas enemigas conseguidas en un solo juego.',
-    },
-    {
-      title: 'La Bolsa de Papas',
-      icon: '💀',
-      tag: 'Más Muertes',
-      data: r.maxDeaths,
-      unit: 'Muertes Registradas',
-      fmt: (v) => `${v} Deaths`,
-      highlight: false,
-      desc: 'El sacrificio más noble (o el inting más descarado) del grupo.',
-    },
-    {
-      title: 'Ojo de Halcón',
-      icon: '👁️',
-      tag: 'Mayor Visión',
-      data: r.maxVision,
-      unit: 'Puntos de Visión',
-      fmt: (v) => `${v} Visión`,
-      highlight: false,
-      desc: 'Nadie camina en la niebla de guerra sin su permiso.',
-    },
-    {
-      title: 'El Magnate',
-      icon: '💰',
-      tag: 'Más Oro',
-      data: r.maxGold,
-      unit: 'Oro Acumulado',
-      fmt: (v) => `${v.toLocaleString()} Oro`,
-      highlight: false,
-      desc: 'Más oro conseguido en las arcas en un solo encuentro.',
-    },
-    {
-      title: 'Aspiradora de Minions',
-      icon: '🌾',
-      tag: 'Mayor CS',
-      data: r.maxCs,
-      unit: 'Súbditos',
-      fmt: (v) => `${v} CS`,
-      highlight: false,
-      desc: 'Limpió oleadas como si no hubiera un mañana.',
-    },
-    {
-      title: 'Ángel Guardián',
-      icon: '🤝',
-      tag: 'Más Asistencias',
-      data: r.maxAssists,
-      unit: 'Asistencias',
-      fmt: (v) => `${v} Asistencias`,
-      highlight: false,
-      desc: 'Estuvo en todas las peleas respaldando a los compañeros.',
-    },
-    {
-      title: 'Verdugo Solitario',
-      icon: '⚔️',
-      tag: 'Solo Kills',
-      data: r.maxSoloKills,
-      unit: 'Bajas 1v1',
-      fmt: (v) => `${v} Solo Kills`,
-      highlight: false,
-      desc: 'Destruyó al rival en el uno contra uno sin ayuda.',
-    },
-    {
-      title: 'Guerra Interminable',
-      icon: '⏳',
-      tag: 'Duración',
-      data: r.longestGame,
-      unit: 'Minutos de Batalla',
-      fmt: (v) => `${v} Minutos`,
-      highlight: false,
-      desc: 'La partida más larga, agónica y épica registrada.',
-    },
-    {
-      title: 'Partida Legendaria',
-      icon: '👑',
-      tag: 'Mejor KDA',
-      data: r.bestKda,
-      unit: 'KDA Ratio (5+ kills)',
-      fmt: (v) => `${v.toFixed(1)} KDA`,
-      highlight: false,
-      desc: 'Rendimiento casi impecable en una victoria con impacto.',
-    },
-    {
-      title: 'Rey del MVP',
-      icon: '🎖️',
-      tag: 'Premio MVP',
-      data: r.mostMvp,
-      unit: 'Premios MVP OP Score',
-      fmt: (v) => `${v} MVPs`,
-      highlight: true,
-      desc: 'El jugador más condecorado de La Grieta de los Pibes.',
-    },
-    {
-      title: 'Mayor Efectividad',
-      icon: '🎯',
-      tag: 'Win Rate %',
-      data: r.highestWinrate,
-      unit: 'Porcentaje de Victoria',
-      fmt: (v) => `${v}% WR (${r.highestWinrate?.games} partidas)`,
-      highlight: false,
-      desc: 'La mayor tasa de triunfos en partidas clasificatorias.',
-    },
-  ];
+    grid.innerHTML = recordCards.map((c) => {
+      if (!c.data) return '';
+      const champ = c.data.champion ? champImg(c.data.champion) : null;
+      const player = board?.players?.find((p) => p.puuid === c.data.puuid);
+      const avatar = champ ?? (player ? iconImg(player.profileIconId) : '');
 
-  grid.innerHTML = recordCards.map((c) => {
-    if (!c.data) return '';
-    const champ = c.data.champion ? champImg(c.data.champion) : null;
-    const player = board?.players?.find((p) => p.puuid === c.data.puuid);
-    const avatar = champ ?? (player ? iconImg(player.profileIconId) : '');
-
-    return `
-      <div class="record-card ${c.highlight ? 'highlight' : ''}">
-        <div class="record-badge-header">
-          <div class="record-title-wrap">
-            <span class="record-icon">${c.icon}</span>
-            <span class="record-title">${esc(c.title)}</span>
+      return `
+        <div class="record-card ${c.highlight ? 'highlight' : ''}">
+          <div class="record-badge-header">
+            <div class="record-title-wrap">
+              <span class="record-icon">${c.icon}</span>
+              <span class="record-title">${esc(c.title)}</span>
+            </div>
+            <span class="record-tag">${esc(c.tag)}</span>
           </div>
-          <span class="record-tag">${esc(c.tag)}</span>
-        </div>
 
-        <div class="record-player-center">
-          <img class="record-champ-avatar" src="${avatar}" alt="" onerror="this.src='${player ? iconImg(player.profileIconId) : ''}'">
-          <div class="record-player-details">
-            <span class="record-player-name">${esc(c.data.player)}</span>
-            <span class="record-champ-name">${c.data.champion ? `${esc(c.data.champion)} · ${ROLE[c.data.role] ?? c.data.role ?? 'Ranked'}` : 'Invocador'}</span>
+          <div class="record-player-center">
+            <img class="record-champ-avatar" src="${avatar}" alt="" onerror="this.src='${player ? iconImg(player.profileIconId) : ''}'">
+            <div class="record-player-details">
+              <span class="record-player-name">${esc(c.data.player)}</span>
+              <span class="record-champ-name">${c.data.champion ? `${esc(c.data.champion)} · ${ROLE[c.data.role] ?? c.data.role ?? 'Ranked'}` : 'Invocador'}</span>
+            </div>
+          </div>
+
+          <div class="record-value-emblem">
+            <span class="record-val-big">${c.fmt(c.data.value)}</span>
+            <span class="record-val-unit">${c.unit}</span>
+          </div>
+
+          <p class="muted sub" style="margin:0;">${esc(c.desc)}</p>
+
+          <div class="record-footer">
+            <span>${c.data.date ? new Date(c.data.date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Temporada actual'}</span>
+            ${c.data.matchId ? `<button class="record-match-btn" data-match-id="${esc(c.data.matchId)}">🔍 Ver Partida</button>` : ''}
           </div>
         </div>
+      `;
+    }).join('');
+  }
 
-        <div class="record-value-emblem">
-          <span class="record-val-big">${c.fmt(c.data.value)}</span>
-          <span class="record-val-unit">${c.unit}</span>
+  // 2. SALÓN DE LA INFAMIA (LO PEOR DE TODOS CON HUMOR NEGRO)
+  const infamyGrid = $('#records-infamy-grid');
+  if (infamyGrid) {
+    const players = board?.players || [];
+    let worstScore = null;
+    let minDamage = null;
+    let minVision = null;
+    let minCs = null;
+    const mochilaCounts = {};
+
+    for (const p of players) {
+      mochilaCounts[p.name] = { count: 0, player: p.name, puuid: p.puuid };
+      for (const g of p.games || []) {
+        if (g.isRemake) continue;
+        if (g.mochila) mochilaCounts[p.name].count++;
+
+        if (!worstScore || g.score < worstScore.value) {
+          worstScore = { value: g.score, player: p.name, puuid: p.puuid, champion: g.champion, kills: g.kills, deaths: g.deaths, assists: g.assists, minutes: g.minutes, matchId: g.matchId, date: g.endTs, role: g.position };
+        }
+        if (g.minutes >= 15 && (!minDamage || g.damage < minDamage.value)) {
+          minDamage = { value: g.damage, player: p.name, puuid: p.puuid, champion: g.champion, kills: g.kills, deaths: g.deaths, assists: g.assists, minutes: g.minutes, matchId: g.matchId, date: g.endTs, role: g.position };
+        }
+        if (g.minutes >= 20 && (!minVision || g.vision < minVision.value)) {
+          minVision = { value: g.vision, player: p.name, puuid: p.puuid, champion: g.champion, minutes: g.minutes, matchId: g.matchId, date: g.endTs, role: g.position };
+        }
+        if (g.position !== 'UTILITY' && g.minutes >= 20 && (!minCs || g.cs < minCs.value)) {
+          minCs = { value: g.cs, player: p.name, puuid: p.puuid, champion: g.champion, minutes: g.minutes, matchId: g.matchId, date: g.endTs, role: g.position };
+        }
+      }
+    }
+
+    const mochilaKing = Object.values(mochilaCounts).sort((a, b) => b.count - a.count)[0];
+
+    const infamyCards = [
+      {
+        title: 'La Mochila de Plomo',
+        icon: '🎒',
+        tag: 'Más Veces Mochila',
+        data: mochilaKing ? { player: mochilaKing.player, puuid: mochilaKing.puuid, value: mochilaKing.count } : null,
+        unit: 'Partidas Cargado por el Equipo',
+        fmt: (v) => `${v} Partidas Mochila`,
+        desc: 'El saco de papas oficial del grupo. Sus compañeros todavía van a terapia lumbar por tener que cargarlo tantas partidas.',
+      },
+      {
+        title: 'Donador de Sangre Serial',
+        icon: '🩸',
+        tag: 'Más Muertes en un Juego',
+        data: r.maxDeaths,
+        unit: 'Muertes en una Sola Partida',
+        fmt: (v) => `${v} Deaths`,
+        desc: 'Alimentó al rival con tanta constancia y generosidad que el equipo enemigo le mandó flores y canasta navideña.',
+      },
+      {
+        title: 'El Vómito del Algoritmo',
+        icon: '🤮',
+        tag: 'Peor Score OP.GG',
+        data: worstScore,
+        unit: 'Puntuación Oficial OP.GG',
+        fmt: (v) => `Score ${v.toFixed(1)}`,
+        desc: 'La inteligencia artificial de Riot intentó llamar al 911 al presenciar semejante catástrofe biomecánica sobre el teclado.',
+      },
+      {
+        title: 'Masaje Terapéutico',
+        icon: '🪶',
+        tag: 'Menor Daño a Campeones',
+        data: minDamage,
+        unit: 'Daño No Letal Infligido',
+        fmt: (v) => `${v.toLocaleString()} Daño`,
+        desc: 'Los campeones rivales pensaron que sus golpes eran una brisa fresca de verano. Daño con fines de relajación muscular.',
+      },
+      {
+        title: 'Ceguera Selectiva',
+        icon: '🦯',
+        tag: 'Menor Visión en Partida',
+        data: minVision,
+        unit: 'Puntos de Visión en 20m+',
+        fmt: (v) => `${v} Visión`,
+        desc: 'Jugó con anteojeras para caballos y el brillo de la pantalla en cero. Piensa que los wards se pagan con Riot Points.',
+      },
+      {
+        title: 'Alergia a los Súbditos',
+        icon: '🚫',
+        tag: 'Menor CS en Línea',
+        data: minCs,
+        unit: 'Súbditos en 20m+',
+        fmt: (v) => `${v} CS (${(v / Math.max(1, minCs?.minutes || 1)).toFixed(1)}/m)`,
+        desc: 'Le tiene pánico a pegarle a los minions; cree que los cañones muerden. Los súbditos enemigos se murieron de aburrimiento.',
+      },
+    ];
+
+    infamyGrid.innerHTML = infamyCards.map((c) => {
+      if (!c.data) return '';
+      const champ = c.data.champion ? champImg(c.data.champion) : null;
+      const player = board?.players?.find((p) => p.puuid === c.data.puuid);
+      const avatar = champ ?? (player ? iconImg(player.profileIconId) : '');
+
+      return `
+        <div class="record-card infamy">
+          <div class="record-badge-header">
+            <div class="record-title-wrap">
+              <span class="record-icon">${c.icon}</span>
+              <span class="record-title">${esc(c.title)}</span>
+            </div>
+            <span class="record-tag">${esc(c.tag)}</span>
+          </div>
+
+          <div class="record-player-center">
+            <img class="record-champ-avatar" src="${avatar}" alt="" onerror="this.src='${player ? iconImg(player.profileIconId) : ''}'">
+            <div class="record-player-details">
+              <span class="record-player-name">${esc(c.data.player)}</span>
+              <span class="record-champ-name">${c.data.champion ? `${esc(c.data.champion)} · ${ROLE[c.data.role] ?? c.data.role ?? 'Ranked'}` : 'Especialista en Inting'}</span>
+            </div>
+          </div>
+
+          <div class="record-value-emblem">
+            <span class="record-val-big">${c.fmt(c.data.value)}</span>
+            <span class="record-val-unit">${c.unit}</span>
+          </div>
+
+          <p class="muted sub" style="margin:0;">${esc(c.desc)}</p>
+
+          <div class="record-footer">
+            <span>${c.data.date ? new Date(c.data.date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Temporada actual'}</span>
+            ${c.data.matchId ? `<button class="record-match-btn" data-match-id="${esc(c.data.matchId)}">🔍 Ver Partida</button>` : ''}
+          </div>
         </div>
+      `;
+    }).join('');
+  }
 
-        <p class="muted sub" style="margin:0;">${esc(c.desc)}</p>
+  // 3. CUADRO DE HONOR PERSONAL (AL MENOS 2 COSAS POR CADA JUGADOR)
+  const personalGrid = $('#records-personal-grid');
+  if (personalGrid) {
+    const players = board?.players || [];
 
-        <div class="record-footer">
-          <span>${c.data.date ? new Date(c.data.date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Temporada actual'}</span>
-          ${c.data.matchId ? `<button class="record-match-btn" data-match-id="${esc(c.data.matchId)}">🔍 Ver Partida</button>` : ''}
-        </div>
-      </div>
-    `;
-  }).join('');
+    personalGrid.innerHTML = players.map((p) => {
+      const games = (p.games || []).filter((g) => !g.isRemake);
+      const best = [...games].sort((a, b) => (b.score || 0) - (a.score || 0) || (b.kills || 0) - (a.kills || 0))[0];
+      const worst = [...games].sort((a, b) => (a.score || 10) - (b.score || 10) || (b.deaths || 0) - (a.deaths || 0))[0];
+      const maxDmg = [...games].sort((a, b) => (b.damage || 0) - (a.damage || 0))[0];
+      const maxDeaths = [...games].sort((a, b) => (b.deaths || 0) - (a.deaths || 0))[0];
 
-  grid.querySelectorAll('.record-match-btn').forEach((btn) => {
-    btn.addEventListener('click', () => {
+      const bestChamp = best ? resolveChampName(best.champion) : 'Campeón';
+      const worstChamp = worst ? resolveChampName(worst.champion) : 'Campeón';
+
+      // Glory roast / praise
+      const gloryQuotes = [
+        `El día que los astros se alinearon y jugó como si le pagaran en dólares por ganar.`,
+        `Se creía Faker en Worlds: esquivó habilidades hasta con los pensamientos.`,
+        `Destrucción nuclear autorizada; el equipo rival todavía está buscando su dignidad en el río.`,
+        `Rendimiento de maestro ajedrecista: carrió a 4 conitos de tránsito hasta la victoria.`
+      ];
+      const gloryQuote = gloryQuotes[Math.abs(p.name.length * 5) % gloryQuotes.length];
+
+      // Infamy dark humor roasts
+      const infamyQuotes = [
+        `El día que el mouse se le resbaló y se dedicó a donar LP a la beneficencia rival.`,
+        `Un performance tan doloroso que el botón de rendirse parecía la opción más humanitaria.`,
+        `Donó más oro al equipo enemigo que una ONG internacional en tiempos de crisis.`,
+        `Caminó hacia la muerte tantas veces que los súbditos enemigos ya lo saludaban por su nombre.`
+      ];
+      const infamyQuote = infamyQuotes[Math.abs(p.name.length * 7) % infamyQuotes.length];
+
+      return `
+        <article class="record-personal-card">
+          <div class="personal-card-header">
+            <div class="personal-card-avatar-wrap">
+              <img src="${iconImg(p.profileIconId)}" alt="${esc(p.name)}" onerror="this.src='logo.jpg'">
+              ${p.level ? `<span class="personal-card-level">NVL ${p.level}</span>` : ''}
+            </div>
+            <div class="personal-card-names">
+              <span class="personal-card-name">${esc(p.name)}</span>
+              ${p.nickname?.title ? `<span class="personal-card-nick">“${esc(p.nickname.title)}”</span>` : ''}
+            </div>
+            <div class="personal-card-rank-chip">${p.solo?.label ?? 'Unranked'}</div>
+          </div>
+
+          <!-- Feat 1: Gloria Personal -->
+          <div class="personal-feat glory">
+            <div class="personal-feat-header">
+              <span class="personal-feat-badge">Hazaña #1 · Su Mayor Gloria</span>
+              <span class="px-score ${best && best.score >= 8 ? 'px-s-great' : 'px-s-good'}">Score ${best?.score?.toFixed(1) ?? '—'}</span>
+            </div>
+            <div class="personal-feat-body">
+              <div class="personal-feat-champ">
+                <img src="${champImg(bestChamp)}" alt="${esc(bestChamp)}" onerror="this.src='logo.jpg'">
+              </div>
+              <div class="personal-feat-details">
+                <div class="personal-feat-kda">${best?.kills ?? 0} / ${best?.deaths ?? 0} / ${best?.assists ?? 0} <small style="font-weight:500; color:var(--text-muted);">(${(((best?.kills ?? 0) + (best?.assists ?? 0)) / Math.max(1, best?.deaths ?? 1)).toFixed(2)} KDA)</small></div>
+                <div class="personal-feat-meta">${esc(bestChamp)} · ${kNum(maxDmg?.damage || 0)} Daño pico · ${best?.win ? 'Victoria' : 'Derrota'}</div>
+              </div>
+            </div>
+            <p class="personal-feat-quote">“${gloryQuote}”</p>
+            ${best?.matchId ? `
+              <div class="personal-feat-footer">
+                <button class="record-match-btn" data-match-id="${esc(best.matchId)}">🔍 Ver Partida de Oro</button>
+              </div>
+            ` : ''}
+          </div>
+
+          <!-- Feat 2: Infamia Personal con Humor Negro -->
+          <div class="personal-feat infamy">
+            <div class="personal-feat-header">
+              <span class="personal-feat-badge">Hazaña #2 · Su Mancha de la Infamia</span>
+              <span class="px-score px-s-low">Score ${worst?.score?.toFixed(1) ?? '—'}</span>
+            </div>
+            <div class="personal-feat-body">
+              <div class="personal-feat-champ">
+                <img src="${champImg(worstChamp)}" alt="${esc(worstChamp)}" onerror="this.src='logo.jpg'">
+              </div>
+              <div class="personal-feat-details">
+                <div class="personal-feat-kda" style="color:#fca5a5;">${worst?.kills ?? 0} / ${worst?.deaths ?? 0} / ${worst?.assists ?? 0} <small style="font-weight:500; color:var(--text-muted);">(Pico ${maxDeaths?.deaths ?? 0} muertes)</small></div>
+                <div class="personal-feat-meta">${esc(worstChamp)} · ${worst?.minutes ?? 0}m de sufrimiento · Score ${worst?.score?.toFixed(1) ?? '—'}</div>
+              </div>
+            </div>
+            <p class="personal-feat-quote">“${infamyQuote}”</p>
+            ${worst?.matchId ? `
+              <div class="personal-feat-footer">
+                <button class="record-match-btn" data-match-id="${esc(worst.matchId)}">🔍 Ver Partida del Inting</button>
+              </div>
+            ` : ''}
+          </div>
+        </article>
+      `;
+    }).join('');
+  }
+
+  // 4. BIND FILTER PILLS (SIN ICONOS)
+  $$('.records-filter-pill').forEach((btn) => {
+    btn.onclick = () => {
+      $$('.records-filter-pill').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      const filter = btn.dataset.filter;
+
+      const secGlory = $('#records-glory-section');
+      const secInfamy = $('#records-infamy-section');
+      const secPersonal = $('#records-personal-section');
+
+      if (filter === 'all') {
+        if (secGlory) secGlory.style.display = 'block';
+        if (secInfamy) secInfamy.style.display = 'block';
+        if (secPersonal) secPersonal.style.display = 'block';
+      } else if (filter === 'glory') {
+        if (secGlory) secGlory.style.display = 'block';
+        if (secInfamy) secInfamy.style.display = 'none';
+        if (secPersonal) secPersonal.style.display = 'none';
+      } else if (filter === 'infamy') {
+        if (secGlory) secGlory.style.display = 'none';
+        if (secInfamy) secInfamy.style.display = 'block';
+        if (secPersonal) secPersonal.style.display = 'none';
+      } else if (filter === 'personal') {
+        if (secGlory) secGlory.style.display = 'none';
+        if (secInfamy) secInfamy.style.display = 'none';
+        if (secPersonal) secPersonal.style.display = 'block';
+      }
+    };
+  });
+
+  // 5. BIND ALL MODAL BUTTONS
+  $$('#view-records .record-match-btn').forEach((btn) => {
+    btn.onclick = () => {
       openMatchModal(btn.dataset.matchId);
-    });
+    };
   });
 }
 
@@ -2774,33 +4639,93 @@ function valToLabel(v) {
   return `${tierStr} ${divStr} · ${lp} LP`;
 }
 
-function renderLpChart(player) {
+function getPlayerLpSeries(player, rangeMode = '30d') {
+  if (!player.solo) return null;
+  const now = Date.now();
+  const DAY = 24 * 3600 * 1000;
+  const days = rangeMode === '7d' ? 7 : rangeMode === '15d' ? 15 : rangeMode === 'all' ? 60 : 30;
+  const startTs = now - days * DAY;
+
+  const soloGames = (player.games || [])
+    .filter((g) => g.queueId === 420 && !g.isRemake)
+    .sort((a, b) => a.endTs - b.endTs);
+
+  let runningVal = player.solo.value;
+  const gamePoints = [];
+  const rev = [...soloGames].reverse();
+  for (const g of rev) {
+    const delta = typeof g.lpDelta === 'number' ? g.lpDelta : (g.win ? 22 : -20);
+    gamePoints.unshift({
+      t: g.endTs,
+      v: runningVal,
+      delta,
+      win: g.win,
+      champ: g.champion,
+    });
+    runningVal -= delta;
+  }
+
+  const baseVal = runningVal;
+  const points = [{ t: startTs, v: baseVal, isStart: true }];
+  gamePoints.forEach((pt) => {
+    if (pt.t >= startTs && pt.t <= now) {
+      points.push(pt);
+    }
+  });
+  points.push({ t: now, v: player.solo.value, isCurrent: true });
+
+  const rangeGames = soloGames.filter((g) => g.endTs >= startTs && g.endTs <= now);
+  const wins = rangeGames.filter((g) => g.win).length;
+  const losses = rangeGames.length - wins;
+  const winrate = rangeGames.length > 0 ? Math.round((wins / rangeGames.length) * 100) : 0;
+
+  return {
+    points,
+    startTs,
+    endTs: now,
+    baseVal,
+    currentVal: player.solo.value,
+    days,
+    gamesCount: rangeGames.length,
+    wins,
+    losses,
+    winrate,
+  };
+}
+
+let currentLpChartRange = '30d';
+
+function renderLpChart(player, rangeMode = '30d') {
+  currentLpChartRange = rangeMode;
   const container = $('#lp-chart-container');
   if (!container) return;
 
-  const history = player.lpHistory ?? [];
-  if (history.length < 2) {
-    container.innerHTML = '<div class="muted" style="text-align:center; padding:30px;">Se necesitan al menos 2 registros de partidas para graficar la evolución de LP.</div>';
+  const series = getPlayerLpSeries(player, rangeMode);
+  if (!series || series.points.length < 2) {
+    container.innerHTML = '<div class="muted" style="text-align:center; padding:30px;">Sin partidas clasificatorias registradas en este período.</div>';
     return;
   }
 
-  const w = 800;
-  const h = 220;
-  const padL = 80;
-  const padR = 25;
-  const padT = 30;
-  const padB = 35;
+  const { points, startTs, endTs, baseVal, currentVal, days, gamesCount, wins, losses, winrate } = series;
 
-  const vals = history.map((x) => x.v);
+  const w = 800;
+  const h = 230;
+  const padL = 90;
+  const padR = 30;
+  const padT = 32;
+  const padB = 36;
+
+  const vals = points.map((x) => x.v);
   const minV = Math.min(...vals);
   const maxV = Math.max(...vals);
   const range = Math.max(30, maxV - minV);
   const chartW = w - padL - padR;
   const chartH = h - padT - padB;
+  const timeSpan = Math.max(1, endTs - startTs);
 
-  const stepX = chartW / Math.max(1, history.length - 1);
-  const pts = history.map((pt, i) => {
-    const x = padL + i * stepX;
+  const pts = points.map((pt) => {
+    const timeRatio = Math.max(0, Math.min(1, (pt.t - startTs) / timeSpan));
+    const x = padL + timeRatio * chartW;
     const y = padT + (1 - (pt.v - minV) / range) * chartH;
     return { x, y, pt };
   });
@@ -2824,23 +4749,42 @@ function renderLpChart(player) {
     gridLines.push({ y, val: v, label: valToLabel(v) });
   }
 
+  // 5 Calendar Date Ticks across the timeline
   const xMarkers = [];
-  const xCount = Math.min(5, history.length);
-  const xStep = Math.floor((history.length - 1) / Math.max(1, xCount - 1));
+  const xCount = 5;
   for (let i = 0; i < xCount; i++) {
-    const idx = Math.min(history.length - 1, i * xStep);
-    const p = pts[idx];
-    const dateStr = new Date(p.pt.t).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
-    xMarkers.push({ x: p.x, label: dateStr });
+    const t = startTs + (i / (xCount - 1)) * timeSpan;
+    const x = padL + (i / (xCount - 1)) * chartW;
+    const dateStr = new Date(t).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+    xMarkers.push({ x, label: dateStr });
   }
 
+  // Update Metrics
   const peakValEl = $('#lp-peak-val');
   if (peakValEl) peakValEl.textContent = valToLabel(peakPt.pt.v);
+  
   const progValEl = $('#lp-prog-val');
-  const deltaTotal = lastPt.pt.v - firstPt.pt.v;
+  const deltaTotal = currentVal - baseVal;
   if (progValEl) {
     progValEl.textContent = `${deltaTotal >= 0 ? '+' : ''}${deltaTotal} LP`;
     progValEl.style.color = deltaTotal >= 0 ? 'var(--success)' : 'var(--danger)';
+  }
+
+  const wrValEl = $('#lp-wr-val');
+  if (wrValEl) {
+    wrValEl.textContent = `${winrate}% (${wins}V - ${losses}D)`;
+    wrValEl.style.color = winrate >= 50 ? 'var(--cyan)' : 'var(--danger)';
+  }
+
+  const subtitleEl = $('#lp-history-subtitle');
+  if (subtitleEl) {
+    subtitleEl.textContent = rangeMode === '30d' 
+      ? 'Progreso continuo en Ranked Solo/Duo en los últimos 30 días (Mes Completo)' 
+      : rangeMode === '15d'
+      ? 'Progreso continuo en Ranked Solo/Duo en los últimos 15 días'
+      : rangeMode === '7d'
+      ? 'Progreso continuo en Ranked Solo/Duo en los últimos 7 días'
+      : 'Historial completo de progreso en Ranked Solo/Duo';
   }
 
   container.innerHTML = `
@@ -2871,12 +4815,30 @@ function renderLpChart(player) {
         <path d="${areaD}" fill="url(#lp-area-grad)"/>
         <path d="${pathD}" fill="none" stroke="#39C5F5" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" filter="url(#lp-line-glow)"/>
 
-        <circle cx="${firstPt.x.toFixed(1)}" cy="${firstPt.y.toFixed(1)}" r="3.5" fill="#121E32" stroke="#39C5F5" stroke-width="2"/>
+        <!-- Match dots -->
+        ${pts.map((p, idx) => {
+          if (idx === 0 || idx === pts.length - 1 || idx === peakIdx) return '';
+          const tooltip = `${new Date(p.pt.t).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })} · ${p.pt.champ ? `${p.pt.win ? 'Victoria' : 'Derrota'} con ${p.pt.champ}` : 'Registro LP'} · ${valToLabel(p.pt.v)}`;
+          return `
+            <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" fill="#111A2B" stroke="#39C5F5" stroke-width="1.5" style="cursor:pointer;">
+              <title>${esc(tooltip)}</title>
+            </circle>
+          `;
+        }).join('')}
 
-        <circle cx="${peakPt.x.toFixed(1)}" cy="${peakPt.y.toFixed(1)}" r="5" fill="#E8C982" stroke="#080D19" stroke-width="2"/>
-        <text x="${peakPt.x.toFixed(1)}" y="${Math.max(12, peakPt.y - 8).toFixed(1)}" fill="#E8C982" font-size="10" font-weight="bold" font-family="system-ui" text-anchor="middle">👑 Pico Máximo</text>
+        <!-- Start dot -->
+        <circle cx="${firstPt.x.toFixed(1)}" cy="${firstPt.y.toFixed(1)}" r="3.5" fill="#121E32" stroke="#39C5F5" stroke-width="2">
+          <title>${esc(`Inicio del período: ${valToLabel(firstPt.pt.v)}`)}</title>
+        </circle>
 
-        <circle cx="${lastPt.x.toFixed(1)}" cy="${lastPt.y.toFixed(1)}" r="5" fill="#39C5F5" stroke="#FFFFFF" stroke-width="2"/>
+        <!-- Peak dot with crown -->
+        <circle cx="${peakPt.x.toFixed(1)}" cy="${peakPt.y.toFixed(1)}" r="5.5" fill="#E8C982" stroke="#080D19" stroke-width="2"/>
+        <text x="${peakPt.x.toFixed(1)}" y="${Math.max(14, peakPt.y - 8).toFixed(1)}" fill="#E8C982" font-size="10.5" font-weight="bold" font-family="system-ui" text-anchor="middle">👑 Pico: ${esc(valToLabel(peakPt.pt.v))}</text>
+
+        <!-- Current dot -->
+        <circle cx="${lastPt.x.toFixed(1)}" cy="${lastPt.y.toFixed(1)}" r="5.5" fill="#39C5F5" stroke="#FFFFFF" stroke-width="2">
+          <title>${esc(`Actual: ${valToLabel(lastPt.pt.v)}`)}</title>
+        </circle>
       </svg>
     </div>
   `;
@@ -2890,54 +4852,95 @@ window.viewPlayerProfile = function (puuid) {
 
   const content = $('#player-profile-content');
   const d = p.lpDelta ?? {};
-  const champUrl = champImg(p.topChampions?.[0]?.champion);
+  const dSeason = d.season ?? d.week ?? 0;
+  const topChamp = p.topChampions?.[0]?.champion || (p.games?.[0] ? resolveChampName(p.games[0].champion) : 'Kai\'Sa');
+  const champSplashUrl = getChampSplashUrl(topChamp);
+  const soloTier = p.solo?.tier ? p.solo.tier.toLowerCase() : 'unranked';
+  const flexTier = p.flex?.tier ? p.flex.tier.toLowerCase() : 'unranked';
+  const soloTierLabel = p.solo?.label ?? 'Unranked';
+  const flexTierLabel = p.flex?.label ?? 'Unranked';
+  const score = p.stats ? p.stats.avgScore.toFixed(1) : '—';
 
   content.innerHTML = `
     <div class="profile-header-card">
-      <img class="profile-avatar-big" src="${champUrl}" alt="" onerror="this.src='${iconImg(p.profileIconId)}'">
-      <div class="profile-info">
-        <div style="display:flex; align-items:center; gap:10px;">
-          <h2 class="profile-name">${esc(p.name)}</h2>
-          ${p.nickname ? `<span class="row-nickname-badge">"${p.nickname.title}" ${p.nickname.emoji}</span>` : ''}
+      <div class="profile-header-bg" style="background-image: linear-gradient(135deg, rgba(8, 13, 25, 0.45) 0%, rgba(8, 13, 25, 0.92) 65%, #0B1322 100%), url('${champSplashUrl}'), url('assets/banner.jpg');"></div>
+      
+      <div class="profile-header-main">
+        <div class="profile-avatar-wrapper">
+          <img class="profile-avatar-big tier-${soloTier}" src="${iconImg(p.profileIconId)}" alt="${esc(p.name)}" onerror="this.src='logo.jpg'">
+          ${p.level ? `<span class="profile-level-badge">NVL ${p.level}</span>` : ''}
         </div>
-        <div class="profile-tier-badge" style="color:${tierColor(p)}">🛡️ ${esc(p.solo?.label ?? 'Unranked')} · Nivel ${p.level ?? 30}</div>
-        <div class="muted" style="margin-top:4px;">${esc(p.riotId)} · Región: ${esc(formatPlatform(p.platform ?? board.platform))}</div>
-        <button id="open-gamer-card-btn" class="btn btn-primary" style="margin-top:12px; width:fit-content; font-size:12px; padding:6px 14px;">🃏 Generar Tarjeta de Invocador</button>
+
+        <div class="profile-info">
+          <div class="profile-name-row">
+            <h2 class="profile-name">${esc(p.name)}</h2>
+            ${p.nickname ? `<span class="row-nickname-badge">"${esc(p.nickname.title)}"</span>` : ''}
+          </div>
+
+          <div class="profile-main-champ-row">
+            <span class="profile-main-champ-chip" title="Campeón insignia más jugado">
+              <img class="profile-main-champ-icon" src="${champImg(topChamp)}" alt="${esc(topChamp)}" onerror="this.style.display='none'">
+              <span class="profile-main-champ-txt">Campeón Principal: <strong>${esc(topChamp)}</strong></span>
+              ${p.topChampions?.[0]?.games ? `<span class="profile-main-champ-sub">(${p.topChampions[0].games} partidas · ${p.topChampions[0].wins}V)</span>` : ''}
+            </span>
+          </div>
+
+          <div class="profile-ranks-line">
+            <span class="profile-rank-chip solo tier-${soloTier}" title="Clasificatoria Solo/Duo">
+              <strong class="q-tag">Solo:</strong> ${esc(soloTierLabel)}
+            </span>
+            <span class="profile-rank-chip flex tier-${flexTier}" title="Clasificatoria Flex">
+              <strong class="q-tag">Flex:</strong> ${esc(flexTierLabel)}
+            </span>
+          </div>
+
+          <div class="profile-meta-line">
+            <span class="profile-meta-tag">${esc(p.riotId)}</span>
+            <span class="profile-meta-dot">•</span>
+            <span class="profile-meta-tag">Región: ${esc(formatPlatform(p.platform ?? board.platform))}</span>
+            <span class="profile-meta-dot">•</span>
+            <span class="profile-meta-tag">Temporada 2026</span>
+          </div>
+
+          <div class="profile-actions-row">
+            <button id="open-gamer-card-btn" class="profile-gamer-btn" title="Generar tarjeta compartible de invocador">
+              <span>Generar Tarjeta de Invocador</span>
+            </button>
+          </div>
+        </div>
       </div>
-      <div class="mvp-score-emblem">
-        <span class="mvp-score-num">${p.stats ? p.stats.avgScore.toFixed(1) : '—'}</span>
-        <span class="mvp-score-label">OP SCORE</span>
+
+      <div class="profile-score-box" title="Calificación Oficial de Rendimiento OP.GG">
+        <span class="profile-score-brand">OP.GG</span>
+        <span class="profile-score-num">${score}</span>
+        <span class="profile-score-title">SCORE</span>
       </div>
     </div>
 
     <!-- Stats row -->
     <div class="stat-grid-4">
       <div class="stat-card">
-        <div class="stat-icon-wrap stat-icon-gold">🎯</div>
         <div class="stat-info">
-          <span class="stat-val">${p.stats ? p.stats.winrate + '%' : '—'}</span>
-          <span class="stat-lbl">Win Rate (${p.stats?.games ?? 0} partidas)</span>
+          <span class="stat-val ${p.stats && p.stats.winrate >= 50 ? 'winrate-pos' : 'winrate-neg'}">${p.stats ? p.stats.winrate + '%' : '—'}</span>
+          <span class="stat-lbl">Win Rate (${p.stats?.wins ?? 0}V - ${(p.stats?.games ?? 0) - (p.stats?.wins ?? 0)}D)</span>
         </div>
       </div>
       <div class="stat-card">
-        <div class="stat-icon-wrap stat-icon-green">📈</div>
         <div class="stat-info">
-          <span class="stat-val" style="color:${(d.week ?? 0) >= 0 ? 'var(--success)' : 'var(--danger)'}">${signed(d.week ?? 0)} LP</span>
-          <span class="stat-lbl">Esta semana</span>
+          <span class="stat-val" style="color:${dSeason >= 0 ? 'var(--success)' : 'var(--danger)'}">${signed(dSeason)} LP ${dSeason >= 0 ? '▲' : '▼'}</span>
+          <span class="stat-lbl">Temporada (Semana: ${signed(d.week ?? 0)} LP)</span>
         </div>
       </div>
       <div class="stat-card">
-        <div class="stat-icon-wrap stat-icon-cyan">⚔️</div>
         <div class="stat-info">
           <span class="stat-val">${p.stats ? p.stats.kda : '—'}</span>
           <span class="stat-lbl">KDA Promedio</span>
         </div>
       </div>
       <div class="stat-card">
-        <div class="stat-icon-wrap stat-icon-purple">👑</div>
         <div class="stat-info">
-          <span class="stat-val">${p.stats ? p.stats.mvp : 0} MVP</span>
-          <span class="stat-lbl">${p.stats ? p.stats.ace : 0} ACE</span>
+          <span class="stat-val">${p.stats ? p.stats.mvp : 0} MVP <small style="font-size:13px;color:var(--text-muted);font-weight:600;">/ ${p.stats ? p.stats.ace : 0} ACE</small></span>
+          <span class="stat-lbl">Distinciones de Partida</span>
         </div>
       </div>
     </div>
@@ -2945,12 +4948,15 @@ window.viewPlayerProfile = function (puuid) {
     <!-- LP History & Elo Evolution Chart -->
     <div class="lp-history-card">
       <div class="lp-history-header">
-        <div style="display:flex; align-items:center; gap:10px;">
-          <span style="font-size:20px;">📈</span>
-          <div>
-            <h3 style="font-family:var(--font-heading); font-size:17px; color:var(--gold); margin:0;">Evolución de Elo & LP</h3>
-            <span class="muted sub">Progreso continuo en Ranked Solo/Duo a lo largo de la temporada</span>
-          </div>
+        <div>
+          <h3 style="font-family:var(--font-heading); font-size:17px; color:var(--gold); margin:0;">Evolución de Elo y LP</h3>
+          <span class="muted sub" id="lp-history-subtitle">Progreso continuo en Ranked Solo/Duo en los últimos 30 días (Mes Completo)</span>
+        </div>
+        <div class="lp-range-pills" id="lp-range-pills">
+          <button class="pill-btn active" data-range="30d">30 Días</button>
+          <button class="pill-btn" data-range="15d">15 Días</button>
+          <button class="pill-btn" data-range="7d">7 Días</button>
+          <button class="pill-btn" data-range="all">Todo</button>
         </div>
         <div class="lp-history-metrics">
           <div class="lp-metric-pill">
@@ -2958,8 +4964,12 @@ window.viewPlayerProfile = function (puuid) {
             <strong id="lp-peak-val" style="color:var(--gold-bright);">—</strong>
           </div>
           <div class="lp-metric-pill">
-            <span class="muted sub">Progreso Total:</span>
+            <span class="muted sub">Progreso:</span>
             <strong id="lp-prog-val" style="color:var(--success);">—</strong>
+          </div>
+          <div class="lp-metric-pill" id="lp-period-wr-pill">
+            <span class="muted sub">Winrate SoloQ:</span>
+            <strong id="lp-wr-val" style="color:var(--cyan);">—</strong>
           </div>
         </div>
       </div>
@@ -2980,77 +4990,362 @@ window.viewPlayerProfile = function (puuid) {
       `).join('') || '<div class="muted">No hay partidas recientes.</div>'}
     </div>
 
-    <!-- Recent Match History -->
-    <h3 style="font-family:var(--font-heading); font-size:18px; margin:24px 0 12px; color:var(--gold);">Historial de Partidas Ranked</h3>
-    <div class="profile-matches-list">
-      ${(p.games ?? []).slice(0, 40).map((g) => {
-        const isRemake = Boolean(g.isRemake || (g.minutes && g.minutes < 5));
-        const isSurrender = Boolean(!isRemake && (g.isSurrender || (g.minutes && g.minutes >= 5 && g.minutes <= 21)));
-        const resText = isRemake ? 'REMAKE' : g.win ? 'VICTORIA' : 'DERROTA';
-        const resColor = isRemake ? '#A0B0C0' : g.win ? 'var(--cyan)' : 'var(--danger)';
-        const cardClass = isRemake ? 'remake' : g.win ? 'win' : 'loss';
-        return `
-        <div class="profile-match-card ${cardClass}" data-match-id="${esc(g.matchId)}">
-          <img class="match-champ-icon" src="${champImg(g.champion)}" alt="">
-          <div style="min-width:95px;">
-            <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-              <strong style="color:${resColor};">${resText}</strong>
-              ${isSurrender ? `<span class="feed-badge-surrender ${g.win ? 'enemy' : 'team'}" style="font-size:9.5px; padding:1px 5px; line-height:1.2;">Rendición</span>` : ''}
-            </div>
-            <div class="muted sub">${ROLE[g.position] ?? g.position ?? 'Solo'} · ${g.minutes}m</div>
-          </div>
-          <div style="min-width:110px;">
-            <strong style="font-size:15px;">${g.kills} / ${g.deaths} / ${g.assists}</strong>
-            <div class="muted sub">KDA: ${((g.kills + g.assists) / Math.max(1, g.deaths)).toFixed(2)}</div>
-          </div>
-          <div style="flex:1; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-            <div>
-              <span class="muted sub">Score:</span> <strong style="color:var(--gold); font-size:15px;">${(g.score ?? 0).toFixed(1)}</strong>
-            </div>
-            ${!isRemake ? `
-              <span class="overview-place-tag ${g.place === 1 ? 'top-1' : g.place <= 3 ? 'top-3' : 'mid'}" title="Posición ${g.place || 5} de 10 jugadores en la partida">
-                ${g.place ? `${g.place}/10` : '—'}
-              </span>
-              ${g.mvp ? ` <span class="stat-icon-gold" style="padding:2px 6px;border-radius:4px;font-size:11px;font-weight:700;cursor:help;" title="${esc((I18N[currentLang] || I18N.es).ui.tooltipMvp)}">MVP</span>` : ''}
-              ${g.ace ? ` <span class="stat-icon-purple" style="padding:2px 6px;border-radius:4px;font-size:11px;font-weight:700;cursor:help;" title="${esc((I18N[currentLang] || I18N.es).ui.tooltipAce)}">ACE</span>` : ''}
-              ${g.mochila ? ` <span class="stat-icon-mochila" style="padding:2px 6px;border-radius:4px;font-size:11px;font-weight:700;background:rgba(230,126,34,0.22);color:#F39C12;border:1px solid rgba(230,126,34,0.45);cursor:help;" title="${esc((I18N[currentLang] || I18N.es).ui.tooltipMochila)}">🎒 MOCHILA</span>` : ''}
-            ` : ''}
-          </div>
-          <span class="muted sub" style="font-size:11px; align-self:center;">🔍 Ver Detalle</span>
+    <!-- Recent Match History (Identical to Inicio Feed) -->
+    <div class="profile-history-section">
+      <div class="profile-history-header-bar">
+        <div>
+          <h3 style="font-family:var(--font-heading); font-size:18px; margin:0 0 4px; color:var(--gold);">Historial de Partidas Ranked</h3>
+          <p class="muted sub" style="margin:0;">Historial competitivo detallado con rival en línea, distinciones y estadísticas de combate</p>
         </div>
-      `;
-      }).join('') || '<div class="muted">No hay partidas registradas.</div>'}
+        <div class="pill-group profile-history-filter" id="profile-matches-queue-filter">
+          <button class="pill-btn active" data-pfilter="all">Todas</button>
+          <button class="pill-btn" data-pfilter="solo">Solo/Duo</button>
+          <button class="pill-btn" data-pfilter="flex">Flex</button>
+          <button class="pill-btn" data-pfilter="win">Victorias</button>
+          <button class="pill-btn" data-pfilter="loss">Derrotas</button>
+          <button class="pill-btn" data-pfilter="surrender">Surrender</button>
+        </div>
+      </div>
+
+      <div id="profile-matches-feed" class="profile-matches-feed"></div>
+      <div id="profile-matches-pagination" class="overview-pagination"></div>
     </div>
   `;
 
-  // Render LP Chart
-  renderLpChart(p);
+  // Render LP Chart (default 30 days / full month)
+  renderLpChart(p, '30d');
+
+  // Bind LP range buttons
+  content.querySelectorAll('#lp-range-pills button').forEach((btn) => {
+    btn.onclick = () => {
+      content.querySelectorAll('#lp-range-pills button').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderLpChart(p, btn.dataset.range);
+    };
+  });
+
+  // Render Match History Feed
+  currentProfileMatchFilter = 'all';
+  currentProfileMatchPage = 1;
+  renderProfileMatchesFeed(p);
+
+  // Bind filter buttons
+  content.querySelectorAll('#profile-matches-queue-filter button').forEach((btn) => {
+    btn.onclick = () => {
+      content.querySelectorAll('#profile-matches-queue-filter button').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentProfileMatchFilter = btn.dataset.pfilter;
+      currentProfileMatchPage = 1;
+      renderProfileMatchesFeed(p);
+    };
+  });
 
   // Bind Gamer Card button
   $('#open-gamer-card-btn')?.addEventListener('click', () => {
     if (selectedPlayerForProfile) generateGamerCard(selectedPlayerForProfile);
   });
 
-  // Bind Match click events
-  content.querySelectorAll('.profile-match-card').forEach((card) => {
-    card.addEventListener('click', () => {
+  switchView('player');
+};
+
+let currentProfileMatchFilter = 'all';
+let currentProfileMatchPage = 1;
+
+function renderProfileMatchesFeed(p) {
+  const feed = $('#profile-matches-feed');
+  const paginationContainer = $('#profile-matches-pagination');
+  if (!feed || !p) return;
+
+  let matches = [...(p.games || [])];
+
+  if (currentProfileMatchFilter === 'solo') {
+    matches = matches.filter((g) => g.queueId === 420);
+  } else if (currentProfileMatchFilter === 'flex') {
+    matches = matches.filter((g) => g.queueId === 440);
+  } else if (currentProfileMatchFilter === 'win') {
+    matches = matches.filter((g) => g.win && !g.isRemake);
+  } else if (currentProfileMatchFilter === 'loss') {
+    matches = matches.filter((g) => !g.win && !g.isRemake);
+  } else if (currentProfileMatchFilter === 'surrender') {
+    matches = matches.filter((g) => g.isSurrender && !g.isRemake);
+  }
+
+  const totalMatches = matches.length;
+  const totalPages = Math.max(1, Math.ceil(totalMatches / MATCHES_PER_PAGE));
+  if (currentProfileMatchPage > totalPages) currentProfileMatchPage = totalPages;
+  if (currentProfileMatchPage < 1) currentProfileMatchPage = 1;
+
+  if (!totalMatches) {
+    feed.innerHTML = `
+      <div style="text-align:center; padding:40px; background:rgba(255,255,255,0.02); border-radius:12px; border:1px solid var(--border-light);" class="muted">
+        No se encontraron partidas con los filtros seleccionados.
+      </div>
+    `;
+    if (paginationContainer) paginationContainer.innerHTML = '';
+    return;
+  }
+
+  const startIdx = (currentProfileMatchPage - 1) * MATCHES_PER_PAGE;
+  const endIdx = startIdx + MATCHES_PER_PAGE;
+  const pagedMatches = matches.slice(startIdx, endIdx);
+
+  feed.innerHTML = pagedMatches.map((g) => {
+    const isRemake = Boolean(g.isRemake || (g.minutes && g.minutes < 5));
+    const isSurrender = Boolean(!isRemake && (g.isSurrender || (g.minutes && g.minutes >= 5 && g.minutes <= 21)));
+    const isWin = g.win;
+    const qName = g.queueId === 420 ? 'Solo/Duo' : g.queueId === 440 ? 'Ranked Flex' : 'Ranked';
+    const matchLpDelta = g.lpDelta ?? null;
+    const champName = resolveChampName(g.champion);
+    const kdaRatio = ((g.kills + g.assists) / Math.max(1, g.deaths)).toFixed(2);
+    const kpPct = Math.round((g.kp || 0) * 100);
+    const dmgSharePct = Math.round((g.dmgShare || 0) * 100);
+    const csPerMin = (g.cs / Math.max(1, g.minutes)).toFixed(1);
+
+    return `
+      <article class="overview-match-card profile-match-card ${isRemake ? 'remake' : isWin ? 'win' : 'loss'}" data-match-id="${esc(g.matchId)}">
+        <div class="overview-match-header">
+          <div class="feed-header-left">
+            <span class="feed-badge-result ${isRemake ? 'remake' : isWin ? 'win' : 'loss'}">
+              ${isRemake ? 'REMAKE' : isWin ? 'VICTORIA' : 'DERROTA'}
+            </span>
+            ${isSurrender && !isRemake ? `
+              <span class="feed-badge-surrender ${isWin ? 'enemy' : 'team'}" title="${isWin ? 'Victoria por rendición del equipo enemigo' : 'Derrota por rendición'}">
+                Surrender
+              </span>
+            ` : ''}
+            <span class="feed-badge-queue">${qName}</span>
+            <span class="feed-badge-time">
+              ${g.minutes}m
+              ${matchLpDelta != null ? `
+                <span class="feed-badge-lp ${matchLpDelta > 0 ? 'pos' : matchLpDelta < 0 ? 'neg' : 'zero'}" title="${matchLpDelta > 0 ? `Ganó +${matchLpDelta} LP` : matchLpDelta < 0 ? `Perdió ${matchLpDelta} LP` : 'Sin variación de LP'}">
+                  ${matchLpDelta > 0 ? `+${matchLpDelta} LP ▲` : matchLpDelta < 0 ? `${matchLpDelta} LP ▼` : '±0 LP'}
+                </span>
+              ` : ''}
+            </span>
+            <span class="feed-badge-date">${formatMatchDate(g.endTs)}</span>
+          </div>
+          <div class="feed-header-right">
+            <span class="feed-btn-view-match">Ver 5v5 completo →</span>
+          </div>
+        </div>
+
+        <div class="overview-match-participants">
+          <div class="overview-participant-row">
+            <!-- Identity -->
+            <div class="overview-p-left">
+              <div class="overview-champ-wrap">
+                <img class="overview-champ-img" src="${champImg(champName)}" alt="${esc(champName)}" onerror="this.src='logo.jpg'">
+                <span class="overview-role-badge">${ROLE[g.position] ?? g.position ?? 'MID'}</span>
+              </div>
+              <div class="overview-identity-wrap">
+                <div class="overview-player-name">
+                  <strong>${esc(p.name)}</strong>
+                </div>
+                <div class="overview-champ-line">
+                  <span class="overview-champ-name">${esc(champName)}</span>
+                  ${g.mvp ? `<span class="overview-honor-tag mvp" title="${esc((I18N[currentLang] || I18N.es).ui.tooltipMvp)}">MVP</span>` : ''}
+                  ${g.ace ? `<span class="overview-honor-tag ace" title="${esc((I18N[currentLang] || I18N.es).ui.tooltipAce)}">ACE</span>` : ''}
+                  ${g.mochila ? `<span class="overview-honor-tag mochila" title="${esc((I18N[currentLang] || I18N.es).ui.tooltipMochila)}">🎒 MOCHILA</span>` : ''}
+                </div>
+              </div>
+            </div>
+
+            <!-- KDA -->
+            <div class="overview-kda-group">
+              <div class="overview-kda-numbers">
+                <strong>${g.kills}</strong> / <span class="deaths">${g.deaths}</span> / <strong>${g.assists}</strong>
+              </div>
+              <div class="overview-kda-sub">
+                <strong style="color:var(--text-primary);">${kdaRatio}</strong> KDA · <span>${kpPct}% KP</span>
+              </div>
+            </div>
+
+            <!-- Score OP Score & Place -->
+            <div class="overview-score-group">
+              <div class="overview-score-box">
+                <span class="overview-score-tag opgg-source" title="Calificación oficial de OP.GG (1 a 10)">
+                  <span class="score-lbl">OP.GG</span>
+                  <span class="score-val">${g.score?.toFixed(1) || '—'}</span>
+                </span>
+                <span class="overview-place-tag ${g.place === 1 ? 'top-1' : g.place <= 3 ? 'top-3' : 'mid'}" title="Posición ${g.place || 5} de 10 jugadores en la partida">
+                  ${g.place ? `${g.place}/10` : '—'}
+                </span>
+              </div>
+            </div>
+
+            <!-- Lane Opponent Matchup (Rival en Línea) -->
+            <div class="overview-rival-box">
+              ${g.opp ? `
+                <div class="overview-rival-title">Rival en Línea:</div>
+                <div class="overview-rival-content">
+                  <img class="overview-rival-champ-img" src="${champImg(g.opp.champion)}" alt="${esc(resolveChampName(g.opp.champion))}" title="${esc(resolveChampName(g.opp.champion))}" onerror="this.src='logo.jpg'">
+                  <div class="overview-rival-info">
+                    <span class="overview-rival-status ${g.score >= (g.opp.score || 0) ? 'win' : 'loss'}">
+                      ${g.score >= (g.opp.score || 0) ? 'Ganó vs' : 'Perdió vs'}
+                    </span>
+                    <span class="overview-rival-scores">
+                      Score: ${g.score?.toFixed(1) || '—'} vs ${g.opp.score?.toFixed(1) || '—'}
+                    </span>
+                  </div>
+                </div>
+              ` : `
+                <div class="overview-rival-title">Rival en Línea:</div>
+                <div class="overview-rival-empty muted sub">Sin rival directo</div>
+              `}
+            </div>
+
+            <!-- Mobile Toggle Button (Visible only on mobile for combat stats) -->
+            <button class="overview-mobile-toggle-btn" type="button" aria-expanded="false" title="Mostrar u ocultar estadísticas de combate">
+              <span class="toggle-text">Estadísticas de Combate</span>
+              <span class="toggle-icon">▾</span>
+            </button>
+
+            <!-- Detailed Combat & Economy Stats -->
+            <div class="overview-combat-stats">
+              <div class="overview-stat-item" title="Daño infligido a campeones">
+                <span class="stat-lbl">Daño:</span>
+                <strong>${(g.damage / 1000).toFixed(1)}k</strong>
+                <span class="stat-sub">(${dmgSharePct}%)</span>
+              </div>
+              <div class="overview-stat-item" title="Súbditos y monstruos asesinados">
+                <span class="stat-lbl">CS:</span>
+                <strong>${g.cs}</strong>
+                <span class="stat-sub">(${csPerMin}/m)</span>
+              </div>
+              <div class="overview-stat-item" title="Oro total acumulado">
+                <span class="stat-lbl">Oro:</span>
+                <strong>${(g.gold / 1000).toFixed(1)}k</strong>
+              </div>
+              <div class="overview-stat-item" title="Puntuación de visión">
+                <span class="stat-lbl">Visión:</span>
+                <strong>${g.vision || 0}</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      </article>
+    `;
+  }).join('');
+
+  // Pagination controls
+  renderProfileMatchesPagination(totalPages, totalMatches, startIdx, endIdx, p);
+
+  // Card click event -> openMatchModal
+  feed.querySelectorAll('.overview-match-card').forEach((card) => {
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('.overview-mobile-toggle-btn')) return;
       openMatchModal(card.dataset.matchId);
     });
   });
 
-  switchView('player');
-};
+  // Mobile expandable stats toggle
+  feed.querySelectorAll('.overview-mobile-toggle-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const row = btn.closest('.overview-participant-row');
+      if (!row) return;
+      const isExp = row.classList.toggle('is-expanded');
+      btn.setAttribute('aria-expanded', isExp ? 'true' : 'false');
+      const textSpan = btn.querySelector('.toggle-text');
+      const iconSpan = btn.querySelector('.toggle-icon');
+      if (textSpan) textSpan.textContent = isExp ? 'Ocultar estadísticas' : 'Estadísticas de Combate';
+      if (iconSpan) iconSpan.textContent = isExp ? '▴' : '▾';
+    });
+  });
+}
+
+function renderProfileMatchesPagination(totalPages, totalMatches, startIdx, endIdx, p) {
+  const container = $('#profile-matches-pagination');
+  if (!container) return;
+
+  if (totalPages <= 1) {
+    container.innerHTML = `
+      <div class="matches-pagination-info">
+        Mostrando todas las <strong>${totalMatches}</strong> partidas
+      </div>
+    `;
+    return;
+  }
+
+  const pages = getPaginationPages(currentProfileMatchPage, totalPages);
+  const pageBtnsHtml = pages.map((page) => {
+    if (page === '...') {
+      return '<span style="color:var(--text-secondary); padding:0 4px; font-weight:700;">…</span>';
+    }
+    return `<button class="pagination-btn ${page === currentProfileMatchPage ? 'active' : ''}" data-ppage="${page}">${page}</button>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="matches-pagination-info">
+      Página <strong>${currentProfileMatchPage}</strong> de <strong>${totalPages}</strong> &middot; Mostrando <strong>${startIdx + 1}–${Math.min(endIdx, totalMatches)}</strong> de <strong>${totalMatches}</strong> partidas
+    </div>
+    <div class="matches-pagination-controls">
+      <button class="pagination-btn" id="prev-profile-matches-page" ${currentProfileMatchPage === 1 ? 'disabled' : ''}>
+        Anterior
+      </button>
+      ${pageBtnsHtml}
+      <button class="pagination-btn" id="next-profile-matches-page" ${currentProfileMatchPage === totalPages ? 'disabled' : ''}>
+        Siguiente
+      </button>
+    </div>
+  `;
+
+  container.querySelectorAll('button[data-ppage]').forEach((btn) => {
+    btn.onclick = () => {
+      currentProfileMatchPage = Number(btn.dataset.ppage);
+      renderProfileMatchesFeed(p);
+      $('#profile-matches-feed')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+  });
+
+  const prevBtn = $('#prev-profile-matches-page');
+  if (prevBtn) {
+    prevBtn.onclick = () => {
+      if (currentProfileMatchPage > 1) {
+        currentProfileMatchPage--;
+        renderProfileMatchesFeed(p);
+        $('#profile-matches-feed')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    };
+  }
+
+  const nextBtn = $('#next-profile-matches-page');
+  if (nextBtn) {
+    nextBtn.onclick = () => {
+      if (currentProfileMatchPage < totalPages) {
+        currentProfileMatchPage++;
+        renderProfileMatchesFeed(p);
+        $('#profile-matches-feed')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    };
+  }
+}
 
 $('#back-from-player-btn')?.addEventListener('click', () => switchView('leaderboard'));
 
 // ---------- Sort controls ----------
+function setLeaderboardSort(sortKey) {
+  if (!sortKey) return;
+  currentSort = sortKey;
+  $$('.pill-btn[data-sort]').forEach((b) => {
+    b.classList.toggle('active', b.dataset.sort === sortKey);
+  });
+  $$('.leaderboard-table-header [data-sort-col]').forEach((col) => {
+    col.classList.toggle('active', col.dataset.sortCol === sortKey);
+  });
+  renderPodium();
+  renderLeaderboards();
+}
+
 $$('.pill-btn[data-sort]').forEach((btn) => {
   btn.addEventListener('click', () => {
-    $$('.pill-btn[data-sort]').forEach((b) => b.classList.remove('active'));
-    btn.classList.add('active');
-    currentSort = btn.dataset.sort;
-    renderPodium();
-    renderLeaderboards();
+    setLeaderboardSort(btn.dataset.sort);
+  });
+});
+
+$$('.leaderboard-table-header [data-sort-col]').forEach((col) => {
+  col.addEventListener('click', () => {
+    setLeaderboardSort(col.dataset.sortCol);
   });
 });
 
@@ -3655,6 +5950,288 @@ $('#opscore-dialog')?.addEventListener('click', (e) => {
   if (e.target === $('#opscore-dialog')) $('#opscore-dialog').close();
 });
 
+// Weekly MVP Leaderboard Modal
+function openWeeklyMvpModal() {
+  const dialog = $('#weekly-mvp-dialog');
+  const content = $('#weekly-mvp-content');
+  if (!dialog || !content) return;
+
+  const ps = board?.players ?? [];
+  if (!ps.length) {
+    content.innerHTML = '<div style="text-align:center; padding:30px;" class="muted">No hay jugadores registrados en el ranking.</div>';
+    dialog.showModal();
+    return;
+  }
+
+  const playerStats = ps.map((p) => {
+    const w = getWeeklyStats(p);
+    return {
+      player: p,
+      w,
+      games: w?.games ?? 0,
+      eligible: Boolean(w && w.games >= 3),
+      lpWeek: w?.lpWeek ?? (p.lpDelta?.week ?? 0),
+      score: w?.performanceIndex ?? 0,
+    };
+  });
+
+  playerStats.sort((a, b) => {
+    if (a.eligible && b.eligible) {
+      const posA = a.lpWeek >= 0 ? 1 : 0;
+      const posB = b.lpWeek >= 0 ? 1 : 0;
+      if (posB !== posA) return posB - posA;
+      return b.score - a.score;
+    }
+    if (a.eligible && !b.eligible) return -1;
+    if (!a.eligible && b.eligible) return 1;
+    if (a.games > 0 && b.games > 0) return b.score - a.score;
+    if (a.games > 0) return -1;
+    if (b.games > 0) return 1;
+    return (b.player.solo?.value ?? 0) - (a.player.solo?.value ?? 0);
+  });
+
+  const weekStartDate = board?.weekStart ? new Date(board.weekStart).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : 'esta semana';
+  const metaBadge = $('#weekly-mvp-meta-badge');
+  if (metaBadge) {
+    metaBadge.textContent = `🏆 RANKING SEMANAL · Desde ${weekStartDate}`;
+  }
+
+  content.innerHTML = `
+    <!-- Explicación de la fórmula (oculta por defecto, se abre con el signo ?) -->
+    <div class="weekly-formula-card" id="weekly-formula-card" hidden>
+      <div class="weekly-formula-header">
+        <span class="weekly-formula-title">📐 ¿Cómo se calcula el MVP de la semana?</span>
+        <button type="button" class="weekly-formula-close-btn" id="close-weekly-formula-btn" aria-label="Cerrar explicación">&times;</button>
+      </div>
+      <p class="weekly-formula-desc">
+        El MVP semanal se determina calculando un <strong>Índice de Rendimiento Compuesto</strong> que premia el impacto individual real, la consistencia de victorias y la progresión competitiva en clasificatorias:
+      </p>
+      <div class="weekly-formula-tags">
+        <div class="formula-pill">
+          <span class="formula-weight">OP.GG Score × 10</span>
+          <span class="formula-concept">Calificación oficial OP.GG</span>
+        </div>
+        <div class="formula-pill">
+          <span class="formula-weight">Win Rate × 25</span>
+          <span class="formula-concept">% de victorias</span>
+        </div>
+        <div class="formula-pill">
+          <span class="formula-weight">Net Wins × 2.5</span>
+          <span class="formula-concept">Victorias − Derrotas</span>
+        </div>
+        <div class="formula-pill">
+          <span class="formula-weight">LP Ganados × 0.15</span>
+          <span class="formula-concept">Subida de rango</span>
+        </div>
+        <div class="formula-pill">
+          <span class="formula-weight">MVPs × 1.5</span>
+          <span class="formula-concept">Mejor de la partida</span>
+        </div>
+        <div class="formula-pill">
+          <span class="formula-weight">Actividad × 0.3</span>
+          <span class="formula-concept">Partidas (máx. 15)</span>
+        </div>
+      </div>
+      <div class="weekly-formula-rules">
+        <span>⚠️ <strong>Criterios de clasificación:</strong> Se requiere un mínimo de <strong>3 partidas</strong> en la semana. Los jugadores con balance de LP positivo tienen prioridad sobre balances negativos.</span>
+      </div>
+
+      <!-- Sección expandible "Ver más": Por qué se calcula así -->
+      <details class="weekly-why-details">
+        <summary class="weekly-why-summary">
+          <span>💡 ¿Por qué se calcula así y no solo con Win Rate o LP? <strong>(Ver más)</strong></span>
+          <span class="why-chevron">▾</span>
+        </summary>
+        <div class="weekly-why-content">
+          <div class="why-item">
+            <strong class="why-title">🚫 ¿Por qué no solo por Win Rate?</strong>
+            <p>Alguien podría jugar <strong>1 sola partida</strong>, ganarla (100% Win Rate) y ser MVP toda la semana sin volver a jugar, superando a quien jugó 20 partidas con 70% de victorias.</p>
+          </div>
+          <div class="why-item">
+            <strong class="why-title">🚫 ¿Por qué no solo por OP.GG Score?</strong>
+            <p>Alguien podría jugar pasivo cuidando solo su KDA, perder 5 partidas seguidas (0% Win Rate) y aun así ser MVP sin aportar victorias al equipo.</p>
+          </div>
+          <div class="why-item">
+            <strong class="why-title">🚫 ¿Por qué no solo por cantidad de partidas?</strong>
+            <p>Ganaría simplemente quien juegue 40 partidas con 30% de win rate sobre quien jugó 8 partidas impecables con 80% de win rate.</p>
+          </div>
+          <div class="why-item">
+            <strong class="why-title">🚫 ¿Por qué no solo por LP subidos?</strong>
+            <p>Las ganancias de LP dependen del MMR y la división (en rangos bajos se gana más LP por partida que en rangos altos), lo que crearía ventajas disparejas.</p>
+          </div>
+          <div class="why-conclusion">
+            <span>⚖️ <strong>El equilibrio:</strong> El <strong>OP.GG Score (×10)</strong> es el pilar principal (~60% del puntaje) y evalúa el impacto individual real. El <strong>Win Rate</strong> y las <strong>Victorias Netas</strong> aseguran que ganar sea determinante, y los <strong>LP</strong> junto a los <strong>MVPs</strong> premian a quienes realmente carrilean y suben de rango.</span>
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <div class="weekly-ranking-list">
+      <div class="weekly-ranking-title-row">
+        <span>TABLA DE POSICIONES SEMANAL</span>
+        <span>${playerStats.filter((x) => x.eligible).length} clasificados</span>
+      </div>
+      ${playerStats.map((item, idx) => {
+        const p = item.player;
+        const w = item.w;
+        const rankNum = idx + 1;
+        const isLeader = idx === 0 && item.eligible;
+        const rankBadgeClass = isLeader ? 'rank-gold' : rankNum === 2 ? 'rank-silver' : rankNum === 3 ? 'rank-bronze' : 'rank-normal';
+        const iconUrl = iconImg(p.profileIconId);
+        const soloTier = p.solo?.label ?? 'Unranked';
+
+        // Desglose de sumandos del cálculo
+        let mathHtml = '';
+        if (w) {
+          const scorePts = w.avgScore * 10;
+          const wrPts = (w.wins / w.games) * 25;
+          const netWins = Math.max(0, w.wins - w.losses);
+          const netPts = netWins * 2.5;
+          const lpPts = Math.max(0, w.lpWeek) * 0.15;
+          const mvpPts = w.mvps * 1.5;
+          const actPts = Math.min(w.games, 15) * 0.3;
+          const totalSum = scorePts + wrPts + netPts + lpPts + mvpPts + actPts;
+
+          mathHtml = `
+            <div class="weekly-math-simple">
+              <span class="math-simple-lbl">Suma del cálculo:</span>
+              <span class="math-simple-terms">
+                <span class="m-part" title="Calificación oficial OP.GG: ${w.avgScore.toFixed(1)} × 10"><strong>${scorePts.toFixed(1)}</strong> <small>OP.GG</small></span>
+                <span class="m-op">+</span>
+                <span class="m-part" title="Win Rate: ${w.winrate}% × 25"><strong>${wrPts.toFixed(1)}</strong> <small>WR</small></span>
+                <span class="m-op">+</span>
+                <span class="m-part" title="Victorias netas: ${netWins} × 2.5"><strong>${netPts.toFixed(1)}</strong> <small>NetV</small></span>
+                <span class="m-op">+</span>
+                <span class="m-part" title="LP ganado: ${Math.max(0, w.lpWeek)} × 0.15"><strong>${lpPts.toFixed(1)}</strong> <small>LP</small></span>
+                <span class="m-op">+</span>
+                <span class="m-part" title="Distinciones MVP: ${w.mvps} × 1.5"><strong>${mvpPts.toFixed(1)}</strong> <small>MVPs</small></span>
+                <span class="m-op">+</span>
+                <span class="m-part" title="Partidas jugadas: ${Math.min(w.games, 15)} × 0.3"><strong>${actPts.toFixed(1)}</strong> <small>Part.</small></span>
+              </span>
+            </div>
+          `;
+        }
+
+        return `
+          <div class="weekly-player-card ${isLeader ? 'is-leader' : ''}" data-puuid="${esc(p.puuid)}">
+            <div class="weekly-card-left">
+              <div class="weekly-rank-number ${rankBadgeClass}">
+                ${isLeader ? '👑' : `#${rankNum}`}
+              </div>
+              <img class="weekly-player-avatar" src="${iconUrl}" alt="${esc(p.name)}" onerror="this.src='logo.jpg'">
+              <div class="weekly-player-info">
+                <div class="weekly-player-name-line">
+                  <strong class="weekly-player-name">${esc(p.name)}</strong>
+                  ${p.nickname ? `<span class="weekly-player-nick">"${esc(p.nickname.title)}"</span>` : ''}
+                </div>
+                <div class="weekly-player-meta">
+                  <span class="weekly-solo-tier">${esc(soloTier)}</span>
+                  ${isLeader ? `<span class="weekly-status-badge leader">👑 LÍDER MVP</span>`
+                    : item.eligible ? `<span class="weekly-status-badge ok">✓ CLASIFICADO</span>`
+                    : item.games > 0 ? `<span class="weekly-status-badge pending">⏳ ${item.games}/3 partidas</span>`
+                    : `<span class="weekly-status-badge none">SIN ACTIVIDAD</span>`}
+                </div>
+              </div>
+            </div>
+
+            <div class="weekly-card-right">
+              <div class="weekly-score-box">
+                <span class="weekly-score-val">${item.score > 0 ? item.score.toFixed(1) : '—'}</span>
+                <span class="weekly-score-lbl">PUNTOS</span>
+              </div>
+            </div>
+
+            <div class="weekly-card-breakdown">
+              ${w ? `
+                <div class="w-stat" title="Partidas jugadas y porcentaje de victorias">
+                  <span class="w-lbl">WR:</span>
+                  <strong class="w-val">${w.winrate}%</strong>
+                  <span class="w-sub">(${w.wins}V - ${w.losses}D)</span>
+                </div>
+                <div class="w-stat" title="Calificación oficial OP.GG promedio">
+                  <span class="w-lbl">OP.GG:</span>
+                  <strong class="w-val">★ ${w.avgScore.toFixed(1)}</strong>
+                </div>
+                <div class="w-stat ${w.lpWeek > 0 ? 'pos' : w.lpWeek < 0 ? 'neg' : ''}" title="Progreso de LP semanal">
+                  <span class="w-lbl">LP:</span>
+                  <strong class="w-val">${w.lpWeek > 0 ? `+${w.lpWeek}` : w.lpWeek} LP</strong>
+                </div>
+                <div class="w-stat" title="Premios MVP en partidas individuales">
+                  <span class="w-lbl">MVPs:</span>
+                  <strong class="w-val">${w.mvps}</strong>
+                </div>
+                <div class="w-stat" title="KDA Ratio">
+                  <span class="w-lbl">KDA:</span>
+                  <strong class="w-val">${w.kda}</strong>
+                </div>
+              ` : `
+                <div class="w-stat muted">Sin partidas registradas esta semana.</div>
+              `}
+            </div>
+
+            ${mathHtml}
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+
+  // Botón para cerrar la tarjeta de fórmula
+  $('#close-weekly-formula-btn')?.addEventListener('click', () => {
+    const card = $('#weekly-formula-card');
+    if (card) card.hidden = true;
+    $('#weekly-help-btn')?.classList.remove('is-active');
+  });
+
+  content.querySelectorAll('.weekly-player-card').forEach((card) => {
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('button, a')) return;
+      const puuid = card.getAttribute('data-puuid');
+      if (puuid && window.viewPlayerProfile) {
+        dialog.close();
+        window.viewPlayerProfile(puuid);
+      }
+    });
+  });
+
+  // Asegurar que la tarjeta de explicación empiece oculta al entrar
+  const formulaCard = $('#weekly-formula-card');
+  if (formulaCard) formulaCard.hidden = true;
+  $('#weekly-help-btn')?.classList.remove('is-active');
+
+  dialog.showModal();
+}
+window.openWeeklyMvpModal = openWeeklyMvpModal;
+
+// Botón de ayuda '?' en la cabecera del modal
+$('#weekly-help-btn')?.addEventListener('click', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  const card = $('#weekly-formula-card');
+  if (card) {
+    const willShow = card.hidden;
+    card.hidden = !willShow;
+    $('#weekly-help-btn')?.classList.toggle('is-active', willShow);
+    if (willShow) {
+      card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }
+});
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('#mvp-tag-pill-btn, .mvp-tag-pill');
+  if (btn) {
+    e.preventDefault();
+    openWeeklyMvpModal();
+  }
+});
+
+$('#close-weekly-mvp-btn')?.addEventListener('click', () => $('#weekly-mvp-dialog')?.close());
+$('#cancel-weekly-mvp-btn')?.addEventListener('click', () => $('#weekly-mvp-dialog')?.close());
+$('#weekly-mvp-dialog')?.addEventListener('click', (e) => {
+  if (e.target === $('#weekly-mvp-dialog')) $('#weekly-mvp-dialog').close();
+});
+
 // WhatsApp Share buttons (Sidebar and legacy)
 const shareWhatsApp = async () => {
   const res = await fetch('/api/whatsapp').catch(() => null);
@@ -3704,6 +6281,6 @@ async function load() {
 // Loaded with the same ?v= as this file so a new deploy is never mixed with a cached copy.
 const plus = await import(new URL(`profile-plus.js${new URL(import.meta.url).search}`, import.meta.url).href)
   .catch((err) => { console.error('profile-plus failed to load:', err); return null; });
-plus?.install({ getBoard: () => board, reload: load, switchView, openMatchModal, toast, esc, champImg, iconImg, tierColor, ROLE });
+plus?.install({ getBoard: () => board, reload: load, switchView, openMatchModal, toast, esc, champImg, iconImg, tierColor, ROLE, getChampSplashUrl });
 
 load().then(pollStatus);

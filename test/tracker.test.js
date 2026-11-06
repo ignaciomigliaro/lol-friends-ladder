@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
-import { writeJson, readJson, weekStart, sortPlayers } from '../src/tracker.js';
+import { writeJson, readJson, weekStart, sortPlayers, enrichMatchesWithLpDeltas } from '../src/tracker.js';
 
 test('writeJson performs atomic write and readJson reads data', async () => {
   const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'lol-test-'));
@@ -42,4 +42,34 @@ test('sortPlayers orders by solo rank value descending', () => {
   assert.equal(sorted[0].name, 'ChallengerGuy');
   assert.equal(sorted[1].name, 'SilverGuy');
   assert.equal(sorted[2].name, 'UnrankedGuy');
+});
+
+test('enrichMatchesWithLpDeltas assigns exact rank delta to newly completed match', () => {
+  const prevPlayers = [
+    {
+      puuid: 'p1',
+      name: 'Panda',
+      solo: { value: 1875 },
+      games: [{ matchId: 'M1', queueId: 420, lpDelta: 20 }],
+    },
+  ];
+
+  const currentPlayers = [
+    {
+      puuid: 'p1',
+      name: 'Panda',
+      solo: { value: 1898 }, // Gained exactly +23 LP
+      games: [
+        { matchId: 'M2', queueId: 420, win: true }, // Newly completed game
+        { matchId: 'M1', queueId: 420, win: true }, // Existing game
+      ],
+    },
+  ];
+
+  enrichMatchesWithLpDeltas(currentPlayers, prevPlayers);
+
+  // M1 retains its known delta
+  assert.equal(currentPlayers[0].games[1].lpDelta, 20);
+  // M2 gets the exact difference of +23 LP
+  assert.equal(currentPlayers[0].games[0].lpDelta, 23);
 });
