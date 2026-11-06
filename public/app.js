@@ -976,12 +976,6 @@ function renderTogether() {
 async function load() {
   board = await (await fetch(`leaderboard.json?t=${Date.now()}`, { cache: 'no-store' })).json();
   render();
-  // Open /#card to preview the share image full size (/?sort=score#card for another order).
-  // The WhatsApp bot renders its images through this too.
-  if (location.hash === '#card') {
-    document.body.replaceChildren(drawCard());
-    document.body.dataset.cardReady = 'true';
-  }
 }
 
 // ---------- refresh ----------
@@ -1017,155 +1011,6 @@ async function pollStatus() {
   pollStatus.wasRunning = st.running;
 }
 
-// ---------- sharing ----------
-
-async function whatsappText() {
-  return (await fetch('whatsapp.txt', { cache: 'no-store' })).text();
-}
-
-function roundRect(ctx, x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.roundRect(x, y, w, h, r);
-  ctx.fill();
-}
-
-
-// Draws a WhatsApp-friendly leaderboard card (text only, so the canvas never gets tainted).
-function drawCard() {
-  const players = sortedPlayers();
-  const nicknamed = players.filter((p) => p.nickname);
-  const W = 1080, ROW = 118, TOP = 210, PAD = 48, NICK_ROW = 70;
-  const nickTop = TOP + players.length * ROW + 30;
-  const H = nickTop + (nicknamed.length ? 56 + nicknamed.length * NICK_ROW : 0) + 80;
-  const c = document.createElement('canvas');
-  c.width = W; c.height = H;
-  const ctx = c.getContext('2d');
-  const font = (w, s, style = '') => `${style} ${w} ${s}px "Segoe UI", "Segoe UI Emoji", system-ui, -apple-system, Roboto, sans-serif`;
-
-  const bg = ctx.createLinearGradient(0, 0, 0, H);
-  bg.addColorStop(0, '#111a33'); bg.addColorStop(1, '#070b16');
-  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
-  ctx.fillStyle = '#c8aa6e'; ctx.fillRect(0, 0, W, 8);
-
-  ctx.fillStyle = '#c8aa6e'; ctx.font = font(800, 54);
-  ctx.fillText(fit(ctx, board.groupName ?? 'La Grieta de los Pibes', W - 2 * PAD), PAD, 92);
-  ctx.fillStyle = '#8a94b0'; ctx.font = font(500, 26);
-  const sortName = { rank: 'rango Solo/Duo', score: 'score promedio', winrate: 'win rate', week: 'LP esta semana', season: 'LP esta temporada' }[sortBy];
-  ctx.fillText(`Clasificación ranked · ordenada por ${sortName} · ${new Date(board.updatedAt).toLocaleDateString('es')}`, PAD, 136);
-  ctx.fillStyle = '#5d6786'; ctx.font = font(600, 20);
-  ctx.fillText('RANK', 375, 190); ctx.fillText('SCORE', 640, 190); ctx.fillText('WIN RATE', 800, 190);
-
-  players.forEach((p, i) => {
-    const y = TOP + i * ROW;
-    ctx.fillStyle = i % 2 ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.06)';
-    roundRect(ctx, PAD - 16, y, W - 2 * PAD + 32, ROW - 12, 18);
-    const color = tierColor(p);
-    ctx.fillStyle = color; roundRect(ctx, PAD - 16, y, 8, ROW - 12, 4);
-
-    const mid = y + (ROW - 12) / 2;
-    ctx.fillStyle = i < 3 ? ['#f6d27a', '#cfd6e4', '#d9925f'][i] : '#8a94b0';
-    ctx.font = font(800, 40); ctx.textAlign = 'center';
-    ctx.fillText(String(i + 1), PAD + 30, mid + 14);
-    ctx.textAlign = 'left';
-
-    ctx.fillStyle = '#e8ecf6'; ctx.font = font(700, 32);
-    ctx.fillText(fit(ctx, p.name, 260), 100, mid - 4);
-    if (p.nickname) {
-      ctx.fillStyle = '#c8aa6e'; ctx.font = font(600, 19, 'italic');
-      ctx.fillText(fit(ctx, `“${p.nickname.title}” ${p.nickname.emoji}`, 265), 100, mid + 26);
-    } else {
-      ctx.fillStyle = '#8a94b0'; ctx.font = font(500, 20);
-      ctx.fillText(fit(ctx, p.riotId, 260), 100, mid + 26);
-    }
-
-    ctx.fillStyle = color; ctx.font = font(700, 28);
-    ctx.fillText(fit(ctx, p.solo?.label ?? 'Unranked', 255), 375, mid - 4);
-    let dx = 375;
-    for (const [v, label] of [[p.lpDelta?.week, 'semana'], [p.lpDelta?.season, 'temp.']]) {
-      if (!v) continue;
-      ctx.fillStyle = v > 0 ? '#4ade80' : '#f87171'; ctx.font = font(700, 17);
-      const text = fit(ctx, `${v > 0 ? '▲' : '▼'} ${signed(v)} ${label}`, 625 - dx); // stop before the score bubble
-      ctx.fillText(text, dx, mid + 26);
-      dx += ctx.measureText(text).width + 12;
-    }
-
-    const s = p.stats;
-    if (s) {
-      const pill = { 's-great': ['#c8aa6e', '#1a1408'], 's-good': ['#2563eb', '#fff'], 's-ok': ['#0f766e', '#fff'], 's-low': ['#3a425c', '#cfd5e6'] }[scoreClass(s.avgScore)];
-      ctx.fillStyle = pill[0]; roundRect(ctx, 640, mid - 30, 118, 52, 26);
-      ctx.fillStyle = pill[1]; ctx.font = font(800, 32); ctx.textAlign = 'center';
-      ctx.fillText(s.avgScore.toFixed(1), 699, mid + 7);
-      ctx.textAlign = 'left';
-      ctx.fillStyle = '#8a94b0'; ctx.font = font(500, 18);
-      ctx.fillText(s.mvp ? `${s.mvp}× MVP` : '', 648, mid + 46);
-
-      ctx.fillStyle = s.winrate >= 50 ? '#e8ecf6' : '#f87171'; ctx.font = font(700, 30);
-      ctx.fillText(`${s.winrate}%`, 800, mid - 2);
-      ctx.fillStyle = '#8a94b0'; ctx.font = font(500, 20);
-      ctx.fillText(`${s.wins}V ${s.games - s.wins}D · ${s.kda} KDA`, 800, mid + 28);
-    }
-  });
-
-  if (nicknamed.length) {
-    ctx.fillStyle = '#c8aa6e'; ctx.font = font(800, 30);
-    ctx.fillText('🎭 Apodos de la semana', PAD, nickTop + 30);
-    nicknamed.forEach((p, i) => {
-      const y = nickTop + 56 + i * NICK_ROW + 24;
-      let x = PAD;
-      const piece = (text, color, f) => {
-        ctx.fillStyle = color; ctx.font = f;
-        const t = fit(ctx, text, W - PAD - x);
-        ctx.fillText(t, x, y);
-        x += ctx.measureText(t).width;
-      };
-      piece(`${p.nickname.emoji}  `, '#e8ecf6', font(500, 22));
-      piece(p.name, '#e8ecf6', font(700, 22));
-      piece(' es ', '#8a94b0', font(500, 22));
-      piece(`“${p.nickname.title}”`, '#c8aa6e', font(700, 22, 'italic'));
-      // The reason gets its own line so the roast isn't cut off.
-      ctx.fillStyle = '#8a94b0'; ctx.font = font(500, 19);
-      ctx.fillText(fit(ctx, p.nickname.reason, W - 2 * PAD - 38), PAD + 38, y + 27);
-    });
-  }
-
-  ctx.fillStyle = '#5d6786'; ctx.font = font(500, 20);
-  ctx.fillText('Score: OP Score de 0 a 10 (OP.GG), promedio de las partidas ranked recientes', PAD, H - 36);
-  return c;
-}
-
-function fit(ctx, text, maxW) {
-  if (maxW <= 0) return '';
-  if (ctx.measureText(text).width <= maxW) return text;
-  while (text.length > 1 && ctx.measureText(text + '…').width > maxW) text = text.slice(0, -1);
-  return text + '…';
-}
-
-const cardBlob = () => new Promise((resolve) => drawCard().toBlob(resolve, 'image/png'));
-const fileName = () => `clasificacion-${new Date().toISOString().slice(0, 10)}.png`;
-
-async function downloadCard(blob) {
-  const url = URL.createObjectURL(blob ?? (await cardBlob()));
-  const a = Object.assign(document.createElement('a'), { href: url, download: fileName() });
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-// Keeps a copy of every image that gets sent in data/cards/ on the PC running the server.
-function keepCard(blob) {
-  if (staticMode) return; // static site: nowhere to save it
-  fetch('api/card', { method: 'POST', body: blob, headers: { 'Content-Type': 'image/png' } }).catch(() => {});
-}
-
-function showSentHelp() {
-  const box = $('#status');
-  box.className = 'status ok';
-  box.hidden = false;
-  box.innerHTML = `✅ <strong>Imagen copiada.</strong> En WhatsApp, abre el grupo, presiona <kbd>Ctrl</kbd>+<kbd>V</kbd> y envíala.
-    ¿No se abrió WhatsApp? <a href="whatsapp://">Abrir la app</a> · <a href="https://web.whatsapp.com" target="_blank" rel="noopener">WhatsApp Web</a>`;
-  clearTimeout(showSentHelp.timer);
-  showSentHelp.timer = setTimeout(() => (box.hidden = true), 20000);
-}
-
 // ---------- wiring ----------
 
 $('#board').addEventListener('click', (e) => {
@@ -1177,7 +1022,6 @@ $('#board').addEventListener('click', (e) => {
 });
 
 window.addEventListener('hashchange', () => {
-  if (location.hash === '#card') return;
   selectedChamp = null;
   showAllChamps = false;
   render();
@@ -1327,51 +1171,6 @@ async function remoteUpdate() {
     btn.disabled = false;
   }
 }
-
-// Main action: copy the leaderboard image and jump to WhatsApp so it can be pasted into the group.
-$('#send').addEventListener('click', async () => {
-  // On phones the share menu attaches the image straight to a WhatsApp chat.
-  if (matchMedia('(pointer: coarse)').matches && navigator.canShare) return $('#share').click();
-  const blob = cardBlob();
-  blob.then(keepCard);
-  try {
-    // Handing ClipboardItem a promise keeps the click's user activation for the clipboard write.
-    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-  } catch {
-    await downloadCard(await blob);
-    toast('No se pudo copiar la imagen, así que se descargó. Adjúntala en WhatsApp.');
-    return;
-  }
-  showSentHelp();
-  location.href = 'whatsapp://';
-});
-
-$('#share').addEventListener('click', async () => {
-  const blob = await cardBlob();
-  keepCard(blob);
-  const file = new File([blob], fileName(), { type: 'image/png' });
-  if (!navigator.canShare?.({ files: [file] })) {
-    await downloadCard(blob);
-    toast('Este navegador no permite compartir, así que la imagen se descargó');
-    return;
-  }
-  try {
-    await navigator.share({ files: [file] });
-  } catch (err) {
-    if (err.name !== 'AbortError') toast('No se pudo compartir: ' + err.message);
-  }
-});
-
-$('#download').addEventListener('click', async () => {
-  const blob = await cardBlob();
-  keepCard(blob);
-  downloadCard(blob);
-});
-
-$('#copy').addEventListener('click', async () => {
-  await navigator.clipboard.writeText(await whatsappText());
-  toast('¡Texto copiado! Pégalo en el chat del grupo');
-});
 
 document.querySelectorAll('#sort-nav button').forEach((x) => x.classList.toggle('active', x.dataset.sort === sortBy));
 // pollStatus needs the board to know whether an update button is available.
