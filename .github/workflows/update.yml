@@ -58,7 +58,11 @@ jobs:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
+      # The site is built from the branch named in the repository variable SITE_BRANCH
+      # (Settings → Secrets and variables → Actions → Variables), e.g. "clasico". Unset = this branch.
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ vars.SITE_BRANCH }}
 
       - uses: actions/setup-node@v4
         with:
