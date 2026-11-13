@@ -700,6 +700,12 @@
       "value": 2112,
       "label": "Emerald III 12 LP",
       "g": 205
+    },
+    {
+      "t": 1794539795438,
+      "value": 2112,
+      "label": "Emerald III 12 LP",
+      "g": 205
     }
   ],
   "ToxVjzrmk2jV_GDehmSC0nu8uCCuMqROwsKTHz74i5BsSpAe3yYxUfRNd6xRZ6WqdtFiM5QJP-r8rQ": [
@@ -1323,6 +1329,12 @@
     },
     {
       "t": 1794501618683,
+      "value": 2424,
+      "label": "Diamond IV 24 LP",
+      "g": 234
+    },
+    {
+      "t": 1794539795438,
       "value": 2424,
       "label": "Diamond IV 24 LP",
       "g": 234
@@ -1967,6 +1979,12 @@
       "value": 2264,
       "label": "Emerald II 64 LP",
       "g": 586
+    },
+    {
+      "t": 1794539795438,
+      "value": 2264,
+      "label": "Emerald II 64 LP",
+      "g": 586
     }
   ],
   "YVKlQrZq066j4x-SKaNL52mTgNu_XyziI9CpEraoqX8aK1IJVpVS0r8LU2Ci_VxZ8WuR_eZ9KPf30Q": [
@@ -2382,6 +2400,12 @@
     },
     {
       "t": 1794501618683,
+      "value": 1600,
+      "label": "Platinum IV 0 LP",
+      "g": 116
+    },
+    {
+      "t": 1794539795438,
       "value": 1600,
       "label": "Platinum IV 0 LP",
       "g": 116
@@ -2921,6 +2945,12 @@
       "value": 2093,
       "label": "Emerald IV 93 LP",
       "g": 103
+    },
+    {
+      "t": 1794539795438,
+      "value": 2093,
+      "label": "Emerald IV 93 LP",
+      "g": 103
     }
   ],
   "D5R2pMMvX46TgVd72OCokbTeltRmpCwNSw39XfzTtr-JqaqHknHFSNdfGv4YDRo5PSZy85csuqiuXg": [
@@ -3339,6 +3369,12 @@
       "value": 635,
       "label": "Bronze II 35 LP",
       "g": 22
+    },
+    {
+      "t": 1794539795438,
+      "value": 635,
+      "label": "Bronze II 35 LP",
+      "g": 22
     }
   ],
   "flex:0mYmlyl77kdcCNMtIV0qHM2Qq2X5zo8TcPOpKNEZn0Z8y2Orwn6Lsq1b0d0D6EAoQ1sSPfxv83X3uw": [
@@ -3491,6 +3527,12 @@
       "value": 2304,
       "label": "Emerald I 4 LP",
       "g": 158
+    },
+    {
+      "t": 1794539795438,
+      "value": 2304,
+      "label": "Emerald I 4 LP",
+      "g": 158
     }
   ],
   "flex:ToxVjzrmk2jV_GDehmSC0nu8uCCuMqROwsKTHz74i5BsSpAe3yYxUfRNd6xRZ6WqdtFiM5QJP-r8rQ": [
@@ -3613,6 +3655,12 @@
       "value": 2829,
       "label": "Master 29 LP",
       "g": 256
+    },
+    {
+      "t": 1794539795438,
+      "value": 2829,
+      "label": "Master 29 LP",
+      "g": 256
     }
   ],
   "flex:IM-_6s5ry6dIGhtqbtuCoeoGchb8An_cnNpQ6OFrTtQc9MFoAgHYUNKAjJetwvt6jcW51ryVNua2fg": [
@@ -3732,6 +3780,12 @@
     },
     {
       "t": 1794501618683,
+      "value": 2347,
+      "label": "Emerald I 47 LP",
+      "g": 238
+    },
+    {
+      "t": 1794539795438,
       "value": 2347,
       "label": "Emerald I 47 LP",
       "g": 238
@@ -3887,6 +3941,12 @@
       "value": 2254,
       "label": "Emerald II 54 LP",
       "g": 202
+    },
+    {
+      "t": 1794539795438,
+      "value": 2254,
+      "label": "Emerald II 54 LP",
+      "g": 202
     }
   ],
   "flex:o0WdHi0_-B6f3XGQffY8d7XReGCwmT0q-kpnOlJjD5J_WoCacKC2EH_UiBFPJjiJXustTfbnIPusKQ": [
@@ -4006,6 +4066,12 @@
     },
     {
       "t": 1794501618683,
+      "value": 1406,
+      "label": "Gold II 6 LP",
+      "g": 82
+    },
+    {
+      "t": 1794539795438,
       "value": 1406,
       "label": "Gold II 6 LP",
       "g": 82
