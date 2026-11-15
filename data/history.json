@@ -736,6 +736,12 @@
       "value": 2112,
       "label": "Emerald III 12 LP",
       "g": 205
+    },
+    {
+      "t": 1794707258429,
+      "value": 2132,
+      "label": "Emerald III 32 LP",
+      "g": 206
     }
   ],
   "ToxVjzrmk2jV_GDehmSC0nu8uCCuMqROwsKTHz74i5BsSpAe3yYxUfRNd6xRZ6WqdtFiM5QJP-r8rQ": [
@@ -3552,6 +3558,12 @@
     },
     {
       "t": 1794683020593,
+      "value": 585,
+      "label": "Bronze III 85 LP",
+      "g": 27
+    },
+    {
+      "t": 1794707258429,
       "value": 585,
       "label": "Bronze III 85 LP",
       "g": 27
